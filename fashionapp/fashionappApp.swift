@@ -6,27 +6,54 @@
 //
 
 import SwiftUI
-import SwiftData
+import CloudKit
 
 @main
 struct fashionappApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
+    @StateObject private var authManager = iCloudAuthManager()
+    @AppStorage("didFinishOnboarding") private var didFinishOnboarding = false
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            if !didFinishOnboarding {
+                SplashView(didFinishOnboarding: $didFinishOnboarding)
+            } else {
+                Group {
+                    switch authManager.state {
+                    case .unknown, .checking:
+                        ProgressView()
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .background(Color(.systemBackground))
+                    case .available:
+                        MainTabBarView()
+                    case .unavailable(let error):
+                        VStack(spacing: 16) {
+                            Image(systemName: "icloud.slash")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 80, height: 80)
+                                .foregroundColor(.red)
+                            Text("iCloud Required")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                            if let error = error {
+                                Text(error.localizedDescription)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                            } else {
+                                Text("Please sign in to iCloud to use this app.")
+                                    .foregroundColor(.secondary)
+                            }
+                            Button("Retry") {
+                                authManager.checkiCloudStatus()
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color(.systemBackground))
+                    }
+                }
+            }
         }
-        .modelContainer(sharedModelContainer)
     }
 }
