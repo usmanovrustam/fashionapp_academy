@@ -17,14 +17,14 @@ struct AddOutfitView: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Outfit Details")) {
-                    TextField("Outfit Name", text: $outfitName)
+                Section(header: Text(NSLocalizedString("Outfit Details", comment: ""))) {
+                    TextField(NSLocalizedString("Outfit Name", comment: ""), text: $outfitName)
                         .focused($nameFieldFocused)
                         .textInputAutocapitalization(.words)
                         .disableAutocorrection(true)
-                        .accessibilityLabel("Outfit Name")
+                        .accessibilityLabel(NSLocalizedString("Outfit Name", comment: ""))
                 }
-                Section(header: Text("Photo")) {
+                Section(header: Text(NSLocalizedString("Photo", comment: ""))) {
                     HStack {
                         Spacer()
                         ZStack {
@@ -36,7 +36,7 @@ struct AddOutfitView: View {
                                     .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                                     .shadow(radius: 8)
                                     .onTapGesture { checkCameraPermission() }
-                                    .accessibilityLabel("Outfit photo. Tap to retake.")
+                                    .accessibilityLabel(NSLocalizedString("Outfit photo. Tap to retake.", comment: ""))
                             } else {
                                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                                     .fill(Color.secondary.opacity(0.1))
@@ -46,13 +46,13 @@ struct AddOutfitView: View {
                                             Image(systemName: "camera")
                                                 .font(.system(size: 40, weight: .medium))
                                                 .foregroundColor(.accentColor)
-                                            Text("Tap to take photo")
+                                            Text(NSLocalizedString("Tap to take photo", comment: ""))
                                                 .font(.subheadline)
                                                 .foregroundColor(.secondary)
                                         }
                                     )
                                     .onTapGesture { checkCameraPermission() }
-                                    .accessibilityLabel("Tap to take outfit photo")
+                                    .accessibilityLabel(NSLocalizedString("Tap to take outfit photo", comment: ""))
                             }
                         }
                         Spacer()
@@ -65,17 +65,17 @@ struct AddOutfitView: View {
                             ProgressView()
                                 .frame(maxWidth: .infinity)
                         } else {
-                            Label("Save Outfit", systemImage: "checkmark.circle.fill")
+                            Label(NSLocalizedString("Save Outfit", comment: ""), systemImage: "checkmark.circle.fill")
                                 .font(.headline)
                                 .frame(maxWidth: .infinity)
                         }
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(outfitName.isEmpty || image == nil || isSaving)
-                    .accessibilityLabel("Save Outfit")
+                    .accessibilityLabel(NSLocalizedString("Save Outfit", comment: ""))
                 }
             }
-            .navigationTitle("Add Outfit")
+            .navigationTitle(NSLocalizedString("Add Outfit", comment: ""))
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showCamera) {
                 MemoizedImagePicker(sourceType: .camera) { result in
@@ -87,23 +87,23 @@ struct AddOutfitView: View {
                     }
                 }
             }
-            .alert("Camera Error", isPresented: .constant(cameraError != nil)) {
-                Button("OK") { cameraError = nil }
+            .alert(NSLocalizedString("Camera Error", comment: ""), isPresented: .constant(cameraError != nil)) {
+                Button(NSLocalizedString("OK", comment: "")) { cameraError = nil }
             } message: {
-                Text(cameraError?.localizedDescription ?? "Unknown error")
+                Text(cameraError?.localizedDescription ?? NSLocalizedString("Unknown error", comment: ""))
             }
-            .alert("Error Saving Outfit", isPresented: .constant(saveError != nil)) {
-                Button("OK") { saveError = nil }
+            .alert(NSLocalizedString("Error Saving Outfit", comment: ""), isPresented: .constant(saveError != nil)) {
+                Button(NSLocalizedString("OK", comment: "")) { saveError = nil }
             } message: {
-                Text(saveError?.localizedDescription ?? "Unknown error")
+                Text(saveError?.localizedDescription ?? NSLocalizedString("Unknown error", comment: ""))
             }
-            .alert("Outfit Saved!", isPresented: $showSuccess) {
-                Button("OK") {
+            .alert(NSLocalizedString("Outfit Saved!", comment: ""), isPresented: $showSuccess) {
+                Button(NSLocalizedString("OK", comment: "")) {
                     outfitName = ""
                     image = nil
                 }
             } message: {
-                Text("Your outfit was saved to iCloud.")
+                Text(NSLocalizedString("Your outfit was saved to iCloud.", comment: ""))
             }
         }
     }

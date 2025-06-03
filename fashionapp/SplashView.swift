@@ -4,10 +4,10 @@ struct SplashView: View {
     @Binding var didFinishOnboarding: Bool
     @State private var page = 0
     private let pages = [
-        ("tshirt.fill", "Welcome to FashionApp", "Discover and manage your wardrobe in style."),
-        ("magnifyingglass", "Browse", "Find new outfits and inspiration."),
-        ("calendar", "Calendar", "Plan your looks for every day."),
-        ("person", "Profile", "Personalize your experience.")
+        ("tshirt.fill", NSLocalizedString("Welcome to FashionApp", comment: ""), NSLocalizedString("Discover and manage your wardrobe in style.", comment: "")),
+        ("magnifyingglass", NSLocalizedString("Browse", comment: ""), NSLocalizedString("Find new outfits and inspiration.", comment: "")),
+        ("calendar", NSLocalizedString("Calendar", comment: ""), NSLocalizedString("Plan your looks for every day.", comment: "")),
+        ("person", NSLocalizedString("Profile", comment: ""), NSLocalizedString("Personalize your experience.", comment: ""))
     ]
 
     var body: some View {

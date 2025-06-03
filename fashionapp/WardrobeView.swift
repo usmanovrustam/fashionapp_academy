@@ -3,26 +3,25 @@ import SwiftUI
 struct WardrobeView: View {
     @StateObject private var manager = OutfitCloudKitManager()
     let columns = [GridItem(.adaptive(minimum: 140), spacing: 16)]
-    var onAddOutfit: (() -> Void)? = nil
 
     var body: some View {
         NavigationView {
             Group {
                 if manager.isLoading {
-                    ProgressView("Loading Outfits...")
+                    ProgressView(NSLocalizedString("Loading Outfits...", comment: ""))
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if let error = manager.error {
                     VStack(spacing: 16) {
                         Image(systemName: "exclamationmark.triangle")
                             .font(.system(size: 48))
                             .foregroundColor(.red)
-                        Text("Failed to load outfits")
+                        Text(NSLocalizedString("Failed to load outfits", comment: ""))
                             .font(.headline)
                         Text(error.localizedDescription)
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
-                        Button("Retry") { manager.fetchOutfits() }
+                        Button(NSLocalizedString("Retry", comment: "")) { manager.fetchOutfits() }
                             .buttonStyle(.borderedProminent)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -34,19 +33,13 @@ struct WardrobeView: View {
                             .frame(width: 120, height: 120)
                             .foregroundColor(.accentColor)
                             .opacity(0.7)
-                        Text("Your wardrobe is empty!")
+                        Text(NSLocalizedString("Your wardrobe is empty!", comment: ""))
                             .font(.title2)
                             .fontWeight(.semibold)
-                        Text("Start building your wardrobe by adding your first outfit.")
+                        Text(NSLocalizedString("Start building your wardrobe by adding your first outfit.", comment: ""))
                             .font(.body)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
-                        Button(action: { onAddOutfit?() }) {
-                            Label("Add Outfit", systemImage: "plus.circle.fill")
-                                .font(.headline)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .padding(.top, 8)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
@@ -86,7 +79,7 @@ struct WardrobeView: View {
                     }
                 }
             }
-            .navigationTitle("Wardrobe")
+            .navigationTitle(NSLocalizedString("Wardrobe", comment: ""))
             .onAppear { manager.fetchOutfits() }
         }
     }

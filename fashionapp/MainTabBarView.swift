@@ -15,18 +15,12 @@ struct MainTabBarView: View {
                     Text("Discover")
                 }
                 .tag(0)
-            WardrobeView(onAddOutfit: { selectedTab = 2 })
-                .tabItem {
-                    Image(systemName: "tshirt")
-                    Text("Wardrobe")
-                }
-                .tag(1)
             AddOutfitView()
                 .tabItem {
                     Image(systemName: "plus.circle")
-                    Text("Add Outfit")
+                    Text("Add")
                 }
-                .tag(2)
+                .tag(1)
             CalendarView()
                 .tabItem {
                     Image(systemName: "calendar")
