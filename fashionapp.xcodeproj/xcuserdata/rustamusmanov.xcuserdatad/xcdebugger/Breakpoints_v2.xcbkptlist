@@ -8,7 +8,7 @@
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
             uuid = "C7CCF596-7DF2-4707-BF6C-399A99A8712E"
-            shouldBeEnabled = "Yes"
+            shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "fashionapp/AddOutfitView.swift"
@@ -16,7 +16,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "168"
             endingLineNumber = "168"
-            landmarkName = "saveOutfit()"
+            landmarkName = "modernPhotoSection()"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

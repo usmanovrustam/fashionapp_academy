@@ -12,29 +12,13 @@ import CloudKit
 struct fashionappApp: App {
     @StateObject private var authManager = iCloudAuthManager()
     @AppStorage("didFinishOnboarding") private var didFinishOnboarding = false
-    @AppStorage("selectedTheme") private var selectedTheme: String = "system"
     @AppStorage("selectedLanguage") private var selectedLanguage: String = Locale.current.languageCode ?? "en"
 
     var body: some Scene {
         WindowGroup {
             RootView(selectedLanguage: selectedLanguage)
-                .onAppear {
-                    applyTheme(selectedTheme)
-                }
-                .onChange(of: selectedTheme) { newValue in
-                    applyTheme(newValue)
-                }
+                .preferredColorScheme(.light)
         }
-    }
-}
-
-private func applyTheme(_ theme: String) {
-    guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-          let window = windowScene.windows.first else { return }
-    switch theme {
-    case "light": window.overrideUserInterfaceStyle = .light
-    case "dark": window.overrideUserInterfaceStyle = .dark
-    default: window.overrideUserInterfaceStyle = .unspecified
     }
 }
 
@@ -64,7 +48,7 @@ struct RootView: View {
                             .scaledToFit()
                             .frame(width: 80, height: 80)
                             .foregroundColor(.red)
-                        Text("iCloud Required")
+                        Text(NSLocalizedString("iCloud Required", comment: ""))
                             .font(.title2)
                             .fontWeight(.bold)
                         if let error = error {
@@ -72,10 +56,10 @@ struct RootView: View {
                                 .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)
                         } else {
-                            Text("Please sign in to iCloud to use this app.")
+                            Text(NSLocalizedString("You must be signed in to iCloud to use your profile. Please sign in to iCloud in Settings.", comment: ""))
                                 .foregroundColor(.secondary)
                         }
-                        Button("Retry") {
+                        Button(NSLocalizedString("Retry", comment: "")) {
                             authManager.checkiCloudStatus()
                         }
                         .buttonStyle(.borderedProminent)

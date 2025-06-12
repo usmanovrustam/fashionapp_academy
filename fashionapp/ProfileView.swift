@@ -3,13 +3,32 @@ import CloudKit
 import UIKit
 import AuthenticationServices
 
+// Add this struct before the ProfileView struct
+struct WeatherData: Codable {
+    let main: MainWeather
+    let weather: [Weather]
+    
+    struct MainWeather: Codable {
+        let temp: Double
+        let feels_like: Double
+        let humidity: Int
+    }
+    
+    struct Weather: Codable {
+        let main: String
+        let description: String
+        let icon: String
+    }
+}
+
 struct ProfileView: View {
     @Binding var showClearAlert: Bool
     @Binding var showResetOnboardingAlert: Bool
     var clearAllData: () -> Void
     var resetOnboarding: () -> Void
 
-    @State private var userName: String? = nil
+    @State private var userProfileName: String = ""
+    @State private var userProfileLocation: String = ""
     @State private var isLoading = true
     @State private var iCloudAvailable = true
     @State private var showSettingsSheet = false
@@ -18,305 +37,99 @@ struct ProfileView: View {
     @State private var signInErrorMessage: String? = nil
     let profileImage: Image = Image(systemName: "person.crop.circle.fill")
 
-    @AppStorage("selectedTheme") private var selectedTheme: String = "system"
     @State private var showLanguageSheet = false
     @State private var showPrivacyPolicy = false
     @State private var showAboutUs = false
     @State private var showShareSheet = false
     @State private var showLogoutAlert = false
+    @State private var showTemperatureSheet = false
+    @AppStorage("selectedTemperatureUnit") private var selectedTemperatureUnit = "Celsius"
+    @State private var currentTemperature: Double = 68.0 // Example temperature in Fahrenheit
 
     @State private var profileImageScale: CGFloat = 0.8
-    @AppStorage("selectedLanguage") private var selectedLanguage: String = Locale.current.languageCode ?? "en"
+    @AppStorage("selectedLanguage") private var selectedLanguage: String = Locale.current.language.languageCode?.identifier ?? "en"
+
+    @State private var isEditingProfile = false
+    @State private var showingImagePicker = false
+    @State private var profileUIImage: UIImage?
+    @State private var tempUserName: String = ""
+    @State private var tempUserLocation: String = ""
+
+    @State private var weatherData: WeatherData?
+    @State private var isLoadingWeather = false
+    @State private var weatherError: String?
+
+    @StateObject private var calendar = CalendarManager()
+
+    private let temperatureUnits = ["Celsius", "Fahrenheit"]
 
     var body: some View {
-        GeometryReader { geometry in
+        NavigationView {
             ZStack {
-                 // Modern gradient background
-              
-                ScrollView(showsIndicators: false) {
-                    VStack {
-                        Spacer(minLength: geometry.size.height * 0.04)
-                        // Profile Card with glassmorphism
-                        VStack(spacing: geometry.size.height * 0.025) {
-                            ZStack {
-                                Circle()
-                                    .fill(Color.white.opacity(0.18))
-                                    .frame(width: min(geometry.size.width * 0.32, 130), height: min(geometry.size.width * 0.32, 130))
-                                    .blur(radius: 0.5)
-                                profileImage
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                                    .frame(width: min(geometry.size.width * 0.27, 110), height: min(geometry.size.width * 0.27, 110))
-                                    .clipShape(Circle())
-                                    .overlay(Circle().stroke(Color.accentColor, lineWidth: 3))
-                                    .shadow(color: Color.accentColor.opacity(0.18), radius: 16, x: 0, y: 8)
-                                    .scaleEffect(profileImageScale)
-                                    .animation(.spring(response: 0.6, dampingFraction: 0.7), value: profileImageScale)
-                                    .onAppear { profileImageScale = 1.0 }
-                            }
-                            if isLoading {
-                                ProgressView()
-                                    .frame(width: 100, height: 20)
-                            } else if let name = appleName ?? userName {
-                                Text(name)
-                                    .font(.system(size: min(geometry.size.width * 0.07, 28), weight: .bold, design: .rounded))
-                                    .foregroundColor(.primary)
-                                    .accessibilityLabel("Name: \(name)")
-                            } else {
-                                Text(NSLocalizedString("User", comment: ""))
-                                    .font(.system(size: min(geometry.size.width * 0.07, 28), weight: .bold, design: .rounded))
-                                    .foregroundColor(.primary)
-                                Text(NSLocalizedString("If your name does not appear, it means your Apple ID is not discoverable to apps. This is controlled by your Apple ID privacy settings. The 'Look Me Up' section in iCloud Settings is informational only.", comment: ""))
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.center)
-                                    .padding(.horizontal)
-                            }
-                            Text(NSLocalizedString("iCloud Account", comment: ""))
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                                .accessibilityLabel("iCloud Account")
-                            if !iCloudAvailable {
-                                Spacer(minLength: 12)
-                            } else if !isAppleSignedIn {
-                                SignInWithAppleButton(
-                                    .signIn,
-                                    onRequest: { request in
-                                        request.requestedScopes = [.fullName, .email]
-                                    },
-                                    onCompletion: handleAppleSignIn
-                                )
-                                .signInWithAppleButtonStyle(.black)
-                                .frame(height: 45)
-                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                                .padding(.horizontal, 32)
-                                .accessibilityLabel("Sign in with Apple")
-                                Text(NSLocalizedString("Sign in with Apple to display your name.", comment: ""))
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.center)
-                                    .padding(.horizontal)
-                                if let errorMsg = signInErrorMessage {
-                                    Text(errorMsg)
-                                        .font(.caption)
-                                        .foregroundColor(.red)
-                                        .multilineTextAlignment(.center)
-                                        .padding(.horizontal)
-                                }
-                            }
-                        }
-                        .padding(.vertical, geometry.size.height * 0.04)
-                        .padding(.horizontal, min(geometry.size.width * 0.05, 32))
-                        .frame(maxWidth: min(geometry.size.width * 0.95, 440))
-                        .background(
-                            BlurView(style: .systemUltraThinMaterial)
-                                .clipShape(RoundedRectangle(cornerRadius: 36, style: .continuous))
-                                .shadow(color: Color.black.opacity(0.10), radius: 24, x: 0, y: 12)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 36, style: .continuous)
-                                .stroke(Color.white.opacity(0.12), lineWidth: 1)
-                        )
-                        .accessibilityElement(children: .combine)
-                        Spacer(minLength: geometry.size.height * 0.03)
-                        // THEME & LANGUAGE SECTION
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(NSLocalizedString("Appearance", comment: ""))
-                                .font(.caption)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.secondary)
-                                .padding(.leading, 28)
-                                .padding(.top, 8)
-                            HStack {
-                                Label(NSLocalizedString("Theme", comment: ""), systemImage: "moon.circle")
-                                    .font(.headline)
-                                Spacer()
-                                Picker("Theme", selection: $selectedTheme) {
-                                    Text(NSLocalizedString("System", comment: "")).tag("system")
-                                    Text(NSLocalizedString("Light", comment: "")).tag("light")
-                                    Text(NSLocalizedString("Dark", comment: "")).tag("dark")
-                                }
-                                .pickerStyle(.segmented)
-                                .frame(width: min(geometry.size.width * 0.45, 180))
-                                .onChange(of: selectedTheme) { newValue in
-                                    applyTheme(newValue)
-                                }
-                            }
-                            .padding(.vertical, 16)
-                            .padding(.horizontal, 24)
-                            Divider().padding(.horizontal, 16)
-                            Button {
-                                showLanguageSheet = true
-                            } label: {
-                                HStack {
-                                    Label(NSLocalizedString("Language", comment: ""), systemImage: "globe")
-                                        .font(.headline)
-                                    Spacer()
-                                    Text(Locale.current.localizedString(forIdentifier: Locale.current.identifier) ?? NSLocalizedString("System", comment: ""))
-                                        .foregroundColor(.secondary)
-                                        .font(.subheadline)
-                                    Image(systemName: "chevron.right")
-                                        .foregroundColor(.secondary)
-                                }
-                                .padding(.vertical, 16)
-                                .padding(.horizontal, 24)
-                            }
-                        }
-                        .frame(maxWidth: min(geometry.size.width * 0.95, 440))
-                        .background(
-                            BlurView(style: .systemUltraThinMaterial)
-                                .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                                .shadow(color: Color.black.opacity(0.07), radius: 12, x: 0, y: 6)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                                .stroke(Color.white.opacity(0.10), lineWidth: 1)
-                        )
-                        .padding(.horizontal, min(geometry.size.width * 0.05, 16))
-                        .padding(.top, 8)
-                        .sheet(isPresented: $showLanguageSheet) {
-                            VStack(spacing: 24) {
-                                Text(NSLocalizedString("Select Language", comment: ""))
-                                    .font(.title2)
-                                    .fontWeight(.bold)
-                                VStack(spacing: 12) {
-                                    LanguageTile(languageCode: "en", languageName: "English", flag: "🇬🇧", selectedLanguage: $selectedLanguage) { showLanguageSheet = false }
-                                    LanguageTile(languageCode: "it", languageName: "Italiano", flag: "🇮🇹", selectedLanguage: $selectedLanguage) { showLanguageSheet = false }
-                                }
-                                .padding(.top, 8)
-                                Button(NSLocalizedString("Close", comment: "")) { showLanguageSheet = false }
-                                    .padding(.top, 16)
-                            }
-                            .padding()
-                        }
-                        Spacer(minLength: geometry.size.height * 0.03)
-                        // INFO & SHARE SECTION
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(NSLocalizedString("Info & Sharing", comment: ""))
-                                .font(.caption)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.secondary)
-                                .padding(.leading, 28)
-                                .padding(.top, 8)
-                            Button {
-                                showPrivacyPolicy = true
-                            } label: {
-                                HStack {
-                                    Label(NSLocalizedString("Privacy Policy", comment: ""), systemImage: "lock.shield")
-                                        .font(.headline)
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .foregroundColor(.secondary)
-                                }
-                                .padding(.vertical, 16)
-                                .padding(.horizontal, 24)
-                            }
-                            Divider().padding(.horizontal, 16)
-                            Button {
-                                showAboutUs = true
-                            } label: {
-                                HStack {
-                                    Label(NSLocalizedString("About Us", comment: ""), systemImage: "info.circle")
-                                        .font(.headline)
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .foregroundColor(.secondary)
-                                }
-                                .padding(.vertical, 16)
-                                .padding(.horizontal, 24)
-                            }
-                            Divider().padding(.horizontal, 16)
-                            Button {
-                                showShareSheet = true
-                            } label: {
-                                HStack {
-                                    Label(NSLocalizedString("Share App", comment: ""), systemImage: "square.and.arrow.up")
-                                        .font(.headline)
-                                    Spacer()
-                                }
-                                .padding(.vertical, 16)
-                                .padding(.horizontal, 24)
-                            }
-                        }
-                        .frame(maxWidth: min(geometry.size.width * 0.95, 440))
-                        .background(
-                            BlurView(style: .systemUltraThinMaterial)
-                                .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                                .shadow(color: Color.black.opacity(0.07), radius: 12, x: 0, y: 6)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                                .stroke(Color.white.opacity(0.10), lineWidth: 1)
-                        )
-                        .padding(.horizontal, min(geometry.size.width * 0.05, 16))
-                        .padding(.top, 8)
-                        .sheet(isPresented: $showPrivacyPolicy) {
-                            VStack(spacing: 24) {
-                                Text(NSLocalizedString("Privacy Policy", comment: ""))
-                                    .font(.title2)
-                                    .fontWeight(.bold)
-                                // Add your privacy policy content here
-                                Button(NSLocalizedString("Close", comment: "")) { showPrivacyPolicy = false }
-                                    .padding(.top, 32)
-                            }
-                            .padding()
-                        }
-                        .sheet(isPresented: $showAboutUs) {
-                            VStack(spacing: 24) {
-                                Text(NSLocalizedString("About Us", comment: ""))
-                                    .font(.title2)
-                                    .fontWeight(.bold)
-                                // Add your about us content here
-                                Button(NSLocalizedString("Close", comment: "")) { showAboutUs = false }
-                                    .padding(.top, 32)
-                            }
-                            .padding()
-                        }
-                        .sheet(isPresented: $showShareSheet) {
-                            ActivityView(activityItems: [URL(string: "https://yourapp.com")!])
-                        }
-                        Spacer(minLength: geometry.size.height * 0.03)
-                        // LOGOUT SECTION
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(NSLocalizedString("Account", comment: ""))
-                                .font(.caption)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.secondary)
-                                .padding(.leading, 28)
-                                .padding(.top, 8)
-                            Button(role: .destructive) {
-                                showLogoutAlert = true
-                            } label: {
-                                HStack {
-                                    Label(NSLocalizedString("Log Out", comment: ""), systemImage: "rectangle.portrait.and.arrow.right")
-                                        .font(.headline)
-                                    Spacer()
-                                }
-                                .padding(.vertical, 16)
-                                .padding(.horizontal, 24)
-                            }
-                        }
-                        .frame(maxWidth: min(geometry.size.width * 0.95, 440))
-                        .background(
-                            BlurView(style: .systemUltraThinMaterial)
-                                .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                                .shadow(color: Color.black.opacity(0.07), radius: 12, x: 0, y: 6)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                                .stroke(Color.white.opacity(0.10), lineWidth: 1)
-                        )
-                        .padding(.horizontal, min(geometry.size.width * 0.05, 16))
-                        .padding(.top, 8)
-                        .alert("Are you sure you want to log out?", isPresented: $showLogoutAlert) {
-                            Button(NSLocalizedString("Log Out", comment: ""), role: .destructive) {
-                                // Add your logout logic here
-                            }
-                            Button(NSLocalizedString("Cancel", comment: ""), role: .cancel) {}
-                        }
-                        Spacer(minLength: geometry.size.height * 0.04)
+                // Background gradient
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color(red: 0.95, green: 0.95, blue: 1.0),
+                        Color(red: 1.0, green: 0.95, blue: 0.98)
+                    ]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
+                
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // Profile header
+                        profileHeader
+                        
+                        // Stats section
+                        statsSection
+                        
+                        // Settings section
+                        settingsSection
+                        
+                        // Browser card section
+                        browserCardSection
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
                 }
+            }
+            .navigationTitle("Profile")
+            .sheet(isPresented: $isEditingProfile) {
+                editProfileSheet
+            }
+            .sheet(isPresented: $showingImagePicker) {
+                ImagePicker(image: $profileUIImage)
+            }
+            .sheet(isPresented: $showLanguageSheet) {
+                languageSelectionSheet
+            }
+            .sheet(isPresented: $showSettingsSheet) {
+                iCloudSettingsSheet
+            }
+            .sheet(isPresented: $showPrivacyPolicy) {
+                privacyPolicySheet
+            }
+            .sheet(isPresented: $showAboutUs) {
+                aboutUsSheet
+            }
+            .sheet(isPresented: $showShareSheet) {
+                ActivityView(activityItems: [URL(string: "https://yourapp.com")!])
+            }
+            .sheet(isPresented: $showTemperatureSheet) {
+                temperatureSettingsSheet
+            }
+            .alert("Are you sure you want to log out?", isPresented: $showLogoutAlert) {
+                Button("Log Out", role: .destructive) {
+                    // Add your logout logic here
+                }
+                Button("Cancel", role: .cancel) {}
+            }
+            .task {
+                // Here you would typically fetch the current temperature from a weather API
+                // For now, we're using a static value
+                currentTemperature = 68.0
             }
         }
         .onAppear {
@@ -326,49 +139,271 @@ struct ProfileView: View {
                 self.appleName = savedName
                 self.isAppleSignedIn = true
             }
-            applyTheme(selectedTheme)
         }
-        .sheet(isPresented: $showSettingsSheet) {
-            VStack(spacing: 24) {
-                Image(systemName: "icloud.slash")
-                    .resizable()
-                    .frame(width: 80, height: 80)
-                    .foregroundColor(.red)
-                Text(NSLocalizedString("iCloud Required", comment: ""))
-                    .font(.title2)
-                    .fontWeight(.bold)
-                Text(NSLocalizedString("You must be signed in to iCloud to use your profile. Please sign in to iCloud in Settings.", comment: ""))
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                Button(action: openSettings) {
-                    Text(NSLocalizedString("Open Settings", comment: ""))
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.accentColor)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
+    }
+    
+    private var profileHeader: some View {
+        VStack(spacing: 20) {
+            // Profile image
+            ZStack {
+                if let image = profileUIImage {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 120, height: 120)
+                        .clipShape(Circle())
+                        .overlay(
+                            Circle()
+                                .stroke(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [.purple, .pink]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 3
+                                )
+                        )
+                } else {
+                    Circle()
+                        .fill(.ultraThinMaterial)
+                        .frame(width: 120, height: 120)
+                        .overlay(
+                            Image(systemName: "person.crop.circle.fill")
+                                .font(.system(size: 60))
+                                .foregroundColor(.purple.opacity(0.8))
+                        )
                 }
-                .padding(.horizontal, 32)
-                Spacer()
+                
+                Button(action: { showingImagePicker = true }) {
+                    Circle()
+                        .fill(.ultraThinMaterial)
+                        .frame(width: 36, height: 36)
+                        .overlay(
+                            Image(systemName: "camera.fill")
+                                .font(.system(size: 16))
+                                .foregroundColor(.purple)
+                        )
+                }
+                .offset(x: 40, y: 40)
             }
-            .padding(.top, 60)
-            .presentationDetents([.medium, .large])
+            
+            // User info
+            VStack(spacing: 8) {
+                Text(userProfileName.isEmpty ? "Add Your Name" : userProfileName)
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                
+                if !userProfileLocation.isEmpty {
+                    HStack {
+                        Image(systemName: "location.fill")
+                            .font(.caption)
+                        Text(userProfileLocation)
+                            .font(.subheadline)
+                    }
+                    .foregroundColor(.secondary)
+                }
+            }
+            
+            Button(action: { isEditingProfile = true }) {
+                Text("Edit Profile")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+                    .background(
+                        LinearGradient(
+                            gradient: Gradient(colors: [.purple, .pink]),
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .cornerRadius(12)
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(.ultraThinMaterial)
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
+        )
+    }
+    
+    private var statsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Your Style Stats")
+                .font(.headline)
+                .foregroundColor(.primary)
+            
+            HStack(spacing: 16) {
+                StatCard(
+                    title: "Outfits",
+                    value: "24",
+                    icon: "tshirt.fill",
+                    color: .purple
+                )
+                
+                StatCard(
+                    title: "Favorites",
+                    value: "12",
+                    icon: "heart.fill",
+                    color: .pink
+                )
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(.ultraThinMaterial)
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
+        )
+    }
+    
+    private var settingsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Settings")
+                .font(.headline)
+                .foregroundColor(.primary)
+            
+            VStack(spacing: 0) {
+                SettingsRow(
+                    icon: "bell.fill",
+                    title: "Notifications",
+                    subtitle: "",
+                    color: .purple
+                )
+                
+                Divider()
+                    .padding(.leading, 44)
+                
+                SettingsRow(
+                    icon: "globe",
+                    title: "Language",
+                    subtitle: selectedLanguage,
+                    color: .pink
+                )
+                .onTapGesture {
+                    showLanguageSheet = true
+                }
+                
+                Divider()
+                    .padding(.leading, 44)
+                
+                SettingsRow(
+                    icon: "thermometer",
+                    title: "Temperature Unit",
+                    subtitle: formatTemperature(currentTemperature),
+                    color: .orange
+                )
+                .onTapGesture {
+                    showTemperatureSheet = true
+                }
+                
+                Divider()
+                    .padding(.leading, 44)
+                
+                SettingsRow(
+                    icon: "lock.shield",
+                    title: "Privacy Policy",
+                    subtitle: "",
+                    color: .blue
+                )
+                .onTapGesture {
+                    showPrivacyPolicy = true
+                }
+                
+                Divider()
+                    .padding(.leading, 44)
+                
+                SettingsRow(
+                    icon: "questionmark.circle.fill",
+                    title: "Help & Support",
+                    subtitle: "",
+                    color: .purple
+                )
+                .onTapGesture {
+                    showAboutUs = true
+                }
+                
+                Divider()
+                    .padding(.leading, 44)
+                
+                SettingsRow(
+                    icon: "arrow.up.right.square",
+                    title: "Share App",
+                    subtitle: "",
+                    color: .green
+                )
+                .onTapGesture {
+                    showShareSheet = true
+                }
+                
+                Divider()
+                    .padding(.leading, 44)
+                
+                SettingsRow(
+                    icon: "rectangle.portrait.and.arrow.right",
+                    title: "Log Out",
+                    subtitle: "",
+                    color: .red
+                )
+                .onTapGesture {
+                    showLogoutAlert = true
+                }
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(.ultraThinMaterial)
+            )
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(.ultraThinMaterial)
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
+        )
+    }
+    
+    private var editProfileSheet: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Profile Information")) {
+                    TextField("Name", text: $tempUserName)
+                    TextField("Location", text: $tempUserLocation)
+                }
+            }
+            .navigationTitle("Edit Profile")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        isEditingProfile = false
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        userProfileName = tempUserName
+                        userProfileLocation = tempUserLocation
+                        isEditingProfile = false
+                    }
+                }
+            }
+            .onAppear {
+                tempUserName = userProfileName
+                tempUserLocation = userProfileLocation
+            }
         }
     }
 
     private func checkiCloudStatus() {
-        let container = CKContainer.default()
-        container.accountStatus { status, error in
+        CKContainer.default().accountStatus { status, error in
             DispatchQueue.main.async {
-                if status == .available {
+                switch status {
+                case .available:
                     self.iCloudAvailable = true
-                    self.showSettingsSheet = false
-                    self.fetchUserName()
-                } else {
+                case .noAccount, .restricted, .couldNotDetermine:
                     self.iCloudAvailable = false
-                    self.showSettingsSheet = true
-                    self.isLoading = false
+                @unknown default:
+                    self.iCloudAvailable = false
                 }
             }
         }
@@ -379,7 +414,7 @@ struct ProfileView: View {
         container.fetchUserRecordID { recordID, error in
             guard let recordID = recordID, error == nil else {
                 DispatchQueue.main.async {
-                    self.userName = nil
+                    self.userProfileName = ""
                     self.isLoading = false
                 }
                 return
@@ -387,9 +422,9 @@ struct ProfileView: View {
             container.discoverUserIdentity(withUserRecordID: recordID) { identity, error in
                 DispatchQueue.main.async {
                     if let name = identity?.nameComponents?.formatted() {
-                        self.userName = name
+                        self.userProfileName = name
                     } else {
-                        self.userName = nil
+                        self.userProfileName = ""
                     }
                     self.isLoading = false
                 }
@@ -449,6 +484,357 @@ struct ProfileView: View {
         }
         func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
     }
+
+    private var languageSelectionSheet: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                Text("Select Language")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                
+                VStack(spacing: 12) {
+                    LanguageTile(languageCode: "en", languageName: "English", flag: "🇬🇧", selectedLanguage: $selectedLanguage) {
+                        showLanguageSheet = false
+                    }
+                    LanguageTile(languageCode: "it", languageName: "Italiano", flag: "🇮🇹", selectedLanguage: $selectedLanguage) {
+                        showLanguageSheet = false
+                    }
+                }
+                .padding(.top, 8)
+                
+                Button("Close") {
+                    showLanguageSheet = false
+                }
+                .padding(.top, 16)
+            }
+            .padding()
+        }
+    }
+    
+    private var iCloudSettingsSheet: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "icloud.slash")
+                .resizable()
+                .frame(width: 80, height: 80)
+                .foregroundColor(.red)
+            
+            Text("iCloud Required")
+                .font(.title2)
+                .fontWeight(.bold)
+            
+            Text("You must be signed in to iCloud to use your profile. Please sign in to iCloud in Settings.")
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+            
+            Button(action: openSettings) {
+                Text("Open Settings")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.accentColor)
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
+            }
+            .padding(.horizontal, 32)
+            
+            Spacer()
+        }
+        .padding(.top, 60)
+        .presentationDetents([.medium, .large])
+    }
+    
+    private var privacyPolicySheet: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                Text("Privacy Policy")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Your Privacy Matters")
+                            .font(.headline)
+                        
+                        Text("We take your privacy seriously. This app collects and stores your outfit data in your personal iCloud account. We do not share your data with third parties.")
+                            .font(.body)
+                        
+                        Text("Data Collection")
+                            .font(.headline)
+                            .padding(.top)
+                        
+                        Text("• Outfit images and details\n• Style preferences\n• Calendar entries")
+                            .font(.body)
+                        
+                        Text("Data Storage")
+                            .font(.headline)
+                            .padding(.top)
+                        
+                        Text("All your data is stored securely in your personal iCloud account. You can delete your data at any time through the app settings.")
+                            .font(.body)
+                    }
+                    .padding()
+                }
+                
+                Button("Close") {
+                    showPrivacyPolicy = false
+                }
+                .padding(.top, 32)
+            }
+            .padding()
+        }
+    }
+    
+    private var aboutUsSheet: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                Text("About Us")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Fashion App")
+                            .font(.headline)
+                        
+                        Text("Version 1.0")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        Text("Our Mission")
+                            .font(.headline)
+                            .padding(.top)
+                        
+                        Text("We're dedicated to helping you organize and plan your outfits with style. Our app makes it easy to manage your wardrobe and create perfect outfits for any occasion.")
+                            .font(.body)
+                        
+                        Text("Features")
+                            .font(.headline)
+                            .padding(.top)
+                        
+                        Text("• Outfit organization\n• Calendar planning\n• Style suggestions\n• Cloud sync")
+                            .font(.body)
+                    }
+                    .padding()
+                }
+                
+                Button("Close") {
+                    showAboutUs = false
+                }
+                .padding(.top, 32)
+            }
+            .padding()
+        }
+    }
+    
+    private var temperatureSettingsSheet: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                Text("Temperature Unit")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                
+                // Add temperature preview
+                VStack(spacing: 8) {
+                    Text("Current Temperature")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                    
+                    Text(formatTemperature(currentTemperature))
+                        .font(.system(size: 48, weight: .bold))
+                        .foregroundColor(.primary)
+                }
+                .padding(.vertical)
+                
+                VStack(spacing: 12) {
+                    ForEach(["Celsius", "Fahrenheit"], id: \.self) { unit in
+                        Button(action: {
+                            selectedTemperatureUnit = unit
+                            showTemperatureSheet = false
+                        }) {
+                            HStack {
+                                Text(unit)
+                                    .font(.headline)
+                                Spacer()
+                                if selectedTemperatureUnit == unit {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.accentColor)
+                                }
+                            }
+                            .padding()
+                            .background(Color(.systemBackground))
+                            .cornerRadius(12)
+                            .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+                        }
+                    }
+                }
+                .padding(.top, 8)
+                
+                Button("Close") {
+                    showTemperatureSheet = false
+                }
+                .padding(.top, 16)
+            }
+            .padding()
+        }
+    }
+    
+    private func convertTemperature(_ fahrenheit: Double) -> Double {
+        return (fahrenheit - 32) * 5/9
+    }
+    
+    private func formatTemperature(_ temperature: Double) -> String {
+        if selectedTemperatureUnit == "Celsius" {
+            let celsius = convertTemperature(temperature)
+            return String(format: "%.1f°C", celsius)
+        } else {
+            return String(format: "%.1f°F", temperature)
+        }
+    }
+    
+    private func fetchWeatherData() {
+        isLoadingWeather = true
+        weatherError = nil
+        
+        // Replace with your actual API key and location
+        let apiKey = "YOUR_API_KEY"
+        let location = "London" // You can make this dynamic based on user's location
+        
+        guard let url = URL(string: "https://api.openweathermap.org/data/2.5/weather?q=\(location)&appid=\(apiKey)&units=imperial") else {
+            weatherError = "Invalid URL"
+            isLoadingWeather = false
+            return
+        }
+        
+        URLSession.shared.dataTask(with: url) { data, response, error in
+            DispatchQueue.main.async {
+                isLoadingWeather = false
+                
+                if let error = error {
+                    weatherError = error.localizedDescription
+                    return
+                }
+                
+                guard let data = data else {
+                    weatherError = "No data received"
+                    return
+                }
+                
+                do {
+                    let decoder = JSONDecoder()
+                    self.weatherData = try decoder.decode(WeatherData.self, from: data)
+                } catch {
+                    weatherError = "Failed to decode weather data"
+                }
+            }
+        }.resume()
+    }
+    
+    private var browserCardSection: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 16) {
+                // Weather Card
+                BrowserCard(
+                    title: "Today's Weather",
+                    icon: weatherData?.weather.first?.icon ?? "sun.max.fill",
+                    color: .orange,
+                    temperature: weatherData.map { formatTemperature($0.main.temp) } ?? "Loading...",
+                    subtitle: weatherData?.weather.first?.description.capitalized ?? "Fetching weather...",
+                    isLoading: isLoadingWeather
+                )
+                
+                // Outfit Suggestions Card
+                BrowserCard(
+                    title: "Outfit Suggestions",
+                    icon: "tshirt.fill",
+                    color: .blue,
+                    temperature: weatherData.map { formatTemperature($0.main.feels_like) } ?? "Loading...",
+                    subtitle: "Based on current weather",
+                    isLoading: isLoadingWeather
+                )
+                
+                // Style Trends Card
+                BrowserCard(
+                    title: "Style Trends",
+                    icon: "chart.line.uptrend.xyaxis",
+                    color: .purple,
+                    temperature: "Trending",
+                    subtitle: "Popular this season",
+                    isLoading: false
+                )
+                
+                // Humidity Card
+                BrowserCard(
+                    title: "Humidity",
+                    icon: "humidity.fill",
+                    color: .cyan,
+                    temperature: "\(weatherData?.main.humidity ?? 0)%",
+                    subtitle: "Current humidity",
+                    isLoading: isLoadingWeather
+                )
+            }
+            .padding(.horizontal)
+        }
+        .padding(.vertical, 8)
+        .task {
+            fetchWeatherData()
+        }
+    }
+
+    private var calendarSection: some View {
+        VStack(spacing: 16) {
+            // Month navigation
+            HStack {
+                Button(action: { calendar.moveToPreviousMonth() }) {
+                    Image(systemName: "chevron.left")
+                        .foregroundColor(.primary)
+                }
+                
+                Spacer()
+                
+                Text(calendar.formatMonthYear())
+                    .font(.headline)
+                
+                Spacer()
+                
+                Button(action: { calendar.moveToNextMonth() }) {
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(.primary)
+                }
+            }
+            .padding(.horizontal)
+            
+            // Weekday headers
+            HStack {
+                ForEach(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], id: \.self) { day in
+                    Text(day)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .padding(.horizontal)
+            
+            // Calendar grid
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
+                ForEach(calendar.datesInMonth, id: \.id) { item in
+                    if let date = item.date {
+                        DayCell(
+                            date: date,
+                            isSelected: calendar.isDateSelected(date),
+                            hasOutfit: calendar.isDateInRange(date)
+                        )
+                        .onTapGesture {
+                            calendar.selectDate(date)
+                        }
+                    } else {
+                        Color.clear
+                            .aspectRatio(1, contentMode: .fit)
+                    }
+                }
+            }
+            .padding(.horizontal)
+        }
+    }
 }
 
 // Glassmorphism BlurView helper
@@ -467,7 +853,8 @@ struct LanguageTile: View {
     let languageName: String
     let flag: String
     @Binding var selectedLanguage: String
-    var onSelect: () -> Void
+    let onSelect: () -> Void
+    
     var body: some View {
         Button(action: {
             selectedLanguage = languageCode
@@ -475,19 +862,263 @@ struct LanguageTile: View {
         }) {
             HStack {
                 Text(flag)
-                    .font(.title2)
+                    .font(.title)
                 Text(languageName)
                     .font(.headline)
                 Spacer()
                 if selectedLanguage == languageCode {
-                    Image(systemName: "checkmark.circle.fill")
+                    Image(systemName: "checkmark")
                         .foregroundColor(.accentColor)
                 }
             }
             .padding()
-            .background(Color(.systemGray6))
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(selectedLanguage == languageCode ? Color.accentColor.opacity(0.1) : Color.clear)
+            )
         }
         .buttonStyle(.plain)
     }
-} 
+}
+
+struct StatCard: View {
+    let title: String
+    let value: String
+    let icon: String
+    let color: Color
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 24))
+                .foregroundColor(color)
+            
+            Text(value)
+                .font(.title2)
+                .fontWeight(.bold)
+                .foregroundColor(.primary)
+            
+            Text(title)
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(.ultraThinMaterial)
+        )
+    }
+}
+
+struct SettingsRow: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            Image(systemName: icon)
+                .font(.system(size: 20))
+                .foregroundColor(color)
+                .frame(width: 24)
+            
+            VStack(alignment: .leading) {
+                Text(title)
+                    .font(.body)
+                    .foregroundColor(.primary)
+                
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            Image(systemName: "chevron.right")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(.secondary)
+        }
+        .padding()
+        .contentShape(Rectangle())
+    }
+}
+
+struct ImagePicker: UIViewControllerRepresentable {
+    @Binding var image: UIImage?
+    @Environment(\.presentationMode) private var presentationMode
+    
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.delegate = context.coordinator
+        picker.allowsEditing = true
+        return picker
+    }
+    
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: ImagePicker
+        
+        init(_ parent: ImagePicker) {
+            self.parent = parent
+        }
+        
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+            if let image = info[.editedImage] as? UIImage {
+                parent.image = image
+            }
+            parent.presentationMode.wrappedValue.dismiss()
+        }
+        
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.presentationMode.wrappedValue.dismiss()
+        }
+    }
+}
+
+struct BrowserCard: View {
+    let title: String
+    let icon: String
+    let color: Color
+    let temperature: String
+    let subtitle: String
+    let isLoading: Bool
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: icon)
+                    .font(.title2)
+                    .foregroundColor(color)
+                
+                Spacer()
+                
+                if isLoading {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                } else {
+                    Text(temperature)
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            Text(title)
+                .font(.headline)
+                .foregroundColor(.primary)
+            
+            Text(subtitle)
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .padding()
+        .frame(width: 160)
+        .background(Color(.systemBackground))
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
+    }
+}
+
+struct ProfileView_Previews: PreviewProvider {
+    static var previews: some View {
+        ProfileView(showClearAlert: .constant(false), showResetOnboardingAlert: .constant(false), clearAllData: {}, resetOnboarding: {})
+    }
+}
+
+// Update the CalendarManager class
+class CalendarManager: ObservableObject {
+    @Published var selectedDate: Date
+    @Published var selectedDateRange: ClosedRange<Date>?
+    @Published var datesInMonth: [(id: Int, date: Date?)]
+    @Published var currentMonth: Date
+    
+    init() {
+        self.selectedDate = Date()
+        self.currentMonth = Date()
+        self.datesInMonth = []
+        updateDatesInMonth()
+    }
+    
+    func updateDatesInMonth() {
+        let calendar = Calendar.current
+        let interval = calendar.dateInterval(of: .month, for: currentMonth)!
+        let firstWeekday = calendar.component(.weekday, from: interval.start)
+        let offsetDays = firstWeekday - calendar.firstWeekday
+        
+        var dates: [(id: Int, date: Date?)] = []
+        var currentId = 0
+        
+        // Add empty cells for offset
+        for _ in 0..<offsetDays {
+            dates.append((id: currentId, date: nil))
+            currentId += 1
+        }
+        
+        // Add dates for the month
+        var currentDate = interval.start
+        while currentDate < interval.end {
+            dates.append((id: currentId, date: currentDate))
+            currentId += 1
+            currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate)!
+        }
+        
+        // Pad the remaining days to complete the last week
+        while dates.count % 7 != 0 {
+            dates.append((id: currentId, date: nil))
+            currentId += 1
+        }
+        
+        self.datesInMonth = dates
+    }
+    
+    func isDateSelected(_ date: Date) -> Bool {
+        Calendar.current.isDate(date, inSameDayAs: selectedDate)
+    }
+    
+    func isDateInRange(_ date: Date) -> Bool {
+        guard let range = selectedDateRange else { return false }
+        return range.contains(date)
+    }
+    
+    func selectDate(_ date: Date) {
+        selectedDate = date
+        if selectedDateRange == nil {
+            selectedDateRange = date...date
+        } else {
+            let calendar = Calendar.current
+            if let startDate = selectedDateRange?.lowerBound {
+                if date < startDate {
+                    selectedDateRange = date...startDate
+                } else {
+                    selectedDateRange = startDate...date
+                }
+            }
+        }
+    }
+    
+    func moveToNextMonth() {
+        if let newMonth = Calendar.current.date(byAdding: .month, value: 1, to: currentMonth) {
+            currentMonth = newMonth
+            updateDatesInMonth()
+        }
+    }
+    
+    func moveToPreviousMonth() {
+        if let newMonth = Calendar.current.date(byAdding: .month, value: -1, to: currentMonth) {
+            currentMonth = newMonth
+            updateDatesInMonth()
+        }
+    }
+    
+    func formatMonthYear() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM yyyy"
+        return formatter.string(from: currentMonth)
+    }
+}

@@ -12,19 +12,25 @@ struct MainTabBarView: View {
             BrowseView()
                 .tabItem {
                     Image(systemName: "safari")
-                    Text("Discover")
+                    Text(NSLocalizedString("Discover", comment: ""))
                 }
                 .tag(0)
             AddOutfitView()
                 .tabItem {
                     Image(systemName: "plus.circle")
-                    Text("Add")
+                    Text(NSLocalizedString("Add", comment: ""))
                 }
                 .tag(1)
+            WardrobeView()
+                .tabItem {
+                    Image(systemName: "tshirt.fill")
+                    Text(NSLocalizedString("Wardrobe", comment: ""))
+                }
+                .tag(2)
             CalendarView()
                 .tabItem {
                     Image(systemName: "calendar")
-                    Text("Calendar")
+                    Text(NSLocalizedString("Calendar", comment: ""))
                 }
                 .tag(3)
             ProfileView(
@@ -35,21 +41,21 @@ struct MainTabBarView: View {
             )
             .tabItem {
                 Image(systemName: "person")
-                Text("Profile")
+                Text(NSLocalizedString("Profile", comment: ""))
             }
             .tag(4)
         }
-        .alert("Clear All Data?", isPresented: $showClearAlert) {
-            Button("Delete", role: .destructive) { clearAllData() }
-            Button("Cancel", role: .cancel) { }
+        .alert(NSLocalizedString("Clear All Data?", comment: ""), isPresented: $showClearAlert) {
+            Button(NSLocalizedString("Delete", comment: ""), role: .destructive) { clearAllData() }
+            Button(NSLocalizedString("Cancel", comment: ""), role: .cancel) { }
         } message: {
-            Text("This will remove all app data. This action cannot be undone.")
+            Text(NSLocalizedString("This will remove all app data. This action cannot be undone.", comment: ""))
         }
-        .alert("Reset Onboarding?", isPresented: $showResetOnboardingAlert) {
-            Button("Reset", role: .destructive) { resetOnboarding() }
-            Button("Cancel", role: .cancel) { }
+        .alert(NSLocalizedString("Reset Onboarding?", comment: ""), isPresented: $showResetOnboardingAlert) {
+            Button(NSLocalizedString("Reset", comment: ""), role: .destructive) { resetOnboarding() }
+            Button(NSLocalizedString("Cancel", comment: ""), role: .cancel) { }
         } message: {
-            Text("You will see the onboarding screens again on next launch.")
+            Text(NSLocalizedString("You will see the onboarding screens again on next launch.", comment: ""))
         }
     }
 

@@ -35,44 +35,32 @@ struct SplashView: View {
                 }
             }
             .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-            HStack(spacing: 8) {
+            HStack(spacing: 12) {
                 ForEach(0..<pages.count, id: \.self) { idx in
                     Circle()
-                        .fill(idx == page ? Color.accentColor : Color.gray.opacity(0.3))
+                        .fill(page == idx ? Color.accentColor : Color.secondary.opacity(0.3))
                         .frame(width: 8, height: 8)
                 }
             }
-            .padding(.vertical, 16)
-            if page == pages.count - 1 {
+            .padding(.vertical, 20)
                 Button(action: {
-                    didFinishOnboarding = true
-                }) {
-                    Text("Get Started")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.accentColor)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
-                }
-                .padding(.horizontal, 32)
-                .padding(.bottom, 32)
-            } else {
-                Button(action: {
+                if page < pages.count - 1 {
                     withAnimation { page += 1 }
+                } else {
+                    didFinishOnboarding = true
+                }
                 }) {
-                    Text("Next")
+                Text(page == pages.count - 1 ? NSLocalizedString("Get Started", comment: "") : NSLocalizedString("Next", comment: ""))
                         .font(.headline)
+                    .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.accentColor.opacity(0.8))
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
+                    .background(Color.accentColor)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 .padding(.horizontal, 32)
                 .padding(.bottom, 32)
             }
-        }
-        .background(Color(.systemBackground).ignoresSafeArea())
+        .background(Color(.systemBackground))
     }
 } 

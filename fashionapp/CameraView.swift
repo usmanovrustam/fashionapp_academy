@@ -45,9 +45,10 @@ struct CameraView: View {
         }
         .onAppear { camera.startSession() }
         .onDisappear { camera.stopSession() }
-        .onChange(of: camera.capturedImage) { img in
-            if let img = img {
-                onPhoto(img)
+        .onChange(of: camera.capturedImage) {
+            
+            if let image = camera.capturedImage {
+                onPhoto(image)
                 presentationMode.wrappedValue.dismiss()
             }
         }

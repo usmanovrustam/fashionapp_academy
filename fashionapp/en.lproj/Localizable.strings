@@ -23,6 +23,7 @@
 "Loading Outfits..." = "Loading Outfits...";
 "Failed to load outfits" = "Failed to load outfits";
 "Retry" = "Retry";
+"Refresh" = "Refresh";
 "Your wardrobe is empty!" = "Your wardrobe is empty!";
 "Start building your wardrobe by adding your first outfit." = "Start building your wardrobe by adding your first outfit.";
 "Welcome to FashionApp" = "Welcome to FashionApp";
@@ -49,10 +50,6 @@
 "iCloud Account" = "iCloud Account";
 "Sign in with Apple to display your name." = "Sign in with Apple to display your name.";
 "Appearance" = "Appearance";
-"Theme" = "Theme";
-"System" = "System";
-"Light" = "Light";
-"Dark" = "Dark";
 "Language" = "Language";
 "Select Language" = "Select Language";
 "Close" = "Close";
@@ -66,3 +63,13 @@
 "iCloud Required" = "iCloud Required";
 "You must be signed in to iCloud to use your profile. Please sign in to iCloud in Settings." = "You must be signed in to iCloud to use your profile. Please sign in to iCloud in Settings.";
 "Open Settings" = "Open Settings";
+"Photo" = "Photo";
+"Tap to take photo" = "Tap to take photo";
+"Outfit photo. Tap to retake." = "Outfit photo. Tap to retake.";
+"Tap to take outfit photo" = "Tap to take outfit photo";
+"Camera access denied." = "Camera access denied.";
+"Camera access denied. Please enable it in Settings." = "Camera access denied. Please enable it in Settings.";
+"Unknown camera permission error." = "Unknown camera permission error.";
+"No image found." = "No image found.";
+"This app uses your location to show local weather." = "This app uses your location to show local weather.";
+"This app needs camera access to take photos of your outfits." = "This app needs camera access to take photos of your outfits.";
