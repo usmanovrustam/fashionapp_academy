@@ -7,12 +7,14 @@ struct Outfit: Identifiable, Hashable {
     let name: String
     let imageAsset: CKAsset?
     var image: UIImage?
+    var plannedDate: Date?
 
     init(record: CKRecord) {
         self.id = record.recordID
         self.name = record["name"] as? String ?? ""
         self.imageAsset = record["image"] as? CKAsset
         self.image = nil
+        self.plannedDate = record["plannedDate"] as? Date
     }
 
     static func == (lhs: Outfit, rhs: Outfit) -> Bool {
@@ -213,11 +215,14 @@ class OutfitCloudKitManager: ObservableObject {
         }
     }
     
-    func saveOutfit(name: String, image: UIImage, completion: @escaping (Result<CKRecord, Error>) -> Void) {
+    func saveOutfit(name: String, image: UIImage, plannedDate: Date? = nil, completion: @escaping (Result<CKRecord, Error>) -> Void) {
         print("Starting to save outfit: \(name)")
         
         let record = CKRecord(recordType: "Outfit")
         record["name"] = name
+        if let plannedDate = plannedDate {
+            record["plannedDate"] = plannedDate
+        }
         
         // Save image as CKAsset
         if let imageData = image.jpegData(compressionQuality: 0.8) {

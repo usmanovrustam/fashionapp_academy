@@ -44,7 +44,7 @@ struct ProfileView: View {
     @State private var showLogoutAlert = false
     @State private var showTemperatureSheet = false
     @AppStorage("selectedTemperatureUnit") private var selectedTemperatureUnit = "Celsius"
-    @State private var currentTemperature: Double = 68.0 // Example temperature in Fahrenheit
+    @State private var currentTemperature: Double = 20.0 // Example temperature in Celsius
 
     @State private var profileImageScale: CGFloat = 0.8
     @AppStorage("selectedLanguage") private var selectedLanguage: String = Locale.current.language.languageCode?.identifier ?? "en"
@@ -129,7 +129,7 @@ struct ProfileView: View {
             .task {
                 // Here you would typically fetch the current temperature from a weather API
                 // For now, we're using a static value
-                currentTemperature = 68.0
+                currentTemperature = 20.0
             }
         }
         .onAppear {
@@ -684,10 +684,10 @@ struct ProfileView: View {
     
     private func formatTemperature(_ temperature: Double) -> String {
         if selectedTemperatureUnit == "Celsius" {
-            let celsius = convertTemperature(temperature)
-            return String(format: "%.1f°C", celsius)
+            return String(format: "%.1f°C", temperature)
         } else {
-            return String(format: "%.1f°F", temperature)
+            let fahrenheit = (temperature * 9/5) + 32
+            return String(format: "%.1f°F", fahrenheit)
         }
     }
     

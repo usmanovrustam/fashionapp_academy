@@ -22,8 +22,14 @@ struct AddOutfitView: View {
     @State private var isProcessing = false
     @FocusState private var isNameFieldFocused: Bool
     
+    let selectedDate: Date?
+    
     private let maxNameLength = 30
     private let u2netModel = try? u2net(configuration: MLModelConfiguration())
+    
+    init(selectedDate: Date? = nil) {
+        self.selectedDate = selectedDate
+    }
 
     var body: some View {
         NavigationView {
@@ -393,7 +399,7 @@ struct AddOutfitView: View {
             
             // Create a Vision request
             let request = VNCoreMLRequest(model: vnModel)
-            request.imageCropAndScaleOption = VNImageCropAndScaleOption.scaleFit
+            request.imageCropAndScaleOption = .scaleFit
             
             // Create a handler
             let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
@@ -439,7 +445,7 @@ struct AddOutfitView: View {
         
         print("Attempting to save outfit: \(outfitName)")
         
-        manager.saveOutfit(name: outfitName, image: imageToSave) { result in
+        manager.saveOutfit(name: outfitName, image: imageToSave, plannedDate: selectedDate) { result in
             DispatchQueue.main.async {
                 isSaving = false
                 

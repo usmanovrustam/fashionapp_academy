@@ -206,6 +206,9 @@ struct TinderCardView: View {
 }
 
 struct WeatherCard: View {
+    @AppStorage("selectedTemperatureUnit") private var selectedTemperatureUnit = "Celsius"
+    @StateObject private var weatherManager = WeatherManager()
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
@@ -214,22 +217,41 @@ struct WeatherCard: View {
                         .font(.headline)
                         .foregroundColor(.white)
                     
-                    Text("Sunny, 72°F")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
+                    if let weather = weatherManager.currentWeather {
+                        Text(formatTemperature(weather.temperature.value))
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                    } else {
+                        Text("Loading...")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                    }
                 }
                 
                 Spacer()
                 
-                Image(systemName: "sun.max.fill")
-                    .font(.system(size: 40))
-                    .foregroundColor(.white)
+                if let weather = weatherManager.currentWeather {
+                    Image(systemName: weather.symbolName)
+                        .font(.system(size: 40))
+                        .foregroundColor(.white)
+                } else {
+                    Image(systemName: "sun.max.fill")
+                        .font(.system(size: 40))
+                        .foregroundColor(.white)
+                }
             }
             
-            Text("Perfect day for your favorite outfit!")
-                .font(.subheadline)
-                .foregroundColor(.white.opacity(0.9))
+            if let weather = weatherManager.currentWeather {
+                Text(weather.condition.description)
+                    .font(.subheadline)
+                    .foregroundColor(.white.opacity(0.9))
+            } else {
+                Text("Loading weather data...")
+                    .font(.subheadline)
+                    .foregroundColor(.white.opacity(0.9))
+            }
         }
         .padding()
         .background(
@@ -246,6 +268,18 @@ struct WeatherCard: View {
             x: 0,
             y: 8
         )
+        .task {
+            await weatherManager.requestWeather()
+        }
+    }
+    
+    private func formatTemperature(_ temperature: Double) -> String {
+        if selectedTemperatureUnit == "Celsius" {
+            return String(format: "%.1f°C", temperature)
+        } else {
+            let fahrenheit = (temperature * 9/5) + 32
+            return String(format: "%.1f°F", fahrenheit)
+        }
     }
 }
 

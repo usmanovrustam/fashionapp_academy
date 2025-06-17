@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct CalendarView: View {
+    @StateObject private var manager = OutfitCloudKitManager.shared
     @State private var selectedDate = Date()
     @State private var showingDatePicker = false
     @State private var showingAddOutfit = false
@@ -50,7 +51,7 @@ struct CalendarView: View {
                 datePickerSheet
             }
             .sheet(isPresented: $showingAddOutfit) {
-                AddOutfitView()
+                AddOutfitView(selectedDate: selectedDate)
             }
             .sheet(isPresented: $showingOutfitDetail) {
                 if let outfit = selectedOutfit {
@@ -260,13 +261,22 @@ struct CalendarView: View {
     }
     
     private func hasOutfit(for date: Date) -> Bool {
-        // TODO: Implement outfit checking logic
-        return false
+        return manager.outfits.contains { outfit in
+            if let plannedDate = outfit.plannedDate {
+                return calendar.isDate(plannedDate, inSameDayAs: date)
+            }
+            return false
+        }
     }
     
     private func outfitsForSelectedDate() -> [Outfit]? {
-        // TODO: Implement outfit fetching logic
-        return nil
+        let outfits = manager.outfits.filter { outfit in
+            if let plannedDate = outfit.plannedDate {
+                return calendar.isDate(plannedDate, inSameDayAs: selectedDate)
+            }
+            return false
+        }
+        return outfits.isEmpty ? nil : outfits
     }
 }
 
