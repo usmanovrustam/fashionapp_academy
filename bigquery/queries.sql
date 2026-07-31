@@ -1,18 +1,16 @@
 -- Stylo / Sylyo BigQuery analysis queries
--- Project: sylyo-fashion (display name: stylo)
--- After linking Analytics → BigQuery (region us), replace
---   YOUR_PROPERTY with your GA4 property number from BigQuery dataset name:
---   analytics_<PROPERTY_ID>.events_*
+-- Firebase project: sylyo-fashion (display name: stylo)
+-- GA4 property: 548069136
+-- Expected dataset (created after BigQuery link / first export):
+--   sylyo-fashion.analytics_548069136.events_*
 --
--- Requires:
--- 1) Firebase Analytics linked to BigQuery (events_* tables)
--- 2) Optional: Firestore → BigQuery extension for wardrobe / analyticsEvents
+-- Note: the analytics_* dataset can take up to ~24 hours to appear after linking.
 
--- Daily active users from Firebase Analytics export
+-- Daily active users
 SELECT
   PARSE_DATE('%Y%m%d', event_date) AS day,
   COUNT(DISTINCT user_pseudo_id) AS dau
-FROM `sylyo-fashion.analytics_YOUR_PROPERTY.events_*`
+FROM `sylyo-fashion.analytics_548069136.events_*`
 WHERE _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY))
   AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())
 GROUP BY day
@@ -24,7 +22,7 @@ WITH events AS (
     user_pseudo_id,
     event_name,
     TIMESTAMP_MICROS(event_timestamp) AS event_ts
-  FROM `sylyo-fashion.analytics_YOUR_PROPERTY.events_*`
+  FROM `sylyo-fashion.analytics_548069136.events_*`
   WHERE event_name IN ('scan_completed', 'item_saved', 'recommendation_accepted')
 )
 SELECT
@@ -33,11 +31,11 @@ SELECT
   COUNTIF(event_name = 'recommendation_accepted') AS accepts
 FROM events;
 
--- Top clothing categories saved (from event params)
+-- Top clothing categories saved
 SELECT
   (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'category') AS category,
   COUNT(*) AS saves
-FROM `sylyo-fashion.analytics_YOUR_PROPERTY.events_*`
+FROM `sylyo-fashion.analytics_548069136.events_*`
 WHERE event_name = 'item_saved'
 GROUP BY category
 ORDER BY saves DESC;
@@ -46,14 +44,16 @@ ORDER BY saves DESC;
 SELECT
   PARSE_DATE('%Y%m%d', event_date) AS day,
   COUNT(*) AS asks
-FROM `sylyo-fashion.analytics_YOUR_PROPERTY.events_*`
+FROM `sylyo-fashion.analytics_548069136.events_*`
 WHERE event_name = 'assistant_asked'
 GROUP BY day
 ORDER BY day DESC;
 
--- If using Firestore→BigQuery extension for analyticsEvents:
--- SELECT name, COUNT(*) AS cnt
--- FROM `YOUR_PROJECT.sylyo_analytics.sylyo_analyticsEvents_raw_changelog`
--- WHERE operation = 'CREATE'
--- GROUP BY name
--- ORDER BY cnt DESC;
+-- Auth events
+SELECT
+  event_name,
+  COUNT(*) AS cnt
+FROM `sylyo-fashion.analytics_548069136.events_*`
+WHERE event_name IN ('login', 'sign_up', 'logout')
+GROUP BY event_name
+ORDER BY cnt DESC;

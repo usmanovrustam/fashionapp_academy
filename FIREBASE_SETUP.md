@@ -4,6 +4,18 @@ Sylyo does **not** use mock auth or mock databases. Auth, wardrobe, images, and 
 
 **CloudKit / iCloud wardrobe storage has been removed.** The old `iCloud.apple.academy.fashionapp` container is no longer used.
 
+## Current status
+
+| Service | Status |
+|---|---|
+| Project | `sylyo-fashion` (display: stylo) |
+| GoogleService-Info.plist | In repo |
+| Authentication | Email/Password + Anonymous enabled |
+| Firestore | Database + rules deployed |
+| Storage | Bucket `sylyo-fashion.firebasestorage.app` + rules |
+| Google Analytics | Property `548069136` linked |
+| BigQuery | Linked — dataset `analytics_548069136` (may take up to 24h to appear) |
+
 ## Active project
 
 | | |
