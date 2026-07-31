@@ -1,19 +1,4 @@
 {
-  "indexes": [
-    {
-      "collectionGroup": "recommendations",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "generatedAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "analyticsEvents",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    }
-  ],
+  "indexes": [],
   "fieldOverrides": []
 }
