@@ -197,22 +197,29 @@ struct ProfileFeatureView: View {
 
     private var accountCard: some View {
         GlassCard {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Firebase Account")
+            VStack(alignment: .leading, spacing: 12) {
+                Text(NSLocalizedString("Firebase Account", comment: ""))
                     .font(AppTypography.headline)
                 if let email = viewModel.authUser?.email {
-                    Text(email).foregroundColor(.secondary)
+                    Text(email).foregroundStyle(.secondary)
                 } else if viewModel.authUser?.isAnonymous == true {
-                    Text("Signed in anonymously").foregroundColor(.secondary)
+                    Text("Signed in anonymously").foregroundStyle(.secondary)
+                } else {
+                    Text("Not signed in").foregroundStyle(.secondary)
                 }
                 Text("UID: \(viewModel.authUser?.id ?? "—")")
                     .font(.caption2)
-                    .foregroundColor(.secondary)
-                Button {
+                    .foregroundStyle(.secondary)
+
+                Button(role: .destructive) {
                     viewModel.showSignOutAlert = true
                 } label: {
-                    SettingsRow(icon: "rectangle.portrait.and.arrow.right", title: NSLocalizedString("Log Out", comment: ""), tint: .red)
+                    Label(NSLocalizedString("Log Out", comment: ""), systemImage: "rectangle.portrait.and.arrow.right")
+                        .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.glass)
+                .tint(.red)
+                .controlSize(.large)
             }
         }
     }

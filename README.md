@@ -5,10 +5,10 @@ Personal AI stylist for iOS. Scan clothing, sync a digital wardrobe to **Firebas
 ## Architecture
 
 ```text
-App/                 Composition root, auth gate, tabs
-DesignSystem/        Liquid Glass tokens + reusable UI
+App/                 Composition root, Firebase auth gate, tabs
+DesignSystem/        iOS 27 Liquid Glass tokens + reusable UI
 Domain/              Entities, protocols, use cases
-Data/                (legacy local adapters retained for reference)
+Data/Persistence/    Local image cache for Firebase Storage downloads
 Infrastructure/      Firebase Auth/Firestore/Storage/Analytics, Vision, WeatherKit, Widgets
 Features/            SwiftUI screens + view models
 SylyoWidgets/        iOS 27 WidgetKit extension (App Group sync)
@@ -16,7 +16,7 @@ SylyoWidgets/        iOS 27 WidgetKit extension (App Group sync)
 
 **Backend (required):** Firebase Auth + Cloud Firestore + Cloud Storage + Analytics → BigQuery.
 
-There is **no mock auth/database path**. Without `GoogleService-Info.plist` the app shows a setup screen.
+Auth is **Firebase only** (email/password + anonymous). There is no iCloud auth manager, CloudKit account gate, or Sign in with Apple. Without `GoogleService-Info.plist` the app shows a setup screen.
 
 ## Firebase + BigQuery
 

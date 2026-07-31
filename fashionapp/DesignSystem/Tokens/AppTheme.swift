@@ -144,26 +144,40 @@ private struct LiquidGlassCapsuleModifier: ViewModifier {
     }
 }
 
+/// Fallback primary style when a custom `ButtonStyle` is required.
+/// Prefer `.buttonStyle(.glassProminent).tint(.purple)` for new UI.
 struct GradientPrimaryButtonStyle: ButtonStyle {
     var isDisabled: Bool = false
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(AppTypography.headline)
-            .foregroundColor(.white)
+            .foregroundStyle(isDisabled ? .secondary : .primary)
             .frame(maxWidth: .infinity)
             .padding()
-            .background {
-                if isDisabled {
-                    Capsule().fill(Color.purple.opacity(0.35))
-                } else {
-                    Capsule()
-                        .fill(AppColors.primaryGradient.opacity(configuration.isPressed ? 0.85 : 1))
-                }
-            }
             .liquidGlassCapsule(interactive: !isDisabled, tint: .purple)
+            .opacity(isDisabled ? 0.55 : (configuration.isPressed ? 0.88 : 1))
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
+    }
+}
+
+extension View {
+    /// iOS 27 Liquid Glass primary control.
+    func sylyoGlassProminent(disabled: Bool = false) -> some View {
+        self
+            .buttonStyle(.glassProminent)
+            .tint(.purple)
+            .controlSize(.large)
+            .disabled(disabled)
+    }
+
+    /// iOS 27 Liquid Glass secondary control.
+    func sylyoGlass(disabled: Bool = false) -> some View {
+        self
+            .buttonStyle(.glass)
+            .controlSize(.large)
+            .disabled(disabled)
     }
 }
 

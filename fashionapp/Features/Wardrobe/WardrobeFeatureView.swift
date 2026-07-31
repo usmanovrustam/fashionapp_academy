@@ -111,7 +111,7 @@ struct WardrobeFeatureView: View {
                 Button("Try Again") {
                     Task { await viewModel.load() }
                 }
-                .buttonStyle(GradientPrimaryButtonStyle())
+                .sylyoGlassProminent()
             }
         }
     }
@@ -190,16 +190,19 @@ struct WardrobeItemDetailView: View {
                             item.isFavorite ? "Unfavorite" : "Favorite",
                             systemImage: item.isFavorite ? "heart.fill" : "heart"
                         )
+                        .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(GradientPrimaryButtonStyle())
+                    .sylyoGlassProminent()
 
                     Button(role: .destructive) {
                         Task { await viewModel.delete(item) }
                     } label: {
                         Image(systemName: "trash")
-                            .frame(width: 54, height: 54)
-                            .liquidGlass(cornerRadius: AppRadius.medium, interactive: true, tint: .red)
                     }
+                    .buttonStyle(.glass)
+                    .tint(.red)
+                    .controlSize(.large)
+                    .buttonBorderShape(.circle)
                 }
             }
             .padding()

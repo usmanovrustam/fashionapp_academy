@@ -8,16 +8,18 @@ struct FirebaseSetupView: View {
             ScrollView {
                 VStack(spacing: AppSpacing.lg) {
                     Image(systemName: "flame.fill")
-                        .font(.system(size: 64))
+                        .font(.system(size: 56, weight: .semibold))
                         .foregroundStyle(AppColors.primaryGradient)
+                        .padding(28)
+                        .liquidGlass(cornerRadius: 40, tint: .purple)
 
                     Text("Connect Firebase")
                         .font(.system(size: 32, weight: .bold, design: .rounded))
                         .foregroundStyle(AppColors.primaryGradient)
 
-                    Text("Sylyo uses Firebase Authentication for sign-in, and Firestore + Storage for your wardrobe.")
+                    Text("Sylyo uses Firebase Authentication only — no iCloud account gate. Add your project plist to continue.")
                         .font(AppTypography.body)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
 
                     GlassCard {
@@ -26,20 +28,20 @@ struct FirebaseSetupView: View {
                                 .font(AppTypography.headline)
                             Text(FirebaseConfig.relativePathInRepo)
                                 .font(.system(.footnote, design: .monospaced))
-                                .foregroundColor(.purple)
+                                .foregroundStyle(.purple)
                                 .padding(10)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .liquidGlass(cornerRadius: 10, tint: .purple)
 
                             Text("Download GoogleService-Info.plist from Firebase Console → Project settings → Your apps (bundle id \(FirebaseConfig.expectedBundleID)), then put it at the path above and rebuild.")
                                 .font(.subheadline)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                     }
 
                     GlassCard {
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("Where wardrobe data lives")
+                            Text("Where data lives")
                                 .font(AppTypography.headline)
                             labeled("Auth", "Firebase Authentication")
                             labeled("Wardrobe", "Firestore users/{uid}/wardrobeItems")
@@ -50,7 +52,7 @@ struct FirebaseSetupView: View {
 
                     Text("Details: FIREBASE_SETUP.md")
                         .font(.footnote)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .padding(AppSpacing.xl)
             }
@@ -64,7 +66,7 @@ struct FirebaseSetupView: View {
                 .frame(width: 88, alignment: .leading)
             Text(value)
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
             Spacer()
         }
     }

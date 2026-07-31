@@ -163,24 +163,23 @@ struct ScannerFeatureView: View {
                 }
             }
 
-            HStack(spacing: 12) {
-                Button {
-                    Task { await viewModel.openCamera() }
-                } label: {
-                    Label("Camera", systemImage: "camera.fill")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(GradientPrimaryButtonStyle())
+            GlassEffectContainer(spacing: 12) {
+                HStack(spacing: 12) {
+                    Button {
+                        Task { await viewModel.openCamera() }
+                    } label: {
+                        Label("Camera", systemImage: "camera.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .sylyoGlassProminent()
 
-                Button {
-                    viewModel.showLibrary = true
-                } label: {
-                    Label("Library", systemImage: "photo.on.rectangle")
-                        .font(AppTypography.headline)
-                        .foregroundColor(.purple)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .liquidGlass(cornerRadius: AppRadius.medium, interactive: true, tint: .purple)
+                    Button {
+                        viewModel.showLibrary = true
+                    } label: {
+                        Label("Library", systemImage: "photo.on.rectangle")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .sylyoGlass()
                 }
             }
         }
@@ -231,13 +230,13 @@ struct ScannerFeatureView: View {
             Task { await viewModel.save() }
         } label: {
             HStack {
-                if viewModel.isSaving {
-                    ProgressView().tint(.white)
-                }
+                if viewModel.isSaving { ProgressView().controlSize(.small) }
                 Text(NSLocalizedString("Save Outfit", comment: ""))
             }
+            .frame(maxWidth: .infinity)
         }
-        .buttonStyle(GradientPrimaryButtonStyle(isDisabled: viewModel.selectedImage == nil || viewModel.isProcessing || viewModel.isSaving))
-        .disabled(viewModel.selectedImage == nil || viewModel.isProcessing || viewModel.isSaving)
+        .sylyoGlassProminent(
+            disabled: viewModel.selectedImage == nil || viewModel.isProcessing || viewModel.isSaving
+        )
     }
 }

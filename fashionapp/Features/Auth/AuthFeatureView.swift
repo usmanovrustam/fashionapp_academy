@@ -25,7 +25,9 @@ final class AuthViewModel: ObservableObject {
         self.analytics = analytics
     }
 
-    var isFirebaseConfigured: Bool { auth.isFirebaseConfigured }
+    var canSubmit: Bool {
+        !isLoading && !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !password.isEmpty
+    }
 
     func submit() async {
         isLoading = true
@@ -87,8 +89,10 @@ final class AuthViewModel: ObservableObject {
     }
 }
 
+/// Firebase-only auth screen — iOS 27 Liquid Glass, no iCloud / Sign in with Apple.
 struct AuthFeatureView: View {
     @StateObject private var viewModel: AuthViewModel
+    @Namespace private var glassNamespace
 
     init(auth: AuthServicing, analytics: AnalyticsTracking) {
         _viewModel = StateObject(wrappedValue: AuthViewModel(auth: auth, analytics: analytics))
@@ -99,98 +103,146 @@ struct AuthFeatureView: View {
             SoftBackground()
 
             ScrollView {
-                VStack(spacing: AppSpacing.xl) {
+                VStack(spacing: AppSpacing.lg) {
                     header
 
-                    Picker("Mode", selection: $viewModel.mode) {
-                        ForEach(AuthViewModel.Mode.allCases) { mode in
-                            Text(mode.rawValue).tag(mode)
-                        }
-                    }
-                    .pickerStyle(.segmented)
+                    GlassEffectContainer(spacing: 16) {
+                        VStack(spacing: 16) {
+                            modePicker
 
-                    GlassEffectContainer(spacing: 14) {
-                        VStack(spacing: 14) {
                             if viewModel.mode == .signUp {
                                 field("Name", text: $viewModel.displayName, contentType: .name)
+                                    .glassEffectID("auth-name", in: glassNamespace)
                             }
-                            field("Email", text: $viewModel.email, contentType: .emailAddress, keyboard: .emailAddress)
+
+                            field(
+                                "Email",
+                                text: $viewModel.email,
+                                contentType: .emailAddress,
+                                keyboard: .emailAddress
+                            )
+                            .glassEffectID("auth-email", in: glassNamespace)
+
                             SecureField("Password", text: $viewModel.password)
                                 .textContentType(viewModel.mode == .signUp ? .newPassword : .password)
                                 .padding()
-                                .liquidGlass(cornerRadius: AppRadius.medium, interactive: true)
+                                .liquidGlass(cornerRadius: AppRadius.medium, interactive: true, tint: .purple)
+                                .glassEffectID("auth-password", in: glassNamespace)
                         }
                     }
 
-                    if let error = viewModel.errorMessage {
-                        Text(error)
-                            .font(.footnote)
-                            .foregroundColor(.red)
-                            .multilineTextAlignment(.center)
-                    }
+                    statusMessages
 
-                    if let info = viewModel.infoMessage {
-                        Text(info)
-                            .font(.footnote)
-                            .foregroundColor(.green)
-                            .multilineTextAlignment(.center)
-                    }
+                    GlassEffectContainer(spacing: 12) {
+                        VStack(spacing: 12) {
+                            Button {
+                                Task { await viewModel.submit() }
+                            } label: {
+                                HStack(spacing: 8) {
+                                    if viewModel.isLoading {
+                                        ProgressView().controlSize(.small)
+                                    }
+                                    Text(viewModel.mode == .signIn ? "Sign In" : "Create Account")
+                                        .font(AppTypography.headline)
+                                }
+                                .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.glassProminent)
+                            .tint(.purple)
+                            .controlSize(.large)
+                            .disabled(!viewModel.canSubmit)
+                            .glassEffectID("auth-primary", in: glassNamespace)
 
-                    Button {
-                        Task { await viewModel.submit() }
-                    } label: {
-                        HStack {
-                            if viewModel.isLoading { ProgressView().tint(.white) }
-                            Text(viewModel.mode == .signIn ? "Sign In" : "Create Account")
+                            if viewModel.mode == .signIn {
+                                Button("Forgot password?") {
+                                    Task { await viewModel.resetPassword() }
+                                }
+                                .buttonStyle(.glass)
+                                .controlSize(.regular)
+                                .disabled(viewModel.isLoading)
+                                .glassEffectID("auth-reset", in: glassNamespace)
+                            }
+
+                            Button {
+                                Task { await viewModel.continueAsGuest() }
+                            } label: {
+                                Text("Continue as guest")
+                                    .font(AppTypography.headline)
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.glass)
+                            .controlSize(.large)
+                            .disabled(viewModel.isLoading)
+                            .glassEffectID("auth-guest", in: glassNamespace)
                         }
                     }
-                    .buttonStyle(GradientPrimaryButtonStyle(isDisabled: viewModel.isLoading))
-                    .disabled(viewModel.isLoading || viewModel.email.isEmpty || viewModel.password.isEmpty)
 
-                    if viewModel.mode == .signIn {
-                        Button("Forgot password?") {
-                            Task { await viewModel.resetPassword() }
-                        }
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundColor(.purple)
-                    }
-
-                    Button {
-                        Task { await viewModel.continueAsGuest() }
-                    } label: {
-                        Text("Continue as guest")
-                            .font(AppTypography.headline)
-                            .foregroundColor(.purple)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .liquidGlass(cornerRadius: AppRadius.medium, interactive: true, tint: .purple)
-                    }
-                    .disabled(viewModel.isLoading)
-
-                    Text("Your wardrobe, scans, and recommendations sync to Firebase Firestore & Storage.")
+                    Text("Signed-in wardrobe data syncs with Firebase Auth, Firestore, and Storage.")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
+                        .padding(.top, 4)
                 }
                 .padding(AppSpacing.xl)
             }
         }
         .onAppear {
-            // screen_view is also tracked from RootView transitions when signed out.
+            analyticsScreen()
         }
     }
 
     private var header: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 12) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 44, weight: .semibold))
+                .foregroundStyle(AppColors.primaryGradient)
+                .padding(26)
+                .liquidGlass(cornerRadius: 36, tint: .purple)
+
             Text("Sylyo")
                 .font(.system(size: 44, weight: .bold, design: .rounded))
                 .foregroundStyle(AppColors.primaryGradient)
-            Text("Sign in with your Firebase account to sync wardrobe data and power analytics.")
+
+            Text("Firebase sign-in for your AI wardrobe")
                 .font(AppTypography.body)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
         }
-        .padding(.top, 40)
+        .padding(.top, 28)
+    }
+
+    private var modePicker: some View {
+        Picker("Mode", selection: $viewModel.mode) {
+            ForEach(AuthViewModel.Mode.allCases) { mode in
+                Text(mode.rawValue).tag(mode)
+            }
+        }
+        .pickerStyle(.segmented)
+        .padding(6)
+        .liquidGlass(cornerRadius: AppRadius.medium, tint: .purple)
+    }
+
+    @ViewBuilder
+    private var statusMessages: some View {
+        if let error = viewModel.errorMessage {
+            Text(error)
+                .font(.footnote)
+                .foregroundStyle(.red)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .liquidGlass(cornerRadius: AppRadius.medium, tint: .red)
+        }
+
+        if let info = viewModel.infoMessage {
+            Text(info)
+                .font(.footnote)
+                .foregroundStyle(.green)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .liquidGlass(cornerRadius: AppRadius.medium, tint: .green)
+        }
     }
 
     private func field(
@@ -205,6 +257,10 @@ struct AuthFeatureView: View {
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
             .padding()
-            .liquidGlass(cornerRadius: AppRadius.medium, interactive: true)
+            .liquidGlass(cornerRadius: AppRadius.medium, interactive: true, tint: .purple)
+    }
+
+    private func analyticsScreen() {
+        // RootView also tracks transitions; keep auth screen lightweight.
     }
 }

@@ -124,11 +124,10 @@ struct EmptyWardrobeState: View {
                 Button(action: action) {
                     Text(actionTitle)
                         .font(AppTypography.headline)
-                        .foregroundColor(.white)
                         .padding(.horizontal, 30)
-                        .padding(.vertical, 12)
+                        .padding(.vertical, 4)
                 }
-                .buttonStyle(GradientPrimaryButtonStyle())
+                .sylyoGlassProminent()
             }
             .padding()
             .liquidGlass(cornerRadius: AppRadius.xxLarge)

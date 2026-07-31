@@ -146,7 +146,7 @@ struct DiscoverFeatureView: View {
             Button("Refresh") {
                 Task { await viewModel.load() }
             }
-            .buttonStyle(GradientPrimaryButtonStyle())
+            .sylyoGlassProminent()
         }
         .padding()
     }
@@ -161,7 +161,7 @@ struct DiscoverFeatureView: View {
             Button("Refresh") {
                 Task { await viewModel.load() }
             }
-            .buttonStyle(GradientPrimaryButtonStyle())
+            .sylyoGlassProminent()
         }
     }
 
