@@ -1,8 +1,6 @@
 # Firebase Setup (real project only)
 
-Sylyo does **not** use mock auth or mock databases. Auth, wardrobe, images, and analytics all require your Firebase project.
-
-**CloudKit / iCloud wardrobe storage has been removed.** The old `iCloud.apple.academy.fashionapp` container is no longer used.
+Sylyo does **not** use mock auth, iCloud Sign in, or mock databases. Auth is **Firebase Authentication** only (email/password + anonymous). Wardrobe, images, and analytics all require your Firebase project.
 
 ## Current status
 
