@@ -10,10 +10,12 @@ final class AssistantViewModel: ObservableObject {
     @Published var latestRecommendations: [OutfitRecommendation] = []
 
     private let askUseCase: AskStylingAssistantUseCase
+    private let analytics: AnalyticsTracking
     let imageStorage: ImageStorage
 
     init(container: AppContainer) {
         self.askUseCase = container.askAssistantUseCase
+        self.analytics = container.analytics
         self.imageStorage = container.imageStorage
     }
 
@@ -24,6 +26,9 @@ final class AssistantViewModel: ObservableObject {
         messages.append(.user(trimmed))
         input = ""
         isThinking = true
+        analytics.track(.assistantAsked, parameters: [
+            "message_length": "\(trimmed.count)"
+        ])
 
         do {
             let response = try await askUseCase.execute(message: trimmed, history: messages)
@@ -32,6 +37,9 @@ final class AssistantViewModel: ObservableObject {
                 response.reply,
                 outfitIDs: response.recommendations.map(\.id)
             ))
+            analytics.track(.assistantReplied, parameters: [
+                "recommendation_count": "\(response.recommendations.count)"
+            ])
         } catch {
             messages.append(.assistant("I hit a snag: \(error.localizedDescription)"))
         }

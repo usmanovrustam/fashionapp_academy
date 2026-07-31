@@ -12,11 +12,13 @@ final class WardrobeViewModel: ObservableObject {
 
     private let wardrobeRepository: WardrobeRepository
     private let imageStorage: ImageStorage
+    private let analytics: AnalyticsTracking
     let statisticsUseCase: ComputeWardrobeStatisticsUseCase
 
     init(container: AppContainer) {
         self.wardrobeRepository = container.wardrobeRepository
         self.imageStorage = container.imageStorage
+        self.analytics = container.analytics
         self.statisticsUseCase = container.statisticsUseCase
     }
 
@@ -35,6 +37,7 @@ final class WardrobeViewModel: ObservableObject {
     func load() async {
         isLoading = true
         errorMessage = nil
+        analytics.track(.screenView, parameters: ["screen_name": "wardrobe"])
         do {
             items = try await wardrobeRepository.fetchAll()
         } catch {
@@ -49,6 +52,10 @@ final class WardrobeViewModel: ObservableObject {
         updated.updatedAt = Date()
         do {
             try await wardrobeRepository.save(updated)
+            analytics.track(.itemFavorited, parameters: [
+                "item_id": item.id.uuidString,
+                "is_favorite": updated.isFavorite ? "true" : "false"
+            ])
             await load()
         } catch {
             errorMessage = error.localizedDescription
@@ -62,6 +69,7 @@ final class WardrobeViewModel: ObservableObject {
                 try? await imageStorage.deleteImage(at: path)
             }
             try? await imageStorage.deleteImage(at: item.originalImagePath)
+            analytics.track(.itemDeleted, parameters: ["item_id": item.id.uuidString])
             await load()
         } catch {
             errorMessage = error.localizedDescription

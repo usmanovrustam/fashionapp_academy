@@ -18,13 +18,17 @@ final class ProfileViewModel: ObservableObject {
     @Published var showAbout = false
     @Published var showClearAlert = false
     @Published var showResetAlert = false
+    @Published var showSignOutAlert = false
     @Published var avatarImage: UIImage?
+    @Published var authUser: AuthUser?
 
     private let profileRepository: UserProfileRepository
     private let wardrobeRepository: WardrobeRepository
     private let statisticsUseCase: ComputeWardrobeStatisticsUseCase
     private let settings: AppSettingsProviding
     private let imageStorage: ImageStorage
+    private let analytics: AnalyticsTracking
+    private let signOutAction: () -> Void
 
     init(container: AppContainer) {
         self.profileRepository = container.profileRepository
@@ -32,6 +36,9 @@ final class ProfileViewModel: ObservableObject {
         self.statisticsUseCase = container.statisticsUseCase
         self.settings = container.settings
         self.imageStorage = container.imageStorage
+        self.analytics = container.analytics
+        self.signOutAction = { container.signOut() }
+        self.authUser = container.currentAuthUser
     }
 
     var usesCelsius: Bool {
@@ -51,8 +58,12 @@ final class ProfileViewModel: ObservableObject {
     }
 
     func load() async {
+        analytics.track(.screenView, parameters: ["screen_name": "profile"])
         do {
             profile = try await profileRepository.load()
+            if let authName = authUser?.displayName, profile.displayName == UserProfile.default.displayName {
+                profile.displayName = authName
+            }
             let items = try await wardrobeRepository.fetchAll()
             statistics = statisticsUseCase.execute(items: items)
             if let path = profile.avatarImagePath {
@@ -66,9 +77,16 @@ final class ProfileViewModel: ObservableObject {
     func saveProfile() async {
         do {
             try await profileRepository.save(profile)
+            analytics.track(.profileUpdated, parameters: [
+                "language": profile.preferredLanguage
+            ])
         } catch {
             // Ignore for now; surface via alerts in a later iteration.
         }
+    }
+
+    func signOut() {
+        signOutAction()
     }
 
     func setAvatar(_ image: UIImage) async {
@@ -114,6 +132,7 @@ struct ProfileFeatureView: View {
                 ScrollView {
                     VStack(spacing: AppSpacing.lg) {
                         avatarHeader
+                        accountCard
                         statsRow
                         preferencesCard
                         infoCard
@@ -139,13 +158,13 @@ struct ProfileFeatureView: View {
             .sheet(isPresented: $viewModel.showPrivacy) {
                 infoSheet(
                     title: NSLocalizedString("Privacy Policy", comment: ""),
-                    bodyText: "Sylyo stores your wardrobe locally on device. Optional iCloud sync uses your private CloudKit database. Photos are processed on-device for background removal and clothing metadata. Location is used only for weather-aware outfit recommendations."
+                    bodyText: "Sylyo stores your account, wardrobe, and analytics in your Firebase project (Auth, Firestore, Storage). Photos are processed on-device for background removal and clothing metadata, then uploaded to Firebase Storage. Firebase Analytics events (and optional Firestore mirrors) can be exported to BigQuery for product analysis. Location is used only for weather-aware outfit recommendations."
                 )
             }
             .sheet(isPresented: $viewModel.showAbout) {
                 infoSheet(
                     title: NSLocalizedString("About Us", comment: ""),
-                    bodyText: "Sylyo is your personal AI fashion stylist. Scan your clothes, build a digital wardrobe, and get weather-aware outfit recommendations every day."
+                    bodyText: "Sylyo is your personal AI fashion stylist. Scan your clothes, sync a digital wardrobe to Firebase, and get weather-aware outfit recommendations every day."
                 )
             }
             .alert(NSLocalizedString("Clear All Data?", comment: ""), isPresented: $viewModel.showClearAlert) {
@@ -164,6 +183,36 @@ struct ProfileFeatureView: View {
                 Button(NSLocalizedString("Cancel", comment: ""), role: .cancel) {}
             } message: {
                 Text(NSLocalizedString("You will see the onboarding screens again on next launch.", comment: ""))
+            }
+            .alert(NSLocalizedString("Log Out", comment: ""), isPresented: $viewModel.showSignOutAlert) {
+                Button(NSLocalizedString("Log Out", comment: ""), role: .destructive) {
+                    viewModel.signOut()
+                }
+                Button(NSLocalizedString("Cancel", comment: ""), role: .cancel) {}
+            } message: {
+                Text(NSLocalizedString("Are you sure you want to log out?", comment: ""))
+            }
+        }
+    }
+
+    private var accountCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Firebase Account")
+                    .font(AppTypography.headline)
+                if let email = viewModel.authUser?.email {
+                    Text(email).foregroundColor(.secondary)
+                } else if viewModel.authUser?.isAnonymous == true {
+                    Text("Signed in anonymously").foregroundColor(.secondary)
+                }
+                Text("UID: \(viewModel.authUser?.id ?? "—")")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                Button {
+                    viewModel.showSignOutAlert = true
+                } label: {
+                    SettingsRow(icon: "rectangle.portrait.and.arrow.right", title: NSLocalizedString("Log Out", comment: ""), tint: .red)
+                }
             }
         }
     }

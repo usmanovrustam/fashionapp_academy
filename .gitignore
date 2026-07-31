@@ -39,3 +39,9 @@ fastlane/test_output
 .env
 .env.*
 *.pem
+
+# Firebase — keep example, never commit real SDK plist
+fashionapp/GoogleService-Info.plist
+!fashionapp/GoogleService-Info.plist.example
+*-firebase-adminsdk-*.json
+serviceAccount*.json

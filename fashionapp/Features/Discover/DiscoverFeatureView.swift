@@ -101,8 +101,8 @@ struct DiscoverFeatureView: View {
                 RecommendationCardView(
                     recommendation: recommendation,
                     storage: viewModel.imageStorage,
-                    onNope: { swipe(-1) },
-                    onYeah: { swipe(1) }
+                    onNope: { swipe(-1, accepted: false) },
+                    onYeah: { swipe(1, accepted: true) }
                 )
                 .offset(y: CGFloat(idx - viewModel.topIndex) * cardStackOffset)
                 .scaleEffect(1 - CGFloat(idx - viewModel.topIndex) * cardStackScale)
@@ -165,13 +165,14 @@ struct DiscoverFeatureView: View {
         }
     }
 
-    private func swipe(_ direction: Int) {
+    private func swipe(_ direction: Int, accepted: Bool) {
+        viewModel.trackRecommendationView(at: viewModel.topIndex)
         withAnimation {
             dragOffset = CGSize(width: CGFloat(direction) * 500, height: 0)
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             withAnimation {
-                viewModel.advance()
+                viewModel.advance(accepted: accepted)
                 dragOffset = .zero
             }
         }

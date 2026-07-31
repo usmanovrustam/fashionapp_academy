@@ -6,6 +6,14 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		A10000012E3A000000000001 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = A20000012E3A000000000001 /* FirebaseCore */; };
+		A10000012E3A000000000002 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = A20000012E3A000000000002 /* FirebaseAuth */; };
+		A10000012E3A000000000003 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = A20000012E3A000000000003 /* FirebaseFirestore */; };
+		A10000012E3A000000000004 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = A20000012E3A000000000004 /* FirebaseStorage */; };
+		A10000012E3A000000000005 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = A20000012E3A000000000005 /* FirebaseAnalytics */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		B1F22C342DDF4B7600B1186F /* fashionapp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = fashionapp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -14,6 +22,7 @@
 		B1F22C442DDF4B7600B1186F /* Exceptions for "fashionapp" folder in "fashionapp" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				GoogleService-Info.plist.example,
 				Info.plist,
 			);
 			target = B1F22C332DDF4B7600B1186F /* fashionapp */;
@@ -36,6 +45,11 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A10000012E3A000000000001 /* FirebaseCore in Frameworks */,
+				A10000012E3A000000000002 /* FirebaseAuth in Frameworks */,
+				A10000012E3A000000000003 /* FirebaseFirestore in Frameworks */,
+				A10000012E3A000000000004 /* FirebaseStorage in Frameworks */,
+				A10000012E3A000000000005 /* FirebaseAnalytics in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,6 +92,11 @@
 			);
 			name = fashionapp;
 			packageProductDependencies = (
+				A20000012E3A000000000001 /* FirebaseCore */,
+				A20000012E3A000000000002 /* FirebaseAuth */,
+				A20000012E3A000000000003 /* FirebaseFirestore */,
+				A20000012E3A000000000004 /* FirebaseStorage */,
+				A20000012E3A000000000005 /* FirebaseAnalytics */,
 			);
 			productName = fashionapp;
 			productReference = B1F22C342DDF4B7600B1186F /* fashionapp.app */;
@@ -108,6 +127,9 @@
 			);
 			mainGroup = B1F22C2B2DDF4B7600B1186F;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				A30000012E3A000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = B1F22C352DDF4B7600B1186F /* Products */;
 			projectDirPath = "";
@@ -360,6 +382,45 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A30000012E3A000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.6.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A20000012E3A000000000001 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A30000012E3A000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		A20000012E3A000000000002 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A30000012E3A000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		A20000012E3A000000000003 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A30000012E3A000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		A20000012E3A000000000004 /* FirebaseStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A30000012E3A000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseStorage;
+		};
+		A20000012E3A000000000005 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A30000012E3A000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = B1F22C2C2DDF4B7600B1186F /* Project object */;
 }

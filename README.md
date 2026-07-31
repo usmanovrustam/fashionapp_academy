@@ -1,82 +1,64 @@
 # Sylyo — AI Fashion Stylist
 
-Personal AI stylist for iOS. Scan clothing, build a digital wardrobe, and get weather-aware outfit recommendations with an on-device styling assistant.
+Personal AI stylist for iOS. Scan clothing, sync a digital wardrobe to **Firebase**, and get weather-aware outfit recommendations with analytics exported to **BigQuery**.
 
 ## Architecture
 
-Clean, modular layers with dependency injection via `AppContainer`:
-
 ```text
-App/                 Composition root, routing, tabs
+App/                 Composition root, auth gate, tabs
 DesignSystem/        Colors, spacing, reusable UI
-Domain/              Entities, repository & service protocols, use cases
-Data/                Local JSON persistence, image storage, CloudKit adapter
-Infrastructure/      Vision pipeline, WeatherKit, auth, camera, AI engines
-Features/            SwiftUI screens + view models (UI only)
+Domain/              Entities, protocols, use cases
+Data/                (legacy local adapters retained for reference)
+Infrastructure/      Firebase Auth/Firestore/Storage/Analytics, Vision, WeatherKit
+Features/            SwiftUI screens + view models
 ```
 
-Business logic stays out of views. Every service is protocol-backed and replaceable.
+**Backend (required):** Firebase Auth + Cloud Firestore + Cloud Storage + Analytics → BigQuery.
 
-### Modules
+There is **no mock auth/database path**. Without `GoogleService-Info.plist` the app shows a setup screen.
 
-| Module | Responsibility |
+## Firebase + BigQuery
+
+See **[FIREBASE_SETUP.md](FIREBASE_SETUP.md)** for the full checklist.
+
+Quick start:
+
+1. Download `GoogleService-Info.plist` from your Firebase iOS app
+2. Place it at `fashionapp/GoogleService-Info.plist`
+3. Enable Auth (Email/Password + Anonymous), Firestore, Storage, Analytics
+4. `firebase deploy --only firestore:rules,firestore:indexes,storage`
+5. Link Analytics → BigQuery; optionally install Firestore→BigQuery extension
+6. Build & run in Xcode
+
+Cursor Firebase MCP is configured in `.cursor/mcp.json` (`npx firebase-tools@latest mcp`).
+
+## Features
+
+| Area | Implementation |
 |---|---|
-| Authentication | iCloud account status (non-blocking; local-first) |
-| User Profile | Preferences, avatar, style settings |
-| Wardrobe | CRUD for clothing items + statistics |
-| Clothing Scanner | Detect → segment → remove BG → metadata → save |
-| Outfit Recommendation | Weather + preferences + wardrobe scoring |
-| Weather Service | WeatherKit + location + cache |
-| Calendar Integration | Plan looks by day / local events store |
-| AI Chat Assistant | Intent parsing over the wardrobe |
-| Database | Codable local store (+ optional CloudKit sync) |
-| Storage | File-based wardrobe images |
-| Settings | Onboarding, language, units |
-
-### Computer vision pipeline
-
-`DefaultClothingScanPipeline` orchestrates:
-
-1. `ClothingDetector`
-2. `ClothingSegmenter` (U²-Net CoreML)
-3. `BackgroundRemover`
-4. `ClothingMetadataExtractor` (color / material / season / style heuristics)
-
-Swap any stage without touching UI or use cases.
-
-### Persistence
-
-- **Primary:** on-device JSON + image files (`LocalWardrobeRepository`, `FileImageStorage`)
-- **Optional sync:** `CloudKitWardrobeRepository` ready behind the same protocol
-
-### Future-ready protocols
-
-Virtual try-on, body-shape analysis, color season, trend detection, shopping suggestions, laundry tracking, image search, voice assistant, and smart mirror hooks live in `FutureCapabilityProtocols.swift`.
-
-## UI
-
-The original Sylyo look is preserved:
-
-- Soft purple/pink gradients
-- Glass material cards
-- Discover swipe stack
-- Dashed scanner photo frame
-- Wardrobe grid + loading rings
-- Calendar day cells
-- Profile avatar ring + stat cards
+| Auth | Firebase Email/Password + Anonymous |
+| Wardrobe / profile / outfits | Cloud Firestore (per-user paths) |
+| Images | Firebase Storage (+ local cache for UI) |
+| Clothing scanner | U²-Net + metadata pipeline |
+| Recommendations | Weather-aware engine |
+| AI stylist chat | Wardrobe intent assistant |
+| Analytics | Firebase Analytics + Firestore event mirror |
+| Analysis | BigQuery SQL in `bigquery/queries.sql` |
 
 ## Requirements
 
 - Xcode 16+
 - iOS 17.6+
-- Capabilities: Camera, Photos, Location, WeatherKit, CloudKit (optional sync)
+- Firebase project with `GoogleService-Info.plist`
+- Capabilities: Camera, Photos, Location, WeatherKit
 
 ## Run
 
-1. Open `fashionapp.xcodeproj`
-2. Select a development team for signing
-3. Build & run on a device (camera + WeatherKit)
+1. Open `fashionapp.xcodeproj` (SPM resolves `firebase-ios-sdk`)
+2. Add your real `GoogleService-Info.plist`
+3. Select a development team
+4. Build & run on a device
 
 ## Localization
 
-English and Italian strings in `en.lproj` / `it.lproj`.
+English and Italian in `en.lproj` / `it.lproj`.

@@ -1,10 +1,13 @@
+import Combine
 import Foundation
 import SwiftUI
 
-/// Composition root — wires replaceable services for dependency injection.
+/// Composition root — Firebase Auth / Firestore / Storage / Analytics only.
 @MainActor
 final class AppContainer: ObservableObject {
     let settings: AppSettingsProviding
+    let authService: FirebaseAuthService
+    let analytics: AnalyticsTracking
     let accountStatus: CloudKitAccountStatusService
 
     let imageStorage: ImageStorage
@@ -27,17 +30,32 @@ final class AppContainer: ObservableObject {
     let askAssistantUseCase: AskStylingAssistantUseCase
     let statisticsUseCase: ComputeWardrobeStatisticsUseCase
 
+    private var authObserver: AnyCancellable?
+
+    var isSignedIn: Bool { authService.isSignedIn }
+    var currentAuthUser: AuthUser? { authService.currentUser }
+    var isFirebaseConfigured: Bool { authService.isFirebaseConfigured }
+
     init() {
-        let store = LocalJSONStore()
+        _ = FirebaseBootstrap.configureIfPossible()
+
         let settings = UserDefaultsAppSettings()
-        let imageStorage = FileImageStorage()
-        let wardrobeRepository = LocalWardrobeRepository(store: store)
-        let outfitRepository = LocalOutfitRepository(store: store)
-        let profileRepository = LocalUserProfileRepository(store: store)
-        let recommendationRepository = LocalRecommendationRepository(store: store)
-        let weatherCacheRepository = LocalWeatherCacheRepository(store: store)
-        let eventRepository = LocalEventRepository(store: store)
-        let packingListRepository = LocalPackingListRepository(store: store)
+        let authService = FirebaseAuthService()
+        let analytics: AnalyticsTracking = FirebaseAnalyticsTracker()
+
+        AuthSession.shared.userID = authService.currentUser?.id
+        if let uid = authService.currentUser?.id {
+            analytics.setUserID(uid)
+        }
+
+        let imageStorage: ImageStorage = FirebaseImageStorage()
+        let wardrobeRepository: WardrobeRepository = FirebaseWardrobeRepository()
+        let outfitRepository: OutfitRepository = FirebaseOutfitRepository()
+        let profileRepository: UserProfileRepository = FirebaseUserProfileRepository()
+        let recommendationRepository: RecommendationRepository = FirebaseRecommendationRepository()
+        let weatherCacheRepository: WeatherCacheRepository = FirebaseWeatherCacheRepository()
+        let eventRepository: EventRepository = FirebaseEventRepository()
+        let packingListRepository: PackingListRepository = FirebasePackingListRepository()
 
         let locationProvider = CoreLocationProvider()
         let weatherProvider = WeatherKitService(
@@ -45,23 +63,20 @@ final class AppContainer: ObservableObject {
             cache: weatherCacheRepository
         )
 
-        let detector = HeuristicClothingDetector()
-        let segmenter = U2NetClothingSegmenter()
-        let remover = MaskBackgroundRemover()
-        let metadata = ColorAwareMetadataExtractor()
         let pipeline = DefaultClothingScanPipeline(
-            detector: detector,
-            segmenter: segmenter,
-            backgroundRemover: remover,
-            metadataExtractor: metadata
+            detector: HeuristicClothingDetector(),
+            segmenter: U2NetClothingSegmenter(),
+            backgroundRemover: MaskBackgroundRemover(),
+            metadataExtractor: ColorAwareMetadataExtractor()
         )
 
         let recommender = RuleBasedOutfitRecommender()
         let assistant = LocalStylingAssistant(recommender: recommender)
-        let accountStatus = CloudKitAccountStatusService()
 
         self.settings = settings
-        self.accountStatus = accountStatus
+        self.authService = authService
+        self.analytics = analytics
+        self.accountStatus = CloudKitAccountStatusService()
         self.imageStorage = imageStorage
         self.wardrobeRepository = wardrobeRepository
         self.outfitRepository = outfitRepository
@@ -97,5 +112,23 @@ final class AppContainer: ObservableObject {
             eventRepository: eventRepository
         )
         self.statisticsUseCase = ComputeWardrobeStatisticsUseCase()
+
+        authObserver = authService.$currentUser.sink { [weak self] user in
+            AuthSession.shared.userID = user?.id
+            self?.analytics.setUserID(user?.id)
+            self?.objectWillChange.send()
+        }
+
+        analytics.track(.appOpen, parameters: [
+            "firebase_configured": authService.isFirebaseConfigured ? "true" : "false"
+        ])
+    }
+
+    func signOut() {
+        analytics.track(.logout)
+        try? authService.signOut()
+        analytics.setUserID(nil)
+        AuthSession.shared.userID = nil
+        objectWillChange.send()
     }
 }

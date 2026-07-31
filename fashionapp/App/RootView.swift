@@ -7,14 +7,24 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if !didFinishOnboarding {
+            if !container.isFirebaseConfigured {
+                FirebaseSetupView()
+            } else if !didFinishOnboarding {
                 OnboardingView(didFinishOnboarding: $didFinishOnboarding)
+                    .onChange(of: didFinishOnboarding) { _, finished in
+                        if finished {
+                            container.analytics.track(.onboardingCompleted)
+                        }
+                    }
+            } else if !container.isSignedIn {
+                AuthFeatureView(auth: container.authService, analytics: container.analytics)
             } else {
                 MainTabView(didFinishOnboarding: $didFinishOnboarding)
             }
         }
         .environment(\.locale, Locale(identifier: selectedLanguage))
         .task {
+            _ = await container.authService.refreshSession()
             _ = await container.accountStatus.refresh()
         }
     }

@@ -19,15 +19,18 @@ final class ScannerViewModel: ObservableObject {
 
     private let scanAndSave: ScanAndSaveClothingUseCase
     private let pipeline: ClothingScanPipeline
+    private let analytics: AnalyticsTracking
     let plannedDate: Date?
 
     init(container: AppContainer, plannedDate: Date? = nil) {
         self.scanAndSave = container.scanAndSaveUseCase
         self.pipeline = container.scanPipeline
+        self.analytics = container.analytics
         self.plannedDate = plannedDate
     }
 
     func openCamera() async {
+        analytics.track(.scanStarted, parameters: ["source": "camera"])
         let auth = await CameraAuthorization.ensureAuthorized()
         switch auth {
         case .success:
@@ -44,6 +47,7 @@ final class ScannerViewModel: ObservableObject {
         scanResult = nil
         isProcessing = true
         errorMessage = nil
+        analytics.track(.scanStarted, parameters: ["source": "image"])
 
         do {
             guard let data = image.jpegData(compressionQuality: 0.92) else {
@@ -56,6 +60,10 @@ final class ScannerViewModel: ObservableObject {
             if let transparent = result.transparentImageData {
                 previewImage = UIImage(data: transparent) ?? image
             }
+            analytics.track(.scanCompleted, parameters: [
+                "category": result.detectedCategory.rawValue,
+                "confidence": String(format: "%.2f", result.confidence)
+            ])
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -80,6 +88,10 @@ final class ScannerViewModel: ObservableObject {
             )
             savedItem = item
             didSave = true
+            analytics.track(.itemSaved, parameters: [
+                "category": item.category.rawValue,
+                "item_id": item.id.uuidString
+            ])
             resetForm()
         } catch {
             errorMessage = error.localizedDescription

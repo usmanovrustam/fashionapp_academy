@@ -15,6 +15,7 @@ final class DiscoverViewModel: ObservableObject {
     private let wardrobeRepository: WardrobeRepository
     let imageStorage: ImageStorage
     private let settings: AppSettingsProviding
+    private let analytics: AnalyticsTracking
 
     init(container: AppContainer) {
         self.recommendationsUseCase = container.dailyRecommendationsUseCase
@@ -22,6 +23,7 @@ final class DiscoverViewModel: ObservableObject {
         self.wardrobeRepository = container.wardrobeRepository
         self.imageStorage = container.imageStorage
         self.settings = container.settings
+        self.analytics = container.analytics
     }
 
     var usesCelsius: Bool { settings.usesCelsius }
@@ -30,9 +32,16 @@ final class DiscoverViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         topIndex = 0
+        analytics.track(.screenView, parameters: ["screen_name": "discover"])
 
         do {
             weather = try await weatherProvider.currentWeather()
+            if let weather {
+                analytics.track(.weatherLoaded, parameters: [
+                    "condition": weather.conditionDescription,
+                    "temp_c": String(Int(weather.temperatureCelsius))
+                ])
+            }
         } catch {
             weather = nil
         }
@@ -82,8 +91,27 @@ final class DiscoverViewModel: ObservableObject {
         return "\(Int(f.rounded()))°"
     }
 
-    func advance() {
+    func advance(accepted: Bool) {
+        if topIndex < recommendations.count {
+            let rec = recommendations[topIndex]
+            analytics.track(
+                accepted ? .recommendationAccepted : .recommendationRejected,
+                parameters: [
+                    "occasion": rec.occasion.rawValue,
+                    "confidence": String(format: "%.2f", rec.confidence)
+                ]
+            )
+        }
         guard topIndex < recommendations.count else { return }
         topIndex += 1
+    }
+
+    func trackRecommendationView(at index: Int) {
+        guard recommendations.indices.contains(index) else { return }
+        let rec = recommendations[index]
+        analytics.track(.recommendationViewed, parameters: [
+            "occasion": rec.occasion.rawValue,
+            "confidence": String(format: "%.2f", rec.confidence)
+        ])
     }
 }
