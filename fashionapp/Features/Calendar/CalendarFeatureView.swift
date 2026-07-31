@@ -154,7 +154,7 @@ struct CalendarFeatureView: View {
             }
         }
         .padding()
-        .background(.ultraThinMaterial)
+        .liquidGlass(cornerRadius: AppRadius.medium)
         .clipShape(RoundedRectangle(cornerRadius: AppRadius.large, style: .continuous))
     }
 
@@ -189,7 +189,7 @@ struct CalendarFeatureView: View {
             }
         }
         .padding()
-        .background(.ultraThinMaterial)
+        .liquidGlass(cornerRadius: AppRadius.medium)
         .clipShape(RoundedRectangle(cornerRadius: AppRadius.large, style: .continuous))
     }
 
@@ -218,7 +218,7 @@ struct CalendarFeatureView: View {
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding()
-                    .background(.ultraThinMaterial)
+                    .liquidGlass(cornerRadius: AppRadius.medium)
                     .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {

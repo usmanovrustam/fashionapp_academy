@@ -30,8 +30,7 @@ struct FirebaseSetupView: View {
                                 .foregroundColor(.purple)
                                 .padding(10)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(Color.purple.opacity(0.08))
-                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                .liquidGlass(cornerRadius: 10, tint: .purple)
 
                             Text("Download GoogleService-Info.plist from Firebase Console → Project settings → Your apps (bundle id \(FirebaseConfig.expectedBundleID)), then put it at the path above and rebuild.")
                                 .font(.subheadline)

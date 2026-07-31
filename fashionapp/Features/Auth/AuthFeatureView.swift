@@ -109,16 +109,17 @@ struct AuthFeatureView: View {
                     }
                     .pickerStyle(.segmented)
 
-                    VStack(spacing: 14) {
-                        if viewModel.mode == .signUp {
-                            field("Name", text: $viewModel.displayName, contentType: .name)
+                    GlassEffectContainer(spacing: 14) {
+                        VStack(spacing: 14) {
+                            if viewModel.mode == .signUp {
+                                field("Name", text: $viewModel.displayName, contentType: .name)
+                            }
+                            field("Email", text: $viewModel.email, contentType: .emailAddress, keyboard: .emailAddress)
+                            SecureField("Password", text: $viewModel.password)
+                                .textContentType(viewModel.mode == .signUp ? .newPassword : .password)
+                                .padding()
+                                .liquidGlass(cornerRadius: AppRadius.medium, interactive: true)
                         }
-                        field("Email", text: $viewModel.email, contentType: .emailAddress, keyboard: .emailAddress)
-                        SecureField("Password", text: $viewModel.password)
-                            .textContentType(viewModel.mode == .signUp ? .newPassword : .password)
-                            .padding()
-                            .background(.ultraThinMaterial)
-                            .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
                     }
 
                     if let error = viewModel.errorMessage {
@@ -162,8 +163,7 @@ struct AuthFeatureView: View {
                             .foregroundColor(.purple)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(Color.white.opacity(0.85))
-                            .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
+                            .liquidGlass(cornerRadius: AppRadius.medium, interactive: true, tint: .purple)
                     }
                     .disabled(viewModel.isLoading)
 
@@ -205,7 +205,6 @@ struct AuthFeatureView: View {
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
             .padding()
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
+            .liquidGlass(cornerRadius: AppRadius.medium, interactive: true)
     }
 }

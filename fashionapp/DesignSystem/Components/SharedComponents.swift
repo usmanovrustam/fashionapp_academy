@@ -18,24 +18,16 @@ struct WardrobeItemCard: View {
                         .clipShape(RoundedRectangle(cornerRadius: AppRadius.large, style: .continuous))
                 } else {
                     RoundedRectangle(cornerRadius: AppRadius.large, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color(.systemGray6), Color(.systemGray5)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+                        .fill(Color(.systemGray5).opacity(0.5))
                         .frame(width: width, height: height)
-                        .overlay(
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .purple))
-                        )
+                        .overlay(ProgressView().tint(.purple))
+                        .liquidGlass(cornerRadius: AppRadius.large)
                 }
 
                 VStack {
                     Spacer()
                     LinearGradient(
-                        colors: [Color.clear, Color.black.opacity(0.35)],
+                        colors: [Color.clear, Color.black.opacity(0.4)],
                         startPoint: .top,
                         endPoint: .bottom
                     )
@@ -58,9 +50,8 @@ struct WardrobeItemCard: View {
                 }
             }
         }
-        .background(Color(.systemBackground))
         .clipShape(RoundedRectangle(cornerRadius: AppRadius.xLarge, style: .continuous))
-        .shadow(color: AppColors.cardShadow, radius: 20, x: 0, y: 8)
+        .liquidGlass(cornerRadius: AppRadius.xLarge)
     }
 }
 
@@ -69,31 +60,39 @@ struct LoadingRingsView: View {
     @State private var spinning = false
 
     var body: some View {
-        VStack(spacing: 20) {
-            ZStack {
-                ForEach(0..<3, id: \.self) { index in
-                    Circle()
-                        .stroke(
-                            LinearGradient(
-                                colors: [Color.purple.opacity(0.6), Color.pink.opacity(0.6)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 4
-                        )
-                        .frame(width: 60 + CGFloat(index * 20), height: 60 + CGFloat(index * 20))
-                        .rotationEffect(.degrees(spinning ? 360 : 0))
-                        .animation(
-                            .linear(duration: 1.5)
-                                .repeatForever(autoreverses: false)
-                                .delay(Double(index) * 0.2),
-                            value: spinning
-                        )
+        GlassEffectContainer(spacing: 24) {
+            VStack(spacing: 20) {
+                ZStack {
+                    ForEach(0..<3, id: \.self) { index in
+                        Circle()
+                            .stroke(
+                                LinearGradient(
+                                    colors: [Color.purple.opacity(0.7), Color.pink.opacity(0.7)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 4
+                            )
+                            .frame(width: 60 + CGFloat(index * 20), height: 60 + CGFloat(index * 20))
+                            .rotationEffect(.degrees(spinning ? 360 : 0))
+                            .animation(
+                                .linear(duration: 1.5)
+                                    .repeatForever(autoreverses: false)
+                                    .delay(Double(index) * 0.2),
+                                value: spinning
+                            )
+                    }
                 }
+                .padding(28)
+                .liquidGlass(cornerRadius: 40, tint: .purple)
+
+                Text(message)
+                    .font(AppTypography.roundedMedium)
+                    .foregroundColor(.primary)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 10)
+                    .liquidGlassCapsule(tint: .pink)
             }
-            Text(message)
-                .font(AppTypography.roundedMedium)
-                .foregroundColor(.purple.opacity(0.8))
         }
         .onAppear { spinning = true }
     }
@@ -106,44 +105,33 @@ struct EmptyWardrobeState: View {
     var action: () -> Void
 
     var body: some View {
-        VStack(spacing: 25) {
-            ZStack {
-                ForEach(0..<3, id: \.self) { index in
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.purple.opacity(0.1), Color.pink.opacity(0.1)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 100 + CGFloat(index * 50), height: 100 + CGFloat(index * 50))
-                        .offset(x: CGFloat(index * 20), y: CGFloat(index * -10))
+        GlassEffectContainer(spacing: 20) {
+            VStack(spacing: 25) {
+                Image(systemName: "tshirt.fill")
+                    .font(.system(size: 54))
+                    .foregroundStyle(AppColors.primaryGradient)
+                    .padding(28)
+                    .liquidGlass(cornerRadius: 36, tint: .purple)
+
+                Text(title)
+                    .font(AppTypography.title2)
+
+                Text(subtitle)
+                    .font(AppTypography.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+
+                Button(action: action) {
+                    Text(actionTitle)
+                        .font(AppTypography.headline)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 30)
+                        .padding(.vertical, 12)
                 }
+                .buttonStyle(GradientPrimaryButtonStyle())
             }
-
-            Image(systemName: "tshirt.fill")
-                .font(.system(size: 60))
-                .foregroundColor(.purple.opacity(0.8))
-
-            Text(title)
-                .font(AppTypography.title2)
-
-            Text(subtitle)
-                .font(AppTypography.body)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-
-            Button(action: action) {
-                Text(actionTitle)
-                    .font(AppTypography.headline)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 30)
-                    .padding(.vertical, 12)
-                    .background(AppColors.primaryGradient)
-                    .clipShape(Capsule())
-            }
-            .buttonStyle(ScaleButtonStyle())
+            .padding()
+            .liquidGlass(cornerRadius: AppRadius.xxLarge)
         }
     }
 }
@@ -154,11 +142,7 @@ struct GlassCard<Content: View>: View {
     var body: some View {
         content
             .padding()
-            .background(
-                RoundedRectangle(cornerRadius: AppRadius.large, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .shadow(color: .black.opacity(0.08), radius: 10, x: 0, y: 5)
-            )
+            .liquidGlass(cornerRadius: AppRadius.large)
     }
 }
 
@@ -200,31 +184,7 @@ struct StatCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
-    }
-}
-
-@MainActor
-final class ImageLoader: ObservableObject {
-    @Published var image: UIImage?
-    private let storage: ImageStorage
-
-    init(storage: ImageStorage) {
-        self.storage = storage
-    }
-
-    func load(path: String?) async {
-        guard let path, !path.isEmpty else {
-            image = nil
-            return
-        }
-        do {
-            let data = try await storage.loadImageData(at: path)
-            image = UIImage(data: data)
-        } catch {
-            image = nil
-        }
+        .liquidGlass(cornerRadius: AppRadius.medium, tint: .purple)
     }
 }
 
@@ -244,8 +204,9 @@ struct StoredImageView: View {
                     .resizable()
                     .aspectRatio(contentMode: contentMode)
             } else {
-                Color(.systemGray6)
+                Color.clear
                     .overlay(ProgressView().tint(.purple))
+                    .liquidGlass(cornerRadius: AppRadius.medium)
             }
         }
         .frame(width: width, height: height)

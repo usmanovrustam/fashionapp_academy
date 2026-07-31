@@ -80,6 +80,14 @@ final class DiscoverViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
 
+        let count = (try? await wardrobeRepository.fetchAll().count) ?? recommendations.count
+        WidgetSnapshotStore.publish(
+            recommendation: recommendations.first,
+            weather: weather,
+            wardrobeCount: count,
+            usesCelsius: usesCelsius
+        )
+
         isLoading = false
     }
 

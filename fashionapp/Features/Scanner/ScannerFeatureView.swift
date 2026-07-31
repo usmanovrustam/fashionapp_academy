@@ -128,15 +128,13 @@ struct ScannerFeatureView: View {
                         }
                         .overlay {
                             if viewModel.isProcessing {
-                                RoundedRectangle(cornerRadius: AppRadius.photo, style: .continuous)
-                                    .fill(.ultraThinMaterial)
-                                    .overlay {
-                                        VStack(spacing: 12) {
-                                            ProgressView()
-                                            Text("Scanning…")
-                                                .font(.subheadline.weight(.medium))
-                                        }
-                                    }
+                                VStack(spacing: 12) {
+                                    ProgressView()
+                                    Text("Scanning…")
+                                        .font(.subheadline.weight(.medium))
+                                }
+                                .padding(24)
+                                .liquidGlass(cornerRadius: AppRadius.photo, tint: .purple)
                             }
                         }
                 } else {
@@ -182,8 +180,7 @@ struct ScannerFeatureView: View {
                         .foregroundColor(.purple)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.white.opacity(0.85))
-                        .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
+                        .liquidGlass(cornerRadius: AppRadius.medium, interactive: true, tint: .purple)
                 }
             }
         }
@@ -221,7 +218,7 @@ struct ScannerFeatureView: View {
                 .font(AppTypography.headline)
             TextField(NSLocalizedString("Outfit Name", comment: ""), text: $viewModel.editableName)
                 .padding()
-                .background(.ultraThinMaterial)
+                .liquidGlass(cornerRadius: AppRadius.medium)
                 .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
             Text("Leave blank to keep the AI suggestion.")
                 .font(.caption)

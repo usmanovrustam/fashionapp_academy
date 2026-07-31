@@ -6,11 +6,12 @@ Personal AI stylist for iOS. Scan clothing, sync a digital wardrobe to **Firebas
 
 ```text
 App/                 Composition root, auth gate, tabs
-DesignSystem/        Colors, spacing, reusable UI
+DesignSystem/        Liquid Glass tokens + reusable UI
 Domain/              Entities, protocols, use cases
 Data/                (legacy local adapters retained for reference)
-Infrastructure/      Firebase Auth/Firestore/Storage/Analytics, Vision, WeatherKit
+Infrastructure/      Firebase Auth/Firestore/Storage/Analytics, Vision, WeatherKit, Widgets
 Features/            SwiftUI screens + view models
+SylyoWidgets/        iOS 27 WidgetKit extension (App Group sync)
 ```
 
 **Backend (required):** Firebase Auth + Cloud Firestore + Cloud Storage + Analytics → BigQuery.
@@ -42,15 +43,17 @@ Cursor Firebase MCP is configured in `.cursor/mcp.json` (`npx firebase-tools@lat
 | Clothing scanner | U²-Net + metadata pipeline |
 | Recommendations | Weather-aware engine |
 | AI stylist chat | Wardrobe intent assistant |
+| Liquid Glass UI | `.glassEffect` / `GlassEffectContainer` across custom surfaces |
+| Home Screen widgets | Today Outfit (incl. `systemExtraLargePortrait`) + Wardrobe Glance |
 | Analytics | Firebase Analytics + Firestore event mirror |
 | Analysis | BigQuery SQL in `bigquery/queries.sql` |
 
 ## Requirements
 
-- Xcode 16+
-- iOS 17.6+
+- Xcode with iOS 27 SDK (Liquid Glass + WidgetKit families)
+- iOS 27.0+
 - Firebase project with `GoogleService-Info.plist`
-- Capabilities: Camera, Photos, Location, WeatherKit
+- Capabilities: Camera, Photos, Location, WeatherKit, App Group `group.apple.academy.stylo`
 
 ## Run
 

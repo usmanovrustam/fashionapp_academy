@@ -20,8 +20,10 @@ struct OnboardingView: View {
                         Image(systemName: pages[idx].icon)
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 110, height: 110)
+                            .frame(width: 88, height: 88)
                             .foregroundStyle(AppColors.primaryGradient)
+                            .padding(28)
+                            .liquidGlass(cornerRadius: 40, tint: .purple)
                             .scaleEffect(page == idx ? 1.0 : 0.92)
                             .animation(.spring(response: 0.5, dampingFraction: 0.75), value: page)
 

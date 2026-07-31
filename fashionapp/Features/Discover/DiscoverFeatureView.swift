@@ -216,40 +216,38 @@ private struct RecommendationCardView: View {
                 .foregroundStyle(AppColors.primaryGradient)
 
             HStack(spacing: 24) {
-                Button(action: onNope) {
-                    HStack {
-                        Image(systemName: "xmark")
-                        Text("Nope")
-                    }
-                    .font(.headline)
-                    .foregroundColor(.purple)
-                    .padding(.horizontal, 28)
-                    .padding(.vertical, 14)
-                    .background(Color.white.opacity(0.85))
-                    .clipShape(Capsule())
-                }
+                GlassEffectContainer(spacing: 16) {
+                    HStack(spacing: 24) {
+                        Button(action: onNope) {
+                            HStack {
+                                Image(systemName: "xmark")
+                                Text("Nope")
+                            }
+                            .font(.headline)
+                            .foregroundColor(.purple)
+                            .padding(.horizontal, 28)
+                            .padding(.vertical, 14)
+                        }
+                        .liquidGlassCapsule(tint: .purple)
 
-                Button(action: onYeah) {
-                    HStack {
-                        Image(systemName: "checkmark")
-                        Text("Yeah")
+                        Button(action: onYeah) {
+                            HStack {
+                                Image(systemName: "checkmark")
+                                Text("Yeah")
+                            }
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 28)
+                            .padding(.vertical, 14)
+                        }
+                        .liquidGlassCapsule(tint: .pink)
                     }
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 28)
-                    .padding(.vertical, 14)
-                    .background(AppColors.primaryGradient)
-                    .clipShape(Capsule())
                 }
             }
         }
         .padding(.vertical, 32)
         .padding(.horizontal, 20)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.xxLarge, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .shadow(color: AppColors.purpleShadow, radius: 18, y: 8)
-        )
+        .liquidGlass(cornerRadius: AppRadius.xxLarge, tint: .purple)
         .task {
             if let path = recommendation.items.first?.transparentImagePath
                 ?? recommendation.items.first?.originalImagePath {
@@ -295,8 +293,7 @@ struct RecommendationDetailView: View {
                             Spacer()
                         }
                         .padding()
-                        .background(.ultraThinMaterial)
-                        .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
+                        .liquidGlass(cornerRadius: AppRadius.medium)
                     }
                 }
                 .padding()

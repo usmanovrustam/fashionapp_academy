@@ -7,41 +7,27 @@ struct MainTabView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            DiscoverFeatureView(container: container)
-                .tabItem {
-                    Image(systemName: "safari")
-                    Text(NSLocalizedString("Discover", comment: ""))
-                }
-                .tag(0)
+            Tab(NSLocalizedString("Discover", comment: ""), systemImage: "safari", value: 0) {
+                DiscoverFeatureView(container: container)
+            }
 
-            ScannerFeatureView(container: container, isPresentedModally: false)
-                .tabItem {
-                    Image(systemName: "plus.circle")
-                    Text(NSLocalizedString("Add", comment: ""))
-                }
-                .tag(1)
+            Tab(NSLocalizedString("Add", comment: ""), systemImage: "plus.circle", value: 1) {
+                ScannerFeatureView(container: container, isPresentedModally: false)
+            }
 
-            WardrobeFeatureView(container: container)
-                .tabItem {
-                    Image(systemName: "tshirt.fill")
-                    Text(NSLocalizedString("Wardrobe", comment: ""))
-                }
-                .tag(2)
+            Tab(NSLocalizedString("Wardrobe", comment: ""), systemImage: "tshirt.fill", value: 2) {
+                WardrobeFeatureView(container: container)
+            }
 
-            CalendarFeatureView(container: container)
-                .tabItem {
-                    Image(systemName: "calendar")
-                    Text(NSLocalizedString("Calendar", comment: ""))
-                }
-                .tag(3)
+            Tab(NSLocalizedString("Calendar", comment: ""), systemImage: "calendar", value: 3) {
+                CalendarFeatureView(container: container)
+            }
 
-            ProfileFeatureView(container: container, didFinishOnboarding: $didFinishOnboarding)
-                .tabItem {
-                    Image(systemName: "person")
-                    Text(NSLocalizedString("Profile", comment: ""))
-                }
-                .tag(4)
+            Tab(NSLocalizedString("Profile", comment: ""), systemImage: "person", value: 4) {
+                ProfileFeatureView(container: container, didFinishOnboarding: $didFinishOnboarding)
+            }
         }
         .tint(.purple)
+        // System tab bar adopts Liquid Glass on iOS 26/27 automatically.
     }
 }

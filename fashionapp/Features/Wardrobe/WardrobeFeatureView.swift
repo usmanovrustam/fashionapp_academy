@@ -129,17 +129,12 @@ private struct FilterChip: View {
                 .foregroundColor(selected ? .white : .purple)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
-                .background(
-                    Group {
-                        if selected {
-                            AppColors.primaryGradient
-                        } else {
-                            Color.white.opacity(0.8)
-                        }
+                .background {
+                    if selected {
+                        Capsule().fill(AppColors.primaryGradient)
                     }
-                )
-                .clipShape(Capsule())
-                .shadow(color: Color.purple.opacity(0.08), radius: 6, y: 2)
+                }
+                .liquidGlassCapsule(interactive: true, tint: selected ? .pink : .purple)
         }
         .buttonStyle(ScaleButtonStyle())
     }
@@ -180,8 +175,7 @@ struct WardrobeItemDetailView: View {
                     contentMode: .fit
                 )
                 .frame(maxWidth: .infinity)
-                .background(Color.white.opacity(0.5))
-                .clipShape(RoundedRectangle(cornerRadius: AppRadius.xLarge, style: .continuous))
+                .liquidGlass(cornerRadius: AppRadius.xLarge, tint: .purple)
 
                 Text(item.name)
                     .font(AppTypography.title)
@@ -204,8 +198,7 @@ struct WardrobeItemDetailView: View {
                     } label: {
                         Image(systemName: "trash")
                             .frame(width: 54, height: 54)
-                            .background(Color.red.opacity(0.12))
-                            .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
+                            .liquidGlass(cornerRadius: AppRadius.medium, interactive: true, tint: .red)
                     }
                 }
             }

@@ -116,7 +116,7 @@ struct AssistantFeatureView: View {
             TextField("What should I wear today?", text: $viewModel.input, axis: .vertical)
                 .lineLimit(1...4)
                 .padding(12)
-                .background(.ultraThinMaterial)
+                .liquidGlass(cornerRadius: AppRadius.medium)
                 .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
 
             Button {
@@ -129,7 +129,7 @@ struct AssistantFeatureView: View {
             .disabled(viewModel.isThinking || viewModel.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
         .padding()
-        .background(.ultraThinMaterial)
+        .liquidGlass(cornerRadius: AppRadius.medium)
     }
 }
 
@@ -141,19 +141,13 @@ private struct ChatBubble: View {
             if message.role == .user { Spacer(minLength: 40) }
             Text(message.content)
                 .font(.body)
-                .foregroundColor(message.role == .user ? .white : .primary)
+                .foregroundColor(.primary)
                 .padding(14)
-                .background(
-                    Group {
-                        if message.role == .user {
-                            AppColors.primaryGradient
-                        } else {
-                            Color.white.opacity(0.85)
-                        }
-                    }
+                .liquidGlass(
+                    cornerRadius: 18,
+                    interactive: false,
+                    tint: message.role == .user ? .purple : nil
                 )
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .shadow(color: AppColors.cardShadow, radius: 8, y: 3)
             if message.role != .user { Spacer(minLength: 40) }
         }
         .padding(.horizontal)
@@ -178,7 +172,7 @@ private struct RecommendationMiniCard: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.ultraThinMaterial)
+        .liquidGlass(cornerRadius: AppRadius.medium)
         .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
     }
 }
