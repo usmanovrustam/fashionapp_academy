@@ -1,4 +1,9 @@
--- Sylyo BigQuery analysis queries
+-- Stylo / Sylyo BigQuery analysis queries
+-- Project: sylyo-fashion (display name: stylo)
+-- After linking Analytics → BigQuery (region us), replace
+--   YOUR_PROPERTY with your GA4 property number from BigQuery dataset name:
+--   analytics_<PROPERTY_ID>.events_*
+--
 -- Requires:
 -- 1) Firebase Analytics linked to BigQuery (events_* tables)
 -- 2) Optional: Firestore → BigQuery extension for wardrobe / analyticsEvents
@@ -7,7 +12,7 @@
 SELECT
   PARSE_DATE('%Y%m%d', event_date) AS day,
   COUNT(DISTINCT user_pseudo_id) AS dau
-FROM `YOUR_PROJECT.analytics_YOUR_PROPERTY.events_*`
+FROM `sylyo-fashion.analytics_YOUR_PROPERTY.events_*`
 WHERE _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY))
   AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())
 GROUP BY day
@@ -19,7 +24,7 @@ WITH events AS (
     user_pseudo_id,
     event_name,
     TIMESTAMP_MICROS(event_timestamp) AS event_ts
-  FROM `YOUR_PROJECT.analytics_YOUR_PROPERTY.events_*`
+  FROM `sylyo-fashion.analytics_YOUR_PROPERTY.events_*`
   WHERE event_name IN ('scan_completed', 'item_saved', 'recommendation_accepted')
 )
 SELECT
@@ -32,7 +37,7 @@ FROM events;
 SELECT
   (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'category') AS category,
   COUNT(*) AS saves
-FROM `YOUR_PROJECT.analytics_YOUR_PROPERTY.events_*`
+FROM `sylyo-fashion.analytics_YOUR_PROPERTY.events_*`
 WHERE event_name = 'item_saved'
 GROUP BY category
 ORDER BY saves DESC;
@@ -41,7 +46,7 @@ ORDER BY saves DESC;
 SELECT
   PARSE_DATE('%Y%m%d', event_date) AS day,
   COUNT(*) AS asks
-FROM `YOUR_PROJECT.analytics_YOUR_PROPERTY.events_*`
+FROM `sylyo-fashion.analytics_YOUR_PROPERTY.events_*`
 WHERE event_name = 'assistant_asked'
 GROUP BY day
 ORDER BY day DESC;
