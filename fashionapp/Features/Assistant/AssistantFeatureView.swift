@@ -112,24 +112,28 @@ struct AssistantFeatureView: View {
     }
 
     private var composer: some View {
-        HStack(spacing: 10) {
-            TextField("What should I wear today?", text: $viewModel.input, axis: .vertical)
-                .lineLimit(1...4)
-                .padding(12)
-                .liquidGlass(cornerRadius: AppRadius.medium)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        GlassEffectContainer(spacing: 10) {
+            HStack(spacing: 10) {
+                TextField("What should I wear today?", text: $viewModel.input, axis: .vertical)
+                    .lineLimit(1...4)
+                    .padding(12)
+                    .liquidGlass(cornerRadius: AppRadius.medium, interactive: true, tint: .purple)
 
-            Button {
-                Task { await viewModel.send() }
-            } label: {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 34))
-                    .foregroundStyle(AppColors.primaryGradient)
+                Button {
+                    Task { await viewModel.send() }
+                } label: {
+                    Image(systemName: "arrow.up")
+                        .font(.headline.weight(.bold))
+                }
+                .buttonStyle(.glassProminent)
+                .tint(.purple)
+                .controlSize(.large)
+                .buttonBorderShape(.circle)
+                .disabled(viewModel.isThinking || viewModel.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
-            .disabled(viewModel.isThinking || viewModel.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .padding()
+            .liquidGlass(cornerRadius: AppRadius.large, tint: .purple)
         }
-        .padding()
-        .liquidGlass(cornerRadius: AppRadius.medium)
     }
 }
 
