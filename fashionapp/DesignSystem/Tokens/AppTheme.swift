@@ -144,39 +144,51 @@ private struct LiquidGlassCapsuleModifier: ViewModifier {
     }
 }
 
-/// Fallback primary style when a custom `ButtonStyle` is required.
-/// Prefer `.buttonStyle(.glassProminent).tint(.purple)` for new UI.
-struct GradientPrimaryButtonStyle: ButtonStyle {
+/// True translucent Liquid Glass CTA — avoids opaque/system-blue prominent fills.
+struct LiquidGlassButtonStyle: ButtonStyle {
+    var prominent: Bool = true
+    var tint: Color? = .purple
     var isDisabled: Bool = false
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(AppTypography.headline)
-            .foregroundStyle(isDisabled ? .secondary : .primary)
+            .foregroundStyle(prominent ? Color.primary : Color.purple)
             .frame(maxWidth: .infinity)
-            .padding()
-            .liquidGlassCapsule(interactive: !isDisabled, tint: .purple)
-            .opacity(isDisabled ? 0.55 : (configuration.isPressed ? 0.88 : 1))
+            .padding(.horizontal, 22)
+            .padding(.vertical, 16)
+            .liquidGlassCapsule(
+                interactive: !isDisabled,
+                tint: prominent ? (tint ?? .purple) : tint
+            )
+            .opacity(isDisabled ? 0.45 : (configuration.isPressed ? 0.86 : 1))
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
     }
 }
 
+/// Fallback alias kept for older call sites.
+struct GradientPrimaryButtonStyle: ButtonStyle {
+    var isDisabled: Bool = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        LiquidGlassButtonStyle(prominent: true, tint: .purple, isDisabled: isDisabled)
+            .makeBody(configuration: configuration)
+    }
+}
+
 extension View {
-    /// iOS 27 Liquid Glass primary control.
+    /// iOS 27 Liquid Glass primary control (translucent, not solid blue).
     func sylyoGlassProminent(disabled: Bool = false) -> some View {
         self
-            .buttonStyle(.glassProminent)
-            .tint(.purple)
-            .controlSize(.large)
+            .buttonStyle(LiquidGlassButtonStyle(prominent: true, tint: .purple, isDisabled: disabled))
             .disabled(disabled)
     }
 
     /// iOS 27 Liquid Glass secondary control.
     func sylyoGlass(disabled: Bool = false) -> some View {
         self
-            .buttonStyle(.glass)
-            .controlSize(.large)
+            .buttonStyle(LiquidGlassButtonStyle(prominent: false, tint: .purple, isDisabled: disabled))
             .disabled(disabled)
     }
 }
