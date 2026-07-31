@@ -2,36 +2,30 @@
 
 Sylyo does **not** use mock auth or mock databases. Auth, wardrobe, images, and analytics all require your Firebase project.
 
-**CloudKit / iCloud wardrobe storage has been removed.** The old `iCloud.apple.academy.fashionapp` container is no longer used. Put your real Firebase config at:
+**CloudKit / iCloud wardrobe storage has been removed.** The old `iCloud.apple.academy.fashionapp` container is no longer used.
 
-```text
-fashionapp/GoogleService-Info.plist
-```
+## Active project
 
-That is the configuration place for the project (`FirebaseConfig` in code).
+| | |
+|---|---|
+| Project | **Sylyo** |
+| Project ID | `sylyo-fashion` |
+| Console | https://console.firebase.google.com/project/sylyo-fashion/overview |
+| iOS bundle id | `apple.academy.stylo` |
+| Config file | `fashionapp/GoogleService-Info.plist` (already downloaded) |
 
-## 1. Create / select a Firebase project
+Firestore database + security rules are deployed.
 
-1. Open [Firebase Console](https://console.firebase.google.com/)
-2. Create a project (or select existing)
-3. Add an **iOS app** with bundle id `apple.academy.stylo`
-4. Download **GoogleService-Info.plist**
+### Finish these 3 console steps (one-time)
 
-## 2. Install the plist in this repo
+1. **Authentication** → Get started → enable **Email/Password** and **Anonymous**  
+   https://console.firebase.google.com/project/sylyo-fashion/authentication/providers
+2. **Storage** → Get started (may ask to enable billing / Blaze)  
+   https://console.firebase.google.com/project/sylyo-fashion/storage
+3. **BigQuery** link (Analytics)  
+   https://console.firebase.google.com/project/sylyo-fashion/settings/integrations/bigquery
 
-```bash
-# Option A — drag GoogleService-Info.plist into fashionapp/ in Xcode
-# Option B — CLI (after firebase login):
-./scripts/fetch-google-service-info.sh
-```
-
-Target path:
-
-```text
-fashionapp/GoogleService-Info.plist
-```
-
-Without this file the app shows **Connect Firebase** and will not enter the main UI.
+Then rebuild the iOS app in Xcode.
 
 ## 3. Enable products
 

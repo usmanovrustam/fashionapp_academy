@@ -40,8 +40,6 @@ fastlane/test_output
 .env.*
 *.pem
 
-# Firebase — keep example, never commit real SDK plist
-fashionapp/GoogleService-Info.plist
-!fashionapp/GoogleService-Info.plist.example
+# Firebase admin secrets (client GoogleService-Info.plist is committed for this app)
 *-firebase-adminsdk-*.json
 serviceAccount*.json
