@@ -1,7 +1,6 @@
 import SwiftUI
 
 /// Shown when the real Firebase `GoogleService-Info.plist` is missing.
-/// This replaced the old iCloud / CloudKit wardrobe gate.
 struct FirebaseSetupView: View {
     var body: some View {
         ZStack {
@@ -16,7 +15,7 @@ struct FirebaseSetupView: View {
                         .font(.system(size: 32, weight: .bold, design: .rounded))
                         .foregroundStyle(AppColors.primaryGradient)
 
-                    Text("CloudKit wardrobe storage was removed. Sylyo now stores users, wardrobe items, and images in your Firebase project.")
+                    Text("Sylyo uses Firebase Authentication for sign-in, and Firestore + Storage for your wardrobe.")
                         .font(AppTypography.body)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)

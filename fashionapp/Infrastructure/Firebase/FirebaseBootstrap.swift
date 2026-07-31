@@ -19,7 +19,7 @@ enum FirebaseBootstrap {
 
         guard FirebaseConfig.isConfigured else {
             #if DEBUG
-            print("⚠️ Missing \(FirebaseConfig.plistFileName). Place your Firebase download at \(FirebaseConfig.relativePathInRepo). CloudKit wardrobe storage has been removed.")
+            print("⚠️ Missing \(FirebaseConfig.plistFileName). Place your Firebase download at \(FirebaseConfig.relativePathInRepo).")
             #endif
             return false
         }

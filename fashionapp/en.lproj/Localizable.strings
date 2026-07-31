@@ -43,10 +43,10 @@
 "Unknown error" = "Unknown error";
 "Error Saving Outfit" = "Error Saving Item";
 "Outfit Saved!" = "Saved!";
-"Your outfit was saved to iCloud." = "Your clothing item was scanned and saved to your wardrobe.";
+"Your clothing item was scanned and saved to your wardrobe." = "Your clothing item was scanned and saved to your wardrobe.";
 "Wardrobe" = "Wardrobe";
 "User" = "User";
-"iCloud Account" = "iCloud Account";
+"Firebase Account" = "Firebase Account";
 "Appearance" = "Appearance";
 "Language" = "Language";
 "Select Language" = "Select Language";
@@ -58,8 +58,6 @@
 "Account" = "Account";
 "Log Out" = "Log Out";
 "Are you sure you want to log out?" = "Are you sure you want to log out?";
-"iCloud Required" = "iCloud Required";
-"You must be signed in to iCloud to use your profile. Please sign in to iCloud in Settings." = "You must be signed in to iCloud to use your profile. Please sign in to iCloud in Settings.";
 "Open Settings" = "Open Settings";
 "Photo" = "Photo";
 "Tap to take photo" = "Tap to take photo";

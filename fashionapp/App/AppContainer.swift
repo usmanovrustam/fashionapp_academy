@@ -2,8 +2,7 @@ import Combine
 import Foundation
 import SwiftUI
 
-/// Composition root — Firebase Auth / Firestore / Storage / Analytics only.
-/// Wardrobe storage uses Firestore (not CloudKit / iCloud).
+/// Composition root — Firebase Auth / Firestore / Storage / Analytics.
 @MainActor
 final class AppContainer: ObservableObject {
     let settings: AppSettingsProviding
@@ -48,7 +47,6 @@ final class AppContainer: ObservableObject {
             analytics.setUserID(uid)
         }
 
-        // Real Firebase backends — replace former CloudKit wardrobe store.
         let imageStorage: ImageStorage = FirebaseImageStorage()
         let wardrobeRepository: WardrobeRepository = FirebaseWardrobeRepository()
         let outfitRepository: OutfitRepository = FirebaseOutfitRepository()

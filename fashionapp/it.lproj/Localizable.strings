@@ -44,9 +44,9 @@
 "Unknown error" = "Errore sconosciuto";
 "Error Saving Outfit" = "Errore nel salvataggio";
 "Outfit Saved!" = "Salvato!";
-"Your outfit was saved to iCloud." = "Il capo è stato scansionato e salvato nel guardaroba.";
+"Your clothing item was scanned and saved to your wardrobe." = "Il capo è stato scansionato e salvato nel guardaroba.";
 "User" = "Utente";
-"iCloud Account" = "Account iCloud";
+"Firebase Account" = "Account Firebase";
 "Appearance" = "Aspetto";
 "Language" = "Lingua";
 "Select Language" = "Seleziona lingua";
@@ -58,8 +58,6 @@
 "Account" = "Account";
 "Log Out" = "Esci";
 "Are you sure you want to log out?" = "Sei sicuro di voler uscire?";
-"iCloud Required" = "iCloud richiesto";
-"You must be signed in to iCloud to use your profile. Please sign in to iCloud in Settings." = "Devi essere connesso a iCloud per usare il tuo profilo. Accedi a iCloud nelle Impostazioni.";
 "Open Settings" = "Apri Impostazioni";
 "Photo" = "Foto";
 "Tap to take photo" = "Tocca per scattare una foto";

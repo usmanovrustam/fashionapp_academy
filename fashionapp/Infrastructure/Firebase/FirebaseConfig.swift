@@ -5,8 +5,7 @@ import Foundation
 /// Put your real downloaded file here:
 /// `fashionapp/GoogleService-Info.plist`
 ///
-/// That plist (from Firebase Console → Project settings → Your apps)
-/// replaces the old CloudKit / iCloud wardrobe container entirely.
+/// Download from Firebase Console → Project settings → Your apps.
 ///
 /// Wardrobe data path after sign-in:
 /// `users/{uid}/wardrobeItems/{itemId}` in Cloud Firestore

@@ -1,7 +1,6 @@
 import Foundation
 
-/// App preferences only. Wardrobe sync no longer depends on iCloud/CloudKit —
-/// Firebase Auth + Firestore are the source of truth.
+/// Local app preferences. Auth and wardrobe sync use Firebase.
 final class UserDefaultsAppSettings: AppSettingsProviding {
     private let defaults: UserDefaults
 
