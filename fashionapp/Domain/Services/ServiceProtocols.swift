@@ -1,19 +1,5 @@
 import Foundation
 
-// MARK: - Auth
-
-enum AccountAvailability: Equatable {
-    case unknown
-    case checking
-    case available
-    case unavailable(String?)
-}
-
-protocol AccountStatusProviding: AnyObject {
-    var status: AccountAvailability { get }
-    func refresh() async -> AccountAvailability
-}
-
 // MARK: - Weather & Location
 
 protocol LocationProviding: AnyObject {

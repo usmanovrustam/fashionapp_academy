@@ -3,12 +3,12 @@ import Foundation
 import SwiftUI
 
 /// Composition root — Firebase Auth / Firestore / Storage / Analytics only.
+/// Wardrobe storage uses Firestore (not CloudKit / iCloud).
 @MainActor
 final class AppContainer: ObservableObject {
     let settings: AppSettingsProviding
     let authService: FirebaseAuthService
     let analytics: AnalyticsTracking
-    let accountStatus: CloudKitAccountStatusService
 
     let imageStorage: ImageStorage
     let wardrobeRepository: WardrobeRepository
@@ -34,7 +34,7 @@ final class AppContainer: ObservableObject {
 
     var isSignedIn: Bool { authService.isSignedIn }
     var currentAuthUser: AuthUser? { authService.currentUser }
-    var isFirebaseConfigured: Bool { authService.isFirebaseConfigured }
+    var isFirebaseConfigured: Bool { FirebaseConfig.isConfigured && authService.isFirebaseConfigured }
 
     init() {
         _ = FirebaseBootstrap.configureIfPossible()
@@ -48,6 +48,7 @@ final class AppContainer: ObservableObject {
             analytics.setUserID(uid)
         }
 
+        // Real Firebase backends — replace former CloudKit wardrobe store.
         let imageStorage: ImageStorage = FirebaseImageStorage()
         let wardrobeRepository: WardrobeRepository = FirebaseWardrobeRepository()
         let outfitRepository: OutfitRepository = FirebaseOutfitRepository()
@@ -76,7 +77,6 @@ final class AppContainer: ObservableObject {
         self.settings = settings
         self.authService = authService
         self.analytics = analytics
-        self.accountStatus = CloudKitAccountStatusService()
         self.imageStorage = imageStorage
         self.wardrobeRepository = wardrobeRepository
         self.outfitRepository = outfitRepository
@@ -120,7 +120,8 @@ final class AppContainer: ObservableObject {
         }
 
         analytics.track(.appOpen, parameters: [
-            "firebase_configured": authService.isFirebaseConfigured ? "true" : "false"
+            "firebase_configured": FirebaseConfig.isConfigured ? "true" : "false",
+            "firebase_project": FirebaseConfig.projectID ?? "missing"
         ])
     }
 

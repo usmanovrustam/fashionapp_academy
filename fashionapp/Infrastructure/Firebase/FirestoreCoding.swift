@@ -30,6 +30,23 @@ enum FirestoreCoding {
     }
 }
 
+extension JSONEncoder {
+    static let sylyo: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.sortedKeys]
+        return encoder
+    }()
+}
+
+extension JSONDecoder {
+    static let sylyo: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }()
+}
+
 enum FirebaseUserContext {
     @MainActor
     static func requireUID() throws -> String {

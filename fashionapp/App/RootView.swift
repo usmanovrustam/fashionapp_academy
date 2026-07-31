@@ -25,7 +25,6 @@ struct RootView: View {
         .environment(\.locale, Locale(identifier: selectedLanguage))
         .task {
             _ = await container.authService.refreshSession()
-            _ = await container.accountStatus.refresh()
         }
     }
 }

@@ -1,9 +1,10 @@
 import Foundation
 import FirebaseCore
 
-/// Configures Firebase once when `GoogleService-Info.plist` is present.
+/// Configures Firebase once from the real `GoogleService-Info.plist`
+/// located at `FirebaseConfig.relativePathInRepo`.
 enum FirebaseBootstrap {
-    private static var didConfigure = false
+    private static var didAttemptConfigure = false
 
     static var isConfigured: Bool {
         FirebaseApp.app() != nil
@@ -11,14 +12,14 @@ enum FirebaseBootstrap {
 
     @discardableResult
     static func configureIfPossible() -> Bool {
-        if didConfigure {
+        if didAttemptConfigure {
             return isConfigured
         }
-        didConfigure = true
+        didAttemptConfigure = true
 
-        guard Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil else {
+        guard FirebaseConfig.isConfigured else {
             #if DEBUG
-            print("⚠️ GoogleService-Info.plist missing — Firebase features disabled. Copy GoogleService-Info.plist.example and fill in your Firebase iOS app keys.")
+            print("⚠️ Missing \(FirebaseConfig.plistFileName). Place your Firebase download at \(FirebaseConfig.relativePathInRepo). CloudKit wardrobe storage has been removed.")
             #endif
             return false
         }
@@ -26,6 +27,12 @@ enum FirebaseBootstrap {
         if FirebaseApp.app() == nil {
             FirebaseApp.configure()
         }
+
+        #if DEBUG
+        if let projectID = FirebaseConfig.projectID {
+            print("✅ Firebase configured for project: \(projectID)")
+        }
+        #endif
         return true
     }
 }

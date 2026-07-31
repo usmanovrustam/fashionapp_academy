@@ -2,6 +2,14 @@
 
 Sylyo does **not** use mock auth or mock databases. Auth, wardrobe, images, and analytics all require your Firebase project.
 
+**CloudKit / iCloud wardrobe storage has been removed.** The old `iCloud.apple.academy.fashionapp` container is no longer used. Put your real Firebase config at:
+
+```text
+fashionapp/GoogleService-Info.plist
+```
+
+That is the configuration place for the project (`FirebaseConfig` in code).
+
 ## 1. Create / select a Firebase project
 
 1. Open [Firebase Console](https://console.firebase.google.com/)
