@@ -143,13 +143,14 @@ struct AuthFeatureView: View {
                                         ProgressView().controlSize(.small)
                                     }
                                     Text(viewModel.mode == .signIn ? "Sign In" : "Create Account")
-                                        .font(AppTypography.headline)
                                 }
                                 .frame(maxWidth: .infinity)
                             }
-                            .buttonStyle(.glassProminent)
-                            .tint(.purple)
-                            .controlSize(.large)
+                            .buttonStyle(LiquidGlassButtonStyle(
+                                prominent: true,
+                                tint: .purple,
+                                isDisabled: !viewModel.canSubmit
+                            ))
                             .disabled(!viewModel.canSubmit)
                             .glassEffectID("auth-primary", in: glassNamespace)
 
@@ -157,8 +158,7 @@ struct AuthFeatureView: View {
                                 Button("Forgot password?") {
                                     Task { await viewModel.resetPassword() }
                                 }
-                                .buttonStyle(.glass)
-                                .controlSize(.regular)
+                                .buttonStyle(LiquidGlassButtonStyle(prominent: false, tint: .purple))
                                 .disabled(viewModel.isLoading)
                                 .glassEffectID("auth-reset", in: glassNamespace)
                             }
@@ -167,11 +167,13 @@ struct AuthFeatureView: View {
                                 Task { await viewModel.continueAsGuest() }
                             } label: {
                                 Text("Continue as guest")
-                                    .font(AppTypography.headline)
                                     .frame(maxWidth: .infinity)
                             }
-                            .buttonStyle(.glass)
-                            .controlSize(.large)
+                            .buttonStyle(LiquidGlassButtonStyle(
+                                prominent: false,
+                                tint: .purple,
+                                isDisabled: viewModel.isLoading
+                            ))
                             .disabled(viewModel.isLoading)
                             .glassEffectID("auth-guest", in: glassNamespace)
                         }
