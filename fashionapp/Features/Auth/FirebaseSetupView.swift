@@ -56,6 +56,7 @@ struct FirebaseSetupView: View {
                 }
                 .padding(AppSpacing.xl)
             }
+            .sylyoSafeScreenInsets()
         }
     }
 

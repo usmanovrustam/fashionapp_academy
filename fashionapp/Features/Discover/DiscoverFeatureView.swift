@@ -296,6 +296,7 @@ struct RecommendationDetailView: View {
                 }
                 .padding()
             }
+            .sylyoSafeScreenInsets()
             .background(SoftBackground())
             .navigationTitle(NSLocalizedString("Outfit Details", comment: ""))
             .navigationBarTitleDisplayMode(.inline)
