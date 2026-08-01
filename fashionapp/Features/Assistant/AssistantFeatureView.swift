@@ -124,10 +124,9 @@ struct AssistantFeatureView: View {
                 } label: {
                     Image(systemName: "arrow.up")
                         .font(.headline.weight(.bold))
+                        .frame(width: 22, height: 22)
                 }
-                .buttonStyle(.glassProminent)
-                .tint(AppColors.brand)
-                .controlSize(.large)
+                .buttonStyle(LiquidGlassButtonStyle(prominent: true, tint: AppColors.brand))
                 .buttonBorderShape(.circle)
                 .disabled(viewModel.isThinking || viewModel.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
