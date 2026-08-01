@@ -172,34 +172,32 @@ struct AuthFeatureView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 12) {
+                VStack(spacing: 20) {
+                    Text("Authentication")
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(AppColors.textPrimary)
+                        .frame(maxWidth: .infinity)
+                        .multilineTextAlignment(.center)
+                        .padding(.bottom, 6)
+                        .accessibilityAddTraits(.isHeader)
+
                     formFields
                     statusMessages
                     emailActions
 
-                    if viewModel.mode == .signIn {
-                        Button("Forgot Password?") {
-                            Task { await viewModel.resetPassword() }
-                        }
-                        .font(.footnote.weight(.medium))
-                        .foregroundStyle(AppColors.buttonBlue)
-                        .disabled(viewModel.isLoading)
-                    }
-
                     modeSwitchLink
+                        .padding(.top, 4)
 
                     dividerLabel("or")
+                        .padding(.vertical, 4)
 
-                    // Apple under email/password (after primary email path).
+                    // Apple under email path; privacy note sits with the button.
                     signInWithAppleSection
-
-                    privacyFootnote
                 }
-                .multilineTextAlignment(.center)
                 .padding(.horizontal, 24)
-                .padding(.top, 28)
-                .padding(.bottom, 24)
-                .frame(maxWidth: 420)
+                .padding(.top, 40)
+                .padding(.bottom, 32)
+                .frame(maxWidth: 440)
                 .frame(maxWidth: .infinity)
             }
             .scrollDismissesKeyboard(.interactively)
@@ -220,18 +218,27 @@ struct AuthFeatureView: View {
     // MARK: - Sign in with Apple
 
     private var signInWithAppleSection: some View {
-        SignInWithAppleButton(viewModel.mode.appleButtonType) { request in
-            viewModel.prepareAppleRequest(request)
-        } onCompletion: { result in
-            Task { await viewModel.handleAppleCompletion(result) }
+        VStack(spacing: 12) {
+            SignInWithAppleButton(viewModel.mode.appleButtonType) { request in
+                viewModel.prepareAppleRequest(request)
+            } onCompletion: { result in
+                Task { await viewModel.handleAppleCompletion(result) }
+            }
+            .signInWithAppleButtonStyle(.black)
+            .frame(maxWidth: .infinity)
+            .frame(height: 50)
+            .clipShape(Capsule())
+            .disabled(viewModel.isLoading)
+            .opacity(viewModel.isLoading ? 0.6 : 1)
+            .accessibilityHint("Uses your Apple Account with Face ID or Touch ID when available")
+
+            Text("Sign in with Apple shares only the name and email you choose.")
+                .font(.caption)
+                .foregroundStyle(AppColors.placeholder)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 8)
         }
-        .signInWithAppleButtonStyle(.black)
-        .frame(maxWidth: .infinity)
-        .frame(height: 48)
-        .clipShape(Capsule())
-        .disabled(viewModel.isLoading)
-        .opacity(viewModel.isLoading ? 0.6 : 1)
-        .accessibilityHint("Uses your Apple Account with Face ID or Touch ID when available")
     }
 
     private func dividerLabel(_ text: String) -> some View {
@@ -282,24 +289,24 @@ struct AuthFeatureView: View {
                 .foregroundStyle(AppColors.buttonBlue)
             }
         }
-        .font(.footnote)
+        .font(.subheadline)
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 2)
+        .multilineTextAlignment(.center)
         .accessibilityElement(children: .combine)
     }
 
     // MARK: - Fields
 
     private var formFields: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 14) {
             if viewModel.mode == .signUp {
-                plainField(field: .name) {
+                glassField(field: .name) {
                     TextField(
                         "",
                         text: $viewModel.displayName,
                         prompt: Text("Name").foregroundStyle(AppColors.placeholder)
                     )
-                    .multilineTextAlignment(.center)
+                    .multilineTextAlignment(.leading)
                     .textContentType(.name)
                     .textInputAutocapitalization(.words)
                     .autocorrectionDisabled()
@@ -310,13 +317,13 @@ struct AuthFeatureView: View {
                 .transition(.opacity)
             }
 
-            plainField(field: .email) {
+            glassField(field: .email) {
                 TextField(
                     "",
                     text: $viewModel.email,
                     prompt: Text("Email").foregroundStyle(AppColors.placeholder)
                 )
-                .multilineTextAlignment(.center)
+                .multilineTextAlignment(.leading)
                 .textContentType(.emailAddress)
                 .keyboardType(.emailAddress)
                 .textInputAutocapitalization(.never)
@@ -326,73 +333,84 @@ struct AuthFeatureView: View {
                 .onSubmit { focusedField = .password }
             }
 
-            plainField(field: .password) {
-                HStack(spacing: 8) {
-                    Group {
-                        if viewModel.isPasswordVisible {
-                            TextField(
-                                "",
-                                text: $viewModel.password,
-                                prompt: Text("Password").foregroundStyle(AppColors.placeholder)
-                            )
-                            .textContentType(viewModel.mode == .signUp ? .newPassword : .password)
-                        } else {
-                            SecureField(
-                                "",
-                                text: $viewModel.password,
-                                prompt: Text("Password").foregroundStyle(AppColors.placeholder)
-                            )
-                            .textContentType(viewModel.mode == .signUp ? .newPassword : .password)
+            VStack(spacing: 10) {
+                glassField(field: .password) {
+                    HStack(spacing: 8) {
+                        Group {
+                            if viewModel.isPasswordVisible {
+                                TextField(
+                                    "",
+                                    text: $viewModel.password,
+                                    prompt: Text("Password").foregroundStyle(AppColors.placeholder)
+                                )
+                                .textContentType(viewModel.mode == .signUp ? .newPassword : .password)
+                            } else {
+                                SecureField(
+                                    "",
+                                    text: $viewModel.password,
+                                    prompt: Text("Password").foregroundStyle(AppColors.placeholder)
+                                )
+                                .textContentType(viewModel.mode == .signUp ? .newPassword : .password)
+                            }
                         }
-                    }
-                    .multilineTextAlignment(.center)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .submitLabel(.go)
-                    .focused($focusedField, equals: .password)
-                    .onSubmit {
-                        guard viewModel.canSubmit else { return }
-                        focusedField = nil
-                        Task { await viewModel.submit() }
-                    }
+                        .multilineTextAlignment(.leading)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .submitLabel(.go)
+                        .focused($focusedField, equals: .password)
+                        .onSubmit {
+                            guard viewModel.canSubmit else { return }
+                            focusedField = nil
+                            Task { await viewModel.submit() }
+                        }
 
-                    Button {
-                        viewModel.isPasswordVisible.toggle()
-                    } label: {
-                        Image(systemName: viewModel.isPasswordVisible ? "eye.slash" : "eye")
-                            .font(.body)
-                            .foregroundStyle(AppColors.placeholder)
-                            .frame(width: 36, height: 36)
-                            .contentShape(Rectangle())
+                        Button {
+                            viewModel.isPasswordVisible.toggle()
+                        } label: {
+                            Image(systemName: viewModel.isPasswordVisible ? "eye.slash" : "eye")
+                                .font(.body)
+                                .foregroundStyle(AppColors.placeholder)
+                                .frame(width: 36, height: 36)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(viewModel.isPasswordVisible ? "Hide password" : "Show password")
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(viewModel.isPasswordVisible ? "Hide password" : "Show password")
+                }
+
+                if viewModel.mode == .signIn {
+                    HStack {
+                        Spacer(minLength: 0)
+                        Button("Forgot Password?") {
+                            Task { await viewModel.resetPassword() }
+                        }
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(AppColors.buttonBlue)
+                        .disabled(viewModel.isLoading)
+                    }
                 }
             }
         }
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: viewModel.mode)
     }
 
-    private func plainField<Content: View>(
+    private func glassField<Content: View>(
         field: Field,
         @ViewBuilder content: () -> Content
     ) -> some View {
         content()
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .frame(minHeight: 48)
-            .frame(maxWidth: .infinity)
-            .background(fieldBackground(focused: focusedField == field))
-    }
-
-    private func fieldBackground(focused: Bool) -> some View {
-        RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .fill(Color(.secondarySystemGroupedBackground))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .frame(minHeight: 52)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .liquidGlass(cornerRadius: AppRadius.medium, interactive: true)
             .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
                     .stroke(
-                        focused ? AppColors.buttonBlue.opacity(0.90) : Color(.separator).opacity(0.45),
-                        lineWidth: focused ? 1.5 : 1
+                        focusedField == field
+                            ? AppColors.buttonBlue.opacity(0.55)
+                            : Color.white.opacity(0.35),
+                        lineWidth: focusedField == field ? 1.5 : 1
                     )
             }
     }
@@ -407,11 +425,8 @@ struct AuthFeatureView: View {
                 .foregroundStyle(Color(.systemRed))
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
-                .padding(10)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Color(.systemRed).opacity(0.10))
-                )
+                .padding(12)
+                .liquidGlass(cornerRadius: 12)
                 .accessibilityAddTraits(.isStaticText)
         }
 
@@ -421,11 +436,8 @@ struct AuthFeatureView: View {
                 .foregroundStyle(Color(.systemGreen))
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
-                .padding(10)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Color(.systemGreen).opacity(0.10))
-                )
+                .padding(12)
+                .liquidGlass(cornerRadius: 12)
                 .accessibilityAddTraits(.isStaticText)
         }
     }
@@ -457,13 +469,5 @@ struct AuthFeatureView: View {
                 ? "Signs in with email and password"
                 : "Creates a new account with email and password"
         )
-    }
-
-    private var privacyFootnote: some View {
-        Text("Sign in with Apple shares only the name and email you choose.")
-            .font(.caption2)
-            .foregroundStyle(AppColors.placeholder)
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
     }
 }
