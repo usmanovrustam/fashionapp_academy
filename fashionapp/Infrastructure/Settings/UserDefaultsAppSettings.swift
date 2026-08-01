@@ -1,6 +1,7 @@
 import Foundation
 
 /// Local app preferences. Authentication and wardrobe sync use Firebase only.
+@MainActor
 final class UserDefaultsAppSettings: AppSettingsProviding {
     private let defaults: UserDefaults
 
