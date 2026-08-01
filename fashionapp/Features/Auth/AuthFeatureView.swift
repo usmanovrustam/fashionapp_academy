@@ -5,7 +5,7 @@ import SwiftUI
 final class AuthViewModel: ObservableObject {
     enum Mode: String, CaseIterable, Identifiable {
         case signIn = "Sign In"
-        case signUp = "Create Account"
+        case signUp = "Register"
 
         var id: String { rawValue }
 
@@ -15,7 +15,7 @@ final class AuthViewModel: ObservableObject {
         var loadingTitle: String {
             switch self {
             case .signIn: return "Signing In…"
-            case .signUp: return "Creating Account…"
+            case .signUp: return "Registering…"
             }
         }
 
@@ -233,6 +233,7 @@ struct AuthFeatureView: View {
             Text(viewModel.mode == .signIn ? "Sign in to your account" : "Create your account")
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(AppColors.textPrimary)
+                .animation(nil, value: viewModel.mode)
 
             Text("Sync your wardrobe and get personalized outfits across devices. Sign in with Apple is fast and private — or continue as a guest.")
                 .font(.subheadline)
