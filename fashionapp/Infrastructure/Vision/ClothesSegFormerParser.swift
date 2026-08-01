@@ -79,12 +79,15 @@ final class ClothesSegFormerParser: @unchecked Sendable {
             throw DomainError.noClothingDetected
         }
 
+        guard let preparedCG = ImageProcessing.cgImage(from: prepared) else {
+            throw DomainError.invalidImage
+        }
         guard let maskFull = maskImage(
             classMap: classMap,
             width: width,
             height: height,
             targetClass: best.classID,
-            targetSize: prepared.size
+            targetSize: CGSize(width: preparedCG.width, height: preparedCG.height)
         ) else {
             throw DomainError.scanFailed("Failed to build garment mask.")
         }
