@@ -1,5 +1,5 @@
 import SwiftUI
-import AVFoundation
+@preconcurrency import AVFoundation
 import UIKit
 
 /// Photo-only camera using a single wide-angle device.
@@ -14,7 +14,7 @@ struct PhotoCameraView: View {
             Color.black.ignoresSafeArea()
 
             if model.isSessionRunning {
-                CameraPreview(session: model.session)
+                CameraPreview(session: model.previewSession)
                     .ignoresSafeArea()
             } else if let message = model.setupError {
                 VStack(spacing: 16) {
@@ -67,90 +67,22 @@ struct PhotoCameraView: View {
         .onDisappear {
             model.stop()
         }
-        .onChange(of: model.completion) { _, result in
-            guard let result else { return }
+        // Watch a UUID token — `Result<UIImage, Error>` is not Equatable.
+        .onChange(of: model.finishToken) { _, token in
+            guard token != nil, let result = model.finishedResult else { return }
             onComplete(result)
         }
     }
 }
 
-@MainActor
-final class PhotoCaptureModel: NSObject, ObservableObject {
+/// Owns AVCapture objects off the main actor. UI state stays on `PhotoCaptureModel`.
+private final class CameraSessionBox: @unchecked Sendable {
     let session = AVCaptureSession()
-    @Published var isSessionRunning = false
-    @Published var isCapturing = false
-    @Published var setupError: String?
-    @Published var hasFinished = false
-    @Published var completion: Result<UIImage, Error>?
-
-    private let photoOutput = AVCapturePhotoOutput()
-    private let sessionQueue = DispatchQueue(label: "sylyo.photo.camera.session")
+    let photoOutput = AVCapturePhotoOutput()
+    let queue = DispatchQueue(label: "sylyo.photo.camera.session")
     private var configured = false
 
-    func finish(_ result: Result<UIImage, Error>) {
-        guard !hasFinished else { return }
-        hasFinished = true
-        isCapturing = false
-        completion = result
-        stop()
-    }
-
-    func start() async {
-        let auth = await CameraAuthorization.ensureAuthorized()
-        if case .failure(let error) = auth {
-            setupError = error.localizedDescription
-            return
-        }
-
-        sessionQueue.async { [weak self] in
-            guard let self else { return }
-            do {
-                try self.configureSessionIfNeeded()
-                self.session.startRunning()
-                DispatchQueue.main.async {
-                    self.isSessionRunning = self.session.isRunning
-                    if !self.session.isRunning {
-                        self.setupError = CameraCaptureError.unavailable.localizedDescription
-                    }
-                }
-            } catch {
-                DispatchQueue.main.async {
-                    self.setupError = error.localizedDescription
-                }
-            }
-        }
-    }
-
-    func stop() {
-        sessionQueue.async { [weak self] in
-            guard let self, self.session.isRunning else { return }
-            self.session.stopRunning()
-            DispatchQueue.main.async {
-                self.isSessionRunning = false
-            }
-        }
-    }
-
-    func capturePhoto() {
-        guard !isCapturing, !hasFinished else { return }
-        isCapturing = true
-        let settings = AVCapturePhotoSettings()
-        if let device = session.inputs
-            .compactMap({ ($0 as? AVCaptureDeviceInput)?.device })
-            .first,
-           device.hasFlash,
-           device.isFlashAvailable {
-            settings.flashMode = .auto
-        } else {
-            settings.flashMode = .off
-        }
-        sessionQueue.async { [weak self] in
-            guard let self else { return }
-            self.photoOutput.capturePhoto(with: settings, delegate: self)
-        }
-    }
-
-    private func configureSessionIfNeeded() throws {
+    func configureIfNeeded() throws {
         guard !configured else { return }
         session.beginConfiguration()
         session.sessionPreset = .photo
@@ -185,6 +117,104 @@ final class PhotoCaptureModel: NSObject, ObservableObject {
 
         session.commitConfiguration()
         configured = true
+    }
+
+    func startRunning() {
+        session.startRunning()
+    }
+
+    func stopRunning() {
+        if session.isRunning {
+            session.stopRunning()
+        }
+    }
+
+    var isRunning: Bool { session.isRunning }
+
+    func capturePhoto(delegate: AVCapturePhotoCaptureDelegate) {
+        queue.async { [photoOutput] in
+            let settings = AVCapturePhotoSettings()
+            if let device = self.session.inputs
+                .compactMap({ ($0 as? AVCaptureDeviceInput)?.device })
+                .first,
+               device.hasFlash,
+               device.isFlashAvailable {
+                settings.flashMode = .auto
+            } else {
+                settings.flashMode = .off
+            }
+            photoOutput.capturePhoto(with: settings, delegate: delegate)
+        }
+    }
+}
+
+@MainActor
+final class PhotoCaptureModel: NSObject, ObservableObject {
+    @Published var isSessionRunning = false
+    @Published var isCapturing = false
+    @Published var setupError: String?
+    @Published var hasFinished = false
+    /// Bumps when a terminal result is ready (`finishedResult`). Equatable for `onChange`.
+    @Published private(set) var finishToken: UUID?
+    private(set) var finishedResult: Result<UIImage, Error>?
+
+    private let sessionBox = CameraSessionBox()
+
+    /// Preview layer binds to this session (safe to read from main).
+    var previewSession: AVCaptureSession { sessionBox.session }
+
+    func finish(_ result: Result<UIImage, Error>) {
+        guard !hasFinished else { return }
+        hasFinished = true
+        isCapturing = false
+        finishedResult = result
+        finishToken = UUID()
+        stop()
+    }
+
+    func start() async {
+        let auth = await CameraAuthorization.ensureAuthorized()
+        if case .failure(let error) = auth {
+            setupError = error.localizedDescription
+            return
+        }
+
+        let box = sessionBox
+        box.queue.async { [weak self] in
+            do {
+                try box.configureIfNeeded()
+                box.startRunning()
+                let running = box.isRunning
+                Task { @MainActor in
+                    guard let self else { return }
+                    self.isSessionRunning = running
+                    if !running {
+                        self.setupError = CameraCaptureError.unavailable.localizedDescription
+                    }
+                }
+            } catch {
+                let message = error.localizedDescription
+                Task { @MainActor in
+                    self?.setupError = message
+                }
+            }
+        }
+    }
+
+    func stop() {
+        let box = sessionBox
+        box.queue.async { [weak self] in
+            box.stopRunning()
+            Task { @MainActor in
+                self?.isSessionRunning = false
+            }
+        }
+    }
+
+    func capturePhoto() {
+        guard !isCapturing, !hasFinished else { return }
+        isCapturing = true
+        sessionBox.capturePhoto(delegate: self)
     }
 }
 
@@ -231,6 +261,9 @@ struct CameraPreview: UIViewRepresentable {
 
     final class PreviewView: UIView {
         override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
-        var videoPreviewLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
+        var videoPreviewLayer: AVCaptureVideoPreviewLayer {
+            // layerClass guarantees this cast.
+            layer as! AVCaptureVideoPreviewLayer
+        }
     }
 }
