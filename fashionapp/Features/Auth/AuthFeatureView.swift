@@ -179,13 +179,20 @@ struct AuthFeatureView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
-                    Text("Authentication")
-                        .font(.title2.weight(.semibold))
-                        .foregroundStyle(AppColors.textPrimary)
-                        .frame(maxWidth: .infinity)
-                        .multilineTextAlignment(.center)
-                        .padding(.bottom, 6)
-                        .accessibilityAddTraits(.isHeader)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Authentication")
+                            .font(.title2.weight(.semibold))
+                            .foregroundStyle(AppColors.textPrimary)
+                            .accessibilityAddTraits(.isHeader)
+
+                        Text("Sign in to access your wardrobe and personalized outfits.")
+                            .font(.subheadline)
+                            .foregroundStyle(AppColors.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .multilineTextAlignment(.leading)
+                    .padding(.bottom, 4)
 
                     formFields
                     statusMessages
