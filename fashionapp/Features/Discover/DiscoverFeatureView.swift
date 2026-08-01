@@ -48,6 +48,7 @@ struct DiscoverFeatureView: View {
                     .padding(.horizontal)
                 }
                 .padding(.vertical)
+                .sylyoSafeScreenInsets()
             }
             .navigationTitle(NSLocalizedString("Discover", comment: ""))
             .sheet(item: $selectedRecommendation) { rec in

@@ -122,6 +122,7 @@ struct CalendarFeatureView: View {
                     }
                     .padding()
                 }
+                .sylyoSafeScreenInsets()
             }
             .navigationTitle(NSLocalizedString("Calendar", comment: ""))
             .sheet(isPresented: $showScanner) {

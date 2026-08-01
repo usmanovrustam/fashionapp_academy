@@ -56,6 +56,7 @@ struct WardrobeFeatureView: View {
                     .padding(.top, AppSpacing.md)
                 }
                 .refreshable { await viewModel.load(force: true) }
+                .sylyoSafeScreenInsets()
             }
             .navigationTitle(NSLocalizedString("Wardrobe", comment: ""))
             .toolbar {
@@ -63,15 +64,22 @@ struct WardrobeFeatureView: View {
                     Button {
                         showScanner = true
                     } label: {
-                        Image(systemName: "plus.circle.fill")
+                        Label(NSLocalizedString("Add", comment: ""), systemImage: "plus.circle.fill")
+                            .labelStyle(.iconOnly)
                             .foregroundStyle(AppColors.primaryGradient)
                     }
+                    .accessibilityLabel(NSLocalizedString("Add Outfit", comment: ""))
                 }
             }
             .sheet(isPresented: $showScanner) {
                 ScannerFeatureView(container: container)
             }
             .task { await viewModel.load() }
+            .onChange(of: showScanner) { _, isShowing in
+                if !isShowing {
+                    Task { await viewModel.load(force: true) }
+                }
+            }
         }
     }
 
@@ -213,6 +221,7 @@ struct WardrobeItemDetailView: View {
             }
             .padding()
         }
+        .sylyoSafeScreenInsets()
         .background(SoftBackground())
         .navigationTitle(item.category.displayName)
         .navigationBarTitleDisplayMode(.inline)

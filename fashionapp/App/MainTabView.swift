@@ -11,19 +11,15 @@ struct MainTabView: View {
                 DiscoverFeatureView(container: container)
             }
 
-            Tab(NSLocalizedString("Add", comment: ""), systemImage: "plus.circle", value: 1) {
-                ScannerFeatureView(container: container, isPresentedModally: false)
-            }
-
-            Tab(NSLocalizedString("Wardrobe", comment: ""), systemImage: "tshirt.fill", value: 2) {
+            Tab(NSLocalizedString("Wardrobe", comment: ""), systemImage: "tshirt.fill", value: 1) {
                 WardrobeFeatureView(container: container)
             }
 
-            Tab(NSLocalizedString("Calendar", comment: ""), systemImage: "calendar", value: 3) {
+            Tab(NSLocalizedString("Calendar", comment: ""), systemImage: "calendar", value: 2) {
                 CalendarFeatureView(container: container)
             }
 
-            Tab(NSLocalizedString("Profile", comment: ""), systemImage: "person", value: 4) {
+            Tab(NSLocalizedString("Profile", comment: ""), systemImage: "person", value: 3) {
                 ProfileFeatureView(container: container, didFinishOnboarding: $didFinishOnboarding)
             }
         }

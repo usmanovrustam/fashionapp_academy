@@ -105,6 +105,7 @@ struct AssistantFeatureView: View {
 
                     composer
                 }
+                .sylyoSafeScreenInsets()
             }
             .navigationTitle("AI Stylist")
             .navigationBarTitleDisplayMode(.inline)

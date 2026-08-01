@@ -66,6 +66,7 @@ struct OnboardingView: View {
                 .padding(.horizontal, AppSpacing.xl)
                 .padding(.bottom, AppSpacing.xl)
         }
+        .sylyoSafeScreenInsets()
         .background(SoftBackground())
         .tint(AppColors.buttonBlue)
         .preferredColorScheme(.light)

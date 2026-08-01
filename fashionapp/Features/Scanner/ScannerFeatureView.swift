@@ -37,6 +37,7 @@ struct ScannerFeatureView: View {
                     }
                     .padding(.horizontal, AppSpacing.lg)
                 }
+                .sylyoSafeScreenInsets()
             }
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)

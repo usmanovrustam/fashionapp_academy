@@ -140,6 +140,7 @@ struct ProfileFeatureView: View {
                     }
                     .padding()
                 }
+                .sylyoSafeScreenInsets()
             }
             .navigationTitle(NSLocalizedString("Profile", comment: ""))
             .task { await viewModel.load() }

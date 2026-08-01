@@ -105,6 +105,16 @@ struct SoftBackground: View {
     }
 }
 
+extension View {
+    /// Keeps interactive content clear of the status/nav bar and bottom tab bar.
+    /// Use on foreground content only — backgrounds should still use `SoftBackground`.
+    func sylyoSafeScreenInsets() -> some View {
+        self
+            .safeAreaPadding(.top, AppSpacing.sm)
+            .safeAreaPadding(.bottom, AppSpacing.md)
+    }
+}
+
 /// Groups glass elements on iOS 26+; identity wrapper on earlier OS versions.
 struct SylyoGlassContainer<Content: View>: View {
     var spacing: CGFloat = 16

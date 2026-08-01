@@ -212,6 +212,7 @@ struct AuthFeatureView: View {
                 .padding(.bottom, 32)
                 .frame(maxWidth: 440)
                 .frame(maxWidth: .infinity)
+                .sylyoSafeScreenInsets()
             }
             .scrollDismissesKeyboard(.interactively)
             .background(SoftBackground())
