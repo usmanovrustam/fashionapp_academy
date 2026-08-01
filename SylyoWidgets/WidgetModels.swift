@@ -1,10 +1,10 @@
 import Foundation
 import SwiftUI
 
-/// Matches app pastel brown brand (mocha + sand).
+/// Matches app pastel sky-blue brand.
 enum WidgetBrand {
-    static let mocha = Color(red: 0.72, green: 0.56, blue: 0.44)
-    static let sand = Color(red: 0.88, green: 0.78, blue: 0.66)
+    static let sky = Color(red: 0.52, green: 0.74, blue: 0.94)
+    static let powder = Color(red: 0.72, green: 0.86, blue: 0.96)
 }
 
 enum WidgetAppGroup {

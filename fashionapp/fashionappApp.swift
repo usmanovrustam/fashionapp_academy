@@ -14,6 +14,7 @@ struct fashionappApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(container)
+                // Sylyo is light-theme only.
                 .preferredColorScheme(.light)
         }
     }

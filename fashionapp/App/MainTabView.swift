@@ -28,6 +28,7 @@ struct MainTabView: View {
             }
         }
         .tint(AppColors.brand)
+        .preferredColorScheme(.light)
         // System tab bar adopts Liquid Glass on iOS 26/27 automatically.
     }
 }

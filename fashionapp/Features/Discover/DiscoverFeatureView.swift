@@ -225,7 +225,7 @@ private struct RecommendationCardView: View {
                                 Text("Nope")
                             }
                             .font(.headline)
-                            .foregroundColor(AppColors.ink)
+                            .foregroundColor(AppColors.textPrimary)
                             .padding(.horizontal, 28)
                             .padding(.vertical, 14)
                         }
@@ -237,7 +237,7 @@ private struct RecommendationCardView: View {
                                 Text("Yeah")
                             }
                             .font(.headline)
-                            .foregroundColor(AppColors.ink)
+                            .foregroundColor(AppColors.textPrimary)
                             .padding(.horizontal, 28)
                             .padding(.vertical, 14)
                         }

@@ -126,7 +126,7 @@ private struct FilterChip: View {
         Button(action: action) {
             Text(title)
                 .font(.subheadline.weight(.semibold))
-                .foregroundColor(selected ? AppColors.ink : AppColors.ink.opacity(0.55))
+                .foregroundColor(selected ? AppColors.textPrimary : AppColors.textSecondary)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
                 .liquidGlassCapsule(interactive: true)
