@@ -1,13 +1,19 @@
 import UIKit
 import FirebaseCore
+import FirebaseAnalytics
 
-/// Configures Firebase as soon as the adaptor constructs this object —
-/// earlier than `didFinishLaunching`, so Analytics/Auth see a default app.
+/// Owns app composition after Firebase is configured.
+/// Subclasses `UIResponder` so GoogleUtilities recognizes a real UIApplicationDelegate.
 @objc(SylyoAppDelegate)
-final class AppDelegate: NSObject, UIApplicationDelegate {
+final class AppDelegate: UIResponder, UIApplicationDelegate {
+    /// Created only after `FirebaseApp.configure()` succeeds (or is skipped safely).
+    private(set) var sharedContainer: AppContainer
+
     override init() {
-        super.init()
+        // Must run before Auth / Analytics / Firestore touch the default app.
         _ = FirebaseBootstrap.configureIfPossible()
+        sharedContainer = AppContainer()
+        super.init()
     }
 
     func application(
@@ -15,6 +21,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         _ = FirebaseBootstrap.configureIfPossible()
+        // Collection starts disabled in Info.plist; turn on only after configure.
+        Analytics.setAnalyticsCollectionEnabled(true)
         return true
     }
 }

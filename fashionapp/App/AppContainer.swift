@@ -36,7 +36,11 @@ final class AppContainer: ObservableObject {
     var isFirebaseConfigured: Bool { FirebaseConfig.isConfigured && authService.isFirebaseConfigured }
 
     init() {
-        _ = FirebaseBootstrap.configureIfPossible()
+        // Caller (`AppDelegate`) must configure Firebase before constructing this container.
+        precondition(
+            FirebaseBootstrap.isConfigured || !FirebaseConfig.isConfigured,
+            "FirebaseApp.configure() must run before AppContainer when GoogleService-Info.plist is present."
+        )
 
         let settings = UserDefaultsAppSettings()
         let authService = FirebaseAuthService()

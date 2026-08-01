@@ -59,7 +59,9 @@ Optional (to use Apple WeatherKit as primary): for team `T76V4FRBSW` / bundle `a
 
 ## Firebase launch warnings
 
-A one-shot `I-COR000003` / Analytics “started” line can appear while the SDK loads; Sylyo configures Firebase in `AppDelegate.init` and again in `didFinishLaunching`. After a clean pull + rebuild you should see `✅ Firebase configured for project: sylyo-fashion`. The IDFA / `GoogleAppMeasurementIdentitySupport` line is expected unless you link AdSupport for ads.
+Sylyo configures Firebase in `AppDelegate` (`UIResponder` + `UIApplicationDelegate`) **before** creating `AppContainer`, disables Firebase’s App Delegate proxy (`FirebaseAppDelegateProxyEnabled = false`), and keeps Analytics collection off until after configure.
+
+After a clean pull + rebuild you should see `✅ Firebase configured for project: sylyo-fashion` and should **not** see `I-SWZ001014`. A rare early `I-COR000003` from framework load can still print once before Swift runs; it is harmless if configure succeeds immediately after. The IDFA / `GoogleAppMeasurementIdentitySupport` line is expected unless you link AdSupport for ads.
 
 ## Camera Portrait / BackDual console noise
 

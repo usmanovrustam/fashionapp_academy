@@ -4,5 +4,13 @@
 <dict>
 	<key>UIUserInterfaceStyle</key>
 	<string>Light</string>
+	<!-- SwiftUI owns the app lifecycle; disable Firebase's AppDelegate swizzler (fixes I-SWZ001014). -->
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<false/>
+	<!-- Keep Analytics quiet until AppDelegate enables collection after FirebaseApp.configure(). -->
+	<key>FIREBASE_ANALYTICS_COLLECTION_ENABLED</key>
+	<false/>
+	<key>FirebaseAutomaticScreenReportingEnabled</key>
+	<false/>
 </dict>
 </plist>
