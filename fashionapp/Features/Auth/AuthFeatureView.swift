@@ -1,3 +1,4 @@
+import AuthenticationServices
 import SwiftUI
 
 @MainActor
@@ -17,6 +18,13 @@ final class AuthViewModel: ObservableObject {
             case .signUp: return "Creating Account…"
             }
         }
+
+        var appleButtonType: SignInWithAppleButton.Label {
+            switch self {
+            case .signIn: return .signIn
+            case .signUp: return .signUp
+            }
+        }
     }
 
     @Published var mode: Mode = .signIn
@@ -27,6 +35,9 @@ final class AuthViewModel: ObservableObject {
     @Published var isPasswordVisible = false
     @Published var errorMessage: String?
     @Published var infoMessage: String?
+
+    /// Raw nonce paired with the hashed value sent in the Apple request.
+    private(set) var currentAppleNonce: String?
 
     private let auth: AuthServicing
     private let analytics: AnalyticsTracking
@@ -40,6 +51,60 @@ final class AuthViewModel: ObservableObject {
         !isLoading
             && !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !password.isEmpty
+    }
+
+    func prepareAppleRequest(_ request: ASAuthorizationAppleIDRequest) {
+        let nonce = AppleSignInSupport.randomNonce()
+        currentAppleNonce = nonce
+        request.requestedScopes = [.fullName, .email]
+        request.nonce = AppleSignInSupport.sha256(nonce)
+    }
+
+    func handleAppleCompletion(_ result: Result<ASAuthorization, Error>) async {
+        switch result {
+        case .failure(let error):
+            let nsError = error as NSError
+            if nsError.domain == ASAuthorizationError.errorDomain,
+               nsError.code == ASAuthorizationError.canceled.rawValue {
+                return
+            }
+            errorMessage = error.localizedDescription
+        case .success(let authorization):
+            guard
+                let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                let tokenData = credential.identityToken,
+                let idToken = String(data: tokenData, encoding: .utf8),
+                let rawNonce = currentAppleNonce
+            else {
+                errorMessage = "Unable to complete Sign in with Apple."
+                return
+            }
+
+            isLoading = true
+            errorMessage = nil
+            infoMessage = nil
+            defer {
+                isLoading = false
+                currentAppleNonce = nil
+            }
+
+            do {
+                let user = try await auth.signInWithApple(
+                    idToken: idToken,
+                    rawNonce: rawNonce,
+                    fullName: credential.fullName
+                )
+                analytics.setUserID(user.id)
+                analytics.track(
+                    mode == .signUp ? .signUp : .login,
+                    parameters: ["method": "apple"]
+                )
+            } catch let authError as AuthError where authError == .cancelled {
+                // User dismissed — stay quiet.
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
     }
 
     func submit() async {
@@ -102,8 +167,8 @@ final class AuthViewModel: ObservableObject {
     }
 }
 
-/// HIG-aligned auth: clear hierarchy, labeled fields, native segmented control,
-/// prominent primary action, optional guest path (Managing Accounts).
+/// HIG-aligned auth with prominent system Sign in with Apple button
+/// (https://developer.apple.com/design/human-interface-guidelines/sign-in-with-apple).
 struct AuthFeatureView: View {
     @StateObject private var viewModel: AuthViewModel
     @FocusState private var focusedField: Field?
@@ -120,18 +185,25 @@ struct AuthFeatureView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 28) {
+                VStack(alignment: .leading, spacing: 24) {
                     header
+
+                    // SIWA first — prominent, no scroll required on typical iPhone (HIG SIWA).
+                    signInWithAppleSection
+
+                    dividerLabel("or use email")
+
                     modePicker
                     formFields
                     statusMessages
-                    actions
+                    emailActions
+                    guestAction
                     privacyFootnote
                 }
-                .padding(.horizontal, 20) // system-margin inset; avoid edge-to-edge CTAs (HIG Layout / iOS)
+                .padding(.horizontal, 20)
                 .padding(.top, 12)
                 .padding(.bottom, 32)
-                .frame(maxWidth: 560) // comfortable readable width on iPad
+                .frame(maxWidth: 560)
                 .frame(maxWidth: .infinity)
             }
             .scrollDismissesKeyboard(.interactively)
@@ -162,14 +234,52 @@ struct AuthFeatureView: View {
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(AppColors.textPrimary)
 
-            // Managing Accounts — briefly explain why an account helps.
-            Text("Keep your wardrobe synced and get personalized outfit ideas across your devices. You can also continue as a guest.")
+            Text("Sync your wardrobe and get personalized outfits across devices. Sign in with Apple is fast and private — or continue as a guest.")
                 .font(.subheadline)
                 .foregroundStyle(AppColors.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
+    }
+
+    // MARK: - Sign in with Apple
+
+    private var signInWithAppleSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            SignInWithAppleButton(viewModel.mode.appleButtonType) { request in
+                viewModel.prepareAppleRequest(request)
+            } onCompletion: { result in
+                Task { await viewModel.handleAppleCompletion(result) }
+            }
+            // Black style on light backgrounds (HIG SIWA).
+            .signInWithAppleButtonStyle(.black)
+            // Match capsule CTAs; min size 140×30, keep ≥ other buttons.
+            .frame(maxWidth: .infinity)
+            .frame(height: 50)
+            .clipShape(Capsule())
+            // Margin ≥ 1/10 of button height around the control.
+            .padding(.vertical, 5)
+            .disabled(viewModel.isLoading)
+            .opacity(viewModel.isLoading ? 0.6 : 1)
+            .accessibilityHint("Uses your Apple Account with Face ID or Touch ID when available")
+        }
+    }
+
+    private func dividerLabel(_ text: String) -> some View {
+        HStack(spacing: 12) {
+            Rectangle()
+                .fill(AppColors.textTertiary.opacity(0.22))
+                .frame(height: 1)
+            Text(text)
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(AppColors.textSecondary)
+                .layoutPriority(1)
+            Rectangle()
+                .fill(AppColors.textTertiary.opacity(0.22))
+                .frame(height: 1)
+        }
+        .accessibilityHidden(true)
     }
 
     // MARK: - Mode
@@ -338,54 +448,52 @@ struct AuthFeatureView: View {
 
     // MARK: - Actions
 
-    private var actions: some View {
-        VStack(spacing: 12) {
-            // Primary — one prominent filled CTA (HIG Buttons).
-            Button {
-                focusedField = nil
-                Task { await viewModel.submit() }
-            } label: {
-                HStack(spacing: 10) {
-                    if viewModel.isLoading {
-                        ProgressView()
-                            .controlSize(.small)
-                            .tint(.white)
-                    }
-                    Text(viewModel.isLoading ? viewModel.mode.loadingTitle : viewModel.mode.ctaTitle)
+    private var emailActions: some View {
+        Button {
+            focusedField = nil
+            Task { await viewModel.submit() }
+        } label: {
+            HStack(spacing: 10) {
+                if viewModel.isLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(.white)
                 }
-                .frame(maxWidth: .infinity)
+                Text(viewModel.isLoading ? viewModel.mode.loadingTitle : viewModel.mode.ctaTitle)
             }
-            .buttonStyle(LiquidGlassButtonStyle(
-                prominent: true,
-                isDisabled: !viewModel.canSubmit
-            ))
-            .disabled(!viewModel.canSubmit)
-            .accessibilityHint(
-                viewModel.mode == .signIn
-                    ? "Signs in with email and password"
-                    : "Creates a new account with email and password"
-            )
-
-            // Secondary — guest path keeps commitment optional (Managing Accounts).
-            Button {
-                focusedField = nil
-                Task { await viewModel.continueAsGuest() }
-            } label: {
-                Text("Continue as Guest")
-                    .font(.body.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
-            .tint(AppColors.brand)
-            .disabled(viewModel.isLoading)
-            .accessibilityHint("Explore Sylyo without creating an account")
+            .frame(maxWidth: .infinity)
         }
+        .buttonStyle(LiquidGlassButtonStyle(
+            prominent: true,
+            isDisabled: !viewModel.canSubmit
+        ))
+        .disabled(!viewModel.canSubmit)
+        .accessibilityHint(
+            viewModel.mode == .signIn
+                ? "Signs in with email and password"
+                : "Creates a new account with email and password"
+        )
+    }
+
+    private var guestAction: some View {
+        Button {
+            focusedField = nil
+            Task { await viewModel.continueAsGuest() }
+        } label: {
+            Text("Continue as Guest")
+                .font(.body.weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.large)
+        .tint(AppColors.brand)
+        .disabled(viewModel.isLoading)
+        .accessibilityHint("Explore Sylyo without creating an account")
     }
 
     private var privacyFootnote: some View {
-        Text("Your wardrobe data is stored securely. Guest mode keeps items on this device until you create an account.")
+        Text("Sign in with Apple shares only the name and email you choose. Guest mode keeps items on this device until you create an account.")
             .font(.footnote)
             .foregroundStyle(AppColors.textTertiary)
             .multilineTextAlignment(.leading)
