@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export mattmdjaga/segformer_b2_clothes to Core ML for Sylyo on-device scanning."""
+"""Export mattmdjaga/segformer_b2_clothes to Core ML for Nook on-device scanning."""
 
 from __future__ import annotations
 
@@ -99,7 +99,7 @@ def main() -> None:
     except Exception as exc:  # noqa: BLE001
         print(f"Warning: could not rename output to logits ({exc})", flush=True)
 
-    mlmodel.author = "Sylyo"
+    mlmodel.author = "Nook"
     mlmodel.license = "See upstream model card: mattmdjaga/segformer_b2_clothes"
     mlmodel.short_description = (
         "SegFormer-B2 clothes segmentation (ATR 18 classes). "

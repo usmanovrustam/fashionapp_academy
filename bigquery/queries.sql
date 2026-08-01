@@ -1,4 +1,4 @@
--- Stylo / Sylyo BigQuery analysis queries
+-- Nook BigQuery analysis queries
 -- Firebase project: sylyo-fashion (display name: stylo)
 -- GA4 property: 548069136
 -- Expected dataset (created after BigQuery link / first export):
