@@ -1,40 +1,46 @@
 import SwiftUI
 
-/// Soft pastel sky atmosphere + solid blue CTAs. App is light-mode only.
-/// Text uses separate matte neutrals — never treat text colors as brand.
+/// Nook palette (Huemint): `#fee697` · `#312628` · `#594f27` · `#f59629`
+/// Light-mode only. Soft gold atmosphere + olive CTAs + amber accents.
 enum AppColors {
-    // MARK: Brand (atmosphere / accents only — not body text)
-    /// Soft sky wash for backgrounds.
-    static let brand = Color(red: 0.52, green: 0.74, blue: 0.94)
-    /// Soft powder-blue accent.
-    static let accent = Color(red: 0.72, green: 0.86, blue: 0.96)
-    /// Airy cloud-blue highlight.
-    static let blush = Color(red: 0.86, green: 0.93, blue: 0.99)
+    // MARK: Brand (atmosphere)
+    /// Soft gold wash — `#fee697`.
+    static let brand = Color(hex: 0xFEE697)
+    /// Amber accent — `#f59629`.
+    static let accent = Color(hex: 0xF59629)
+    /// Lighter gold highlight (brand mixed toward white).
+    static let blush = Color(hex: 0xFFF1C8)
+    /// Olive brown — `#594f27`.
+    static let olive = Color(hex: 0x594F27)
+    /// Espresso — `#312628`.
+    static let espresso = Color(hex: 0x312628)
 
-    // MARK: Actions (solid blue — not pastel)
-    /// Primary button / interactive blue.
-    static let buttonBlue = Color(red: 0.13, green: 0.45, blue: 0.95)
-    /// Slightly deeper blue for pressed / secondary fills.
-    static let buttonBlueDark = Color(red: 0.08, green: 0.35, blue: 0.85)
+    // MARK: Actions (olive primary — not blue)
+    /// Primary button / tab / control fill (`#594f27`).
+    static let buttonBlue = olive
+    /// Pressed / deeper fill (`#312628`).
+    static let buttonBlueDark = espresso
 
-    // MARK: Text (matte neutrals — not core brand)
-    /// Matte pastel black for titles / primary copy.
-    static let textPrimary = Color(red: 0.16, green: 0.17, blue: 0.19)
-    /// Soft grey for secondary copy.
-    static let textSecondary = Color(red: 0.45, green: 0.47, blue: 0.50)
-    /// Cool blue-grey for tertiary / muted labels.
-    static let textTertiary = Color(red: 0.50, green: 0.56, blue: 0.64)
-    /// Light grey for field placeholders and hint text.
-    static let placeholder = Color(red: 0.72, green: 0.74, blue: 0.78)
+    // MARK: Text
+    /// Primary copy on gold backgrounds (`#312628`).
+    static let textPrimary = espresso
+    /// Muted warm secondary.
+    static let textSecondary = Color(hex: 0x6B5E3A)
+    /// Tertiary / tab unselected.
+    static let textTertiary = Color(hex: 0x8A7D5C)
+    /// Placeholders.
+    static let placeholder = Color(hex: 0xB8A97A)
 
-    /// Legacy alias → matte primary text.
+    /// Legacy alias → primary text.
     static let ink = textPrimary
 
-    static let backgroundTop = Color(red: 0.96, green: 0.98, blue: 1.0)
-    static let backgroundBottom = Color(red: 0.92, green: 0.96, blue: 0.99)
+    /// Soft cream-gold screen wash.
+    static let backgroundTop = Color(hex: 0xFFF8E8)
+    static let backgroundBottom = Color(hex: 0xFEE697)
 
+    /// Decorative gradient: amber → olive.
     static let primaryGradient = LinearGradient(
-        colors: [buttonBlue, buttonBlueDark],
+        colors: [accent, olive],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
@@ -43,13 +49,23 @@ enum AppColors {
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
-    static let cardShadow = Color.black.opacity(0.06)
-    static let brandShadow = brand.opacity(0.16)
+    static let cardShadow = espresso.opacity(0.10)
+    static let brandShadow = olive.opacity(0.18)
 
     // Legacy aliases.
     static let brandPurple = brand
     static let brandPink = accent
     static let purpleShadow = brandShadow
+}
+
+private extension Color {
+    /// sRGB hex initializer (`0xRRGGBB`).
+    init(hex: UInt32, opacity: Double = 1) {
+        let r = Double((hex >> 16) & 0xFF) / 255
+        let g = Double((hex >> 8) & 0xFF) / 255
+        let b = Double(hex & 0xFF) / 255
+        self.init(.sRGB, red: r, green: g, blue: b, opacity: opacity)
+    }
 }
 
 enum AppRadius {
@@ -87,19 +103,19 @@ struct SoftBackground: View {
         ZStack {
             AppColors.softBackground
             RadialGradient(
-                colors: [AppColors.brand.opacity(0.20), Color.clear],
+                colors: [AppColors.brand.opacity(0.55), Color.clear],
                 center: .topTrailing,
                 startRadius: 20,
                 endRadius: 420
             )
             RadialGradient(
-                colors: [AppColors.accent.opacity(0.22), Color.clear],
+                colors: [AppColors.accent.opacity(0.16), Color.clear],
                 center: .bottomLeading,
                 startRadius: 10,
                 endRadius: 380
             )
             RadialGradient(
-                colors: [AppColors.blush.opacity(0.28), Color.clear],
+                colors: [AppColors.olive.opacity(0.08), Color.clear],
                 center: .bottomTrailing,
                 startRadius: 10,
                 endRadius: 300
@@ -234,7 +250,7 @@ private struct LiquidGlassCapsuleModifier: ViewModifier {
     }
 }
 
-/// Solid blue CTA (not pastel). `tint` overrides fill (e.g. destructive red).
+/// Solid olive CTA (`#594f27`). `tint` overrides fill (e.g. destructive red).
 struct LiquidGlassButtonStyle: ButtonStyle {
     var prominent: Bool = true
     var tint: Color? = nil

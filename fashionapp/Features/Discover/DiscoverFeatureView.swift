@@ -135,7 +135,7 @@ struct DiscoverFeatureView: View {
                 Task { await viewModel.refreshWeather() }
             }
             .font(.subheadline.weight(.semibold))
-            .foregroundStyle(AppColors.buttonBlue)
+            .foregroundStyle(AppColors.accent)
             .disabled(viewModel.isWeatherLoading)
         }
     }

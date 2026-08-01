@@ -23,7 +23,7 @@ struct MainTabView: View {
                 }
             }
         }
-        .tint(AppColors.buttonBlue)
+        .tint(AppColors.olive)
         .preferredColorScheme(.light)
         .onAppear(perform: applyTabBarChrome)
     }
@@ -42,16 +42,16 @@ struct MainTabView: View {
         }
     }
 
-    /// Unselected = gray; selected = blue tint (HIG Tab Bars).
+    /// Unselected = warm gray; selected = olive tint (HIG Tab Bars).
     private func applyTabBarChrome() {
         let gray = UIColor(AppColors.textTertiary)
-        let blue = UIColor(AppColors.buttonBlue)
+        let selected = UIColor(AppColors.olive)
 
         let item = UITabBarItemAppearance()
         item.normal.iconColor = gray
         item.normal.titleTextAttributes = [.foregroundColor: gray]
-        item.selected.iconColor = blue
-        item.selected.titleTextAttributes = [.foregroundColor: blue]
+        item.selected.iconColor = selected
+        item.selected.titleTextAttributes = [.foregroundColor: selected]
 
         let appearance = UITabBarAppearance()
         appearance.configureWithDefaultBackground()
@@ -62,13 +62,13 @@ struct MainTabView: View {
         UITabBar.appearance().standardAppearance = appearance
         UITabBar.appearance().scrollEdgeAppearance = appearance
         UITabBar.appearance().unselectedItemTintColor = gray
-        UITabBar.appearance().tintColor = blue
+        UITabBar.appearance().tintColor = selected
 
         // Apply to any already-visible tab bars (appearance proxy alone can miss the live bar).
         for scene in UIApplication.shared.connectedScenes {
             guard let windowScene = scene as? UIWindowScene else { continue }
             for window in windowScene.windows {
-                apply(appearance, gray: gray, blue: blue, in: window)
+                apply(appearance, gray: gray, selected: selected, in: window)
             }
         }
     }
@@ -76,17 +76,17 @@ struct MainTabView: View {
     private func apply(
         _ appearance: UITabBarAppearance,
         gray: UIColor,
-        blue: UIColor,
+        selected: UIColor,
         in view: UIView
     ) {
         if let tabBar = view as? UITabBar {
             tabBar.standardAppearance = appearance
             tabBar.scrollEdgeAppearance = appearance
             tabBar.unselectedItemTintColor = gray
-            tabBar.tintColor = blue
+            tabBar.tintColor = selected
         }
         for child in view.subviews {
-            apply(appearance, gray: gray, blue: blue, in: child)
+            apply(appearance, gray: gray, selected: selected, in: child)
         }
     }
 }

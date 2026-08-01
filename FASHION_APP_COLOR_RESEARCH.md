@@ -1,4 +1,4 @@
-# Fashion app color research (100 apps) → Sylyo palette
+# Fashion app color research (100 apps) → Nook palette
 
 Mobbin MCP is not available in this environment, so this survey uses public brand systems, design-system extracts, App Store positioning, and category benchmarks across **100 fashion / wardrobe / marketplace apps**.
 
@@ -51,9 +51,11 @@ Stylebook, Cladwell, Whering, Indyx, Pureple, Acloset, Combyne, Smart Closet, Op
 | Soft blue / cool accent in stylist & lifestyle apps | common in AI/wardrobe category |
 | Loud multi-color UI | mostly social resale (Depop-like), minority |
 
-## Decision for Sylyo
+## Decision for Nook
 
-Sylyo is an **AI stylist + digital wardrobe**, closest to the wardrobe/stylist cluster, but should still feel like fashion retail (gallery mono).
+Nook is a **private wardrobe**, closest to the wardrobe/stylist cluster, but should still feel like fashion retail (gallery mono).
+
+**Shipped palette (Huemint):** `#fee697` · `#312628` · `#594f27` · `#f59629`
 
 **Chosen system (fashion consensus + soft blue):**
 

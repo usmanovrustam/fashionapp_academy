@@ -267,7 +267,7 @@ struct ScannerFeatureView: View {
                                 .foregroundStyle(AppColors.textPrimary)
                         }
                         Slider(value: $viewModel.draftFormality, in: 0...1, step: 0.05)
-                            .tint(AppColors.buttonBlue)
+                            .tint(AppColors.accent)
                             .accessibilityLabel("Formality")
                     }
 
@@ -356,9 +356,9 @@ struct ScanningShimmerOverlay: View {
                 LinearGradient(
                     colors: [
                         .clear,
-                        AppColors.buttonBlue.opacity(0.18),
+                        AppColors.accent.opacity(0.22),
                         Color.white.opacity(0.55),
-                        AppColors.buttonBlue.opacity(0.18),
+                        AppColors.accent.opacity(0.22),
                         .clear
                     ],
                     startPoint: .leading,
@@ -371,14 +371,14 @@ struct ScanningShimmerOverlay: View {
                 Rectangle()
                     .fill(
                         LinearGradient(
-                            colors: [.clear, Color.white.opacity(0.85), AppColors.buttonBlue.opacity(0.7), .clear],
+                            colors: [.clear, Color.white.opacity(0.85), AppColors.accent.opacity(0.75), .clear],
                             startPoint: .top,
                             endPoint: .bottom
                         )
                     )
                     .frame(height: 3)
                     .offset(y: (scanY - 0.5) * geo.size.height)
-                    .shadow(color: AppColors.buttonBlue.opacity(0.45), radius: 6, y: 0)
+                    .shadow(color: AppColors.accent.opacity(0.45), radius: 6, y: 0)
 
                 VStack(spacing: 10) {
                     Image(systemName: "sparkles")

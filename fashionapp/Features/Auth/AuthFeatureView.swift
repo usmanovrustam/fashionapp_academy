@@ -229,7 +229,7 @@ struct AuthFeatureView: View {
                 }
             }
         }
-        .tint(AppColors.buttonBlue)
+        .tint(AppColors.accent)
         .preferredColorScheme(.light)
     }
 
@@ -291,7 +291,7 @@ struct AuthFeatureView: View {
                     }
                 }
                 .fontWeight(.semibold)
-                .foregroundStyle(AppColors.buttonBlue)
+                .foregroundStyle(AppColors.accent)
             } else {
                 Text("Already have an account?")
                     .foregroundStyle(AppColors.placeholder)
@@ -304,7 +304,7 @@ struct AuthFeatureView: View {
                     }
                 }
                 .fontWeight(.semibold)
-                .foregroundStyle(AppColors.buttonBlue)
+                .foregroundStyle(AppColors.accent)
             }
         }
         .font(.subheadline)
@@ -421,7 +421,7 @@ struct AuthFeatureView: View {
                             Task { await viewModel.resetPassword() }
                         }
                         .font(.footnote.weight(.medium))
-                        .foregroundStyle(AppColors.buttonBlue)
+                        .foregroundStyle(AppColors.accent)
                         .disabled(viewModel.isLoading)
                     }
                 }

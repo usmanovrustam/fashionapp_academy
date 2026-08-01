@@ -76,7 +76,7 @@ struct OnboardingView: View {
         }
         .nookSafeScreenInsets()
         .nookScreenBackground()
-        .tint(AppColors.buttonBlue)
+        .tint(AppColors.olive)
         .preferredColorScheme(.light)
     }
 
