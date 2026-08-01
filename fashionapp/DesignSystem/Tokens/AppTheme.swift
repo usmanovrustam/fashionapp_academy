@@ -1,31 +1,33 @@
 import SwiftUI
 
-/// Fashion brand tokens — rosewood + champagne (no purple).
+/// Soft pastel brand — sky blue + mint (air, calm, wearable).
 enum AppColors {
-    /// Deep rosewood — editorial fashion primary.
-    static let brand = Color(red: 0.55, green: 0.22, blue: 0.30)
-    /// Soft champagne gold accent.
-    static let accent = Color(red: 0.76, green: 0.62, blue: 0.45)
-    /// Soft ink for emphasis.
-    static let ink = Color(red: 0.14, green: 0.12, blue: 0.13)
+    /// Pastel sky blue — primary brand.
+    static let brand = Color(red: 0.42, green: 0.68, blue: 0.93)
+    /// Soft mint accent.
+    static let accent = Color(red: 0.62, green: 0.88, blue: 0.82)
+    /// Soft blush highlight for warm contrast.
+    static let blush = Color(red: 1.0, green: 0.80, blue: 0.84)
+    /// Readable ink (blue-gray, not harsh black).
+    static let ink = Color(red: 0.18, green: 0.28, blue: 0.40)
 
-    static let backgroundTop = Color(red: 0.98, green: 0.96, blue: 0.95)
-    static let backgroundBottom = Color(red: 0.95, green: 0.93, blue: 0.91)
+    static let backgroundTop = Color(red: 0.93, green: 0.97, blue: 1.0)
+    static let backgroundBottom = Color(red: 0.96, green: 0.95, blue: 0.99)
 
     static let primaryGradient = LinearGradient(
         colors: [brand, accent],
-        startPoint: .leading,
-        endPoint: .trailing
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
     )
     static let softBackground = LinearGradient(
         colors: [backgroundTop, backgroundBottom],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
-    static let cardShadow = Color.black.opacity(0.08)
-    static let brandShadow = brand.opacity(0.16)
+    static let cardShadow = Color.black.opacity(0.06)
+    static let brandShadow = brand.opacity(0.18)
 
-    // Legacy aliases so older call sites keep compiling during migration.
+    // Legacy aliases.
     static let brandPurple = brand
     static let brandPink = accent
     static let purpleShadow = brandShadow
@@ -62,16 +64,22 @@ struct SoftBackground: View {
         ZStack {
             AppColors.softBackground
             RadialGradient(
-                colors: [AppColors.brand.opacity(0.16), Color.clear],
+                colors: [AppColors.brand.opacity(0.22), Color.clear],
                 center: .topTrailing,
                 startRadius: 20,
                 endRadius: 420
             )
             RadialGradient(
-                colors: [AppColors.accent.opacity(0.18), Color.clear],
+                colors: [AppColors.accent.opacity(0.20), Color.clear],
                 center: .bottomLeading,
                 startRadius: 10,
                 endRadius: 380
+            )
+            RadialGradient(
+                colors: [AppColors.blush.opacity(0.16), Color.clear],
+                center: .bottomTrailing,
+                startRadius: 10,
+                endRadius: 300
             )
         }
         .ignoresSafeArea()
@@ -189,7 +197,7 @@ private struct LiquidGlassCapsuleModifier: ViewModifier {
     }
 }
 
-/// Translucent fashion CTA — Liquid Glass on iOS 26+, material earlier.
+/// Pastel glass CTA.
 struct LiquidGlassButtonStyle: ButtonStyle {
     var prominent: Bool = true
     var tint: Color? = AppColors.brand

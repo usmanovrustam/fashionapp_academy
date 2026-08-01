@@ -161,7 +161,7 @@ struct AuthFeatureView: View {
             Text("Dress with intention.")
                 .font(.system(size: 18, weight: .regular, design: .serif))
                 .italic()
-                .foregroundStyle(AppColors.brand)
+                .foregroundStyle(AppColors.brand.opacity(0.95))
 
             Text("Sign in to your AI wardrobe.")
                 .font(.subheadline)
@@ -411,35 +411,34 @@ private struct FashionLoginBackground: View {
         ZStack {
             LinearGradient(
                 colors: [
-                    Color(red: 0.99, green: 0.97, blue: 0.95),
-                    Color(red: 0.96, green: 0.92, blue: 0.90),
-                    Color(red: 0.94, green: 0.88, blue: 0.86)
+                    Color(red: 0.92, green: 0.97, blue: 1.0),
+                    Color(red: 0.94, green: 0.96, blue: 1.0),
+                    Color(red: 0.96, green: 0.94, blue: 0.98)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
 
             Circle()
-                .fill(AppColors.brand.opacity(0.28))
-                .frame(width: 280, height: 280)
+                .fill(AppColors.brand.opacity(0.34))
+                .frame(width: 300, height: 300)
                 .blur(radius: 55)
                 .offset(x: phase ? 90 : -70, y: phase ? -220 : -160)
 
             Circle()
-                .fill(AppColors.accent.opacity(0.34))
+                .fill(AppColors.accent.opacity(0.38))
                 .frame(width: 320, height: 320)
                 .blur(radius: 60)
                 .offset(x: phase ? -100 : 80, y: phase ? 260 : 180)
 
             Circle()
-                .fill(AppColors.brand.opacity(0.14))
-                .frame(width: 200, height: 200)
-                .blur(radius: 40)
+                .fill(AppColors.blush.opacity(0.28))
+                .frame(width: 220, height: 220)
+                .blur(radius: 45)
                 .offset(x: phase ? 40 : -30, y: phase ? 40 : 90)
 
-            // Soft vignette for form readability
             RadialGradient(
-                colors: [Color.clear, Color.white.opacity(0.35)],
+                colors: [Color.clear, Color.white.opacity(0.4)],
                 center: .center,
                 startRadius: 80,
                 endRadius: 520

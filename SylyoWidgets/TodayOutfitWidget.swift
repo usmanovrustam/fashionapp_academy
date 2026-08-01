@@ -44,8 +44,8 @@ struct TodayOutfitWidgetView: View {
                 Color.clear
                 LinearGradient(
                     colors: [
-                        WidgetBrand.rosewood.opacity(0.28),
-                        WidgetBrand.champagne.opacity(0.18)
+                        WidgetBrand.sky.opacity(0.32),
+                        WidgetBrand.mint.opacity(0.22)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
