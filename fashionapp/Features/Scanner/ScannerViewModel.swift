@@ -63,21 +63,21 @@ final class ScannerViewModel: ObservableObject {
         analytics.track(.scanStarted, parameters: ["source": "image"])
 
         do {
-            // Normalize orientation + bound size before Vision/CoreML.
-            let prepared = ImageProcessing.resized(image, maxDimension: 2048)
-            guard let data = prepared.jpegData(compressionQuality: 0.9) else {
+            // Normalize on a cooperative yield so shimmer can paint first.
+            await Task.yield()
+            let prepared = ImageProcessing.resized(image, maxDimension: 1600)
+            guard let data = try? ImageProcessing.jpegData(from: prepared, quality: 0.9) else {
                 throw DomainError.invalidImage
             }
 
-            // Yield so the shimmer can paint, then run Vision/CoreML work.
-            await Task.yield()
-            let result = try await self.runScan(imageData: data)
+            // Heavy Core ML + CG work runs off the main actor (thread-safe image path).
+            let result = try await BackgroundScanJob(pipeline: pipeline, imageData: data).runDetached()
             scanResult = result
             applyDraft(from: result)
-            // Preview the centered square crop (cutout when available).
             if let transparent = result.transparentImageData,
                let cutout = UIImage(data: transparent) {
                 previewImage = cutout
+                selectedImage = cutout
             } else if let square = UIImage(data: result.originalImageData) {
                 previewImage = square
                 selectedImage = square
@@ -96,23 +96,6 @@ final class ScannerViewModel: ObservableObject {
         }
 
         isProcessing = false
-    }
-
-    /// Runs the scan pipeline on a background queue so capture doesn’t block/crash the UI thread.
-    private func runScan(imageData: Data) async throws -> ClothingScanResult {
-        let pipeline = self.pipeline
-        return try await withCheckedThrowingContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                Task {
-                    do {
-                        let result = try await pipeline.scan(imageData: imageData)
-                        continuation.resume(returning: result)
-                    } catch {
-                        continuation.resume(throwing: error)
-                    }
-                }
-            }
-        }
     }
 
     func save() async {
@@ -186,5 +169,22 @@ final class ScannerViewModel: ObservableObject {
         draftColor = ""
         draftSeason = .allSeason
         draftFormality = 0.35
+    }
+}
+
+/// Runs the clothing scan off the main actor without capturing non-Sendable pipeline unsafely across isolation.
+private final class BackgroundScanJob: @unchecked Sendable {
+    private let pipeline: ClothingScanPipeline
+    private let imageData: Data
+
+    init(pipeline: ClothingScanPipeline, imageData: Data) {
+        self.pipeline = pipeline
+        self.imageData = imageData
+    }
+
+    func runDetached() async throws -> ClothingScanResult {
+        try await Task.detached(priority: .userInitiated) { [pipeline, imageData] in
+            try await pipeline.scan(imageData: imageData)
+        }.value
     }
 }

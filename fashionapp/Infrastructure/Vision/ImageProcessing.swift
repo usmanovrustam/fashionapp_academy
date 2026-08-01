@@ -1,5 +1,6 @@
 import UIKit
 import CoreVideo
+import CoreImage
 
 enum ImageProcessingError: LocalizedError {
     case invalidImage
@@ -15,6 +16,7 @@ enum ImageProcessingError: LocalizedError {
     }
 }
 
+/// Image helpers safe to call from background threads (Core Graphics / encode paths only).
 enum ImageProcessing {
     static func uiImage(from data: Data) throws -> UIImage {
         guard let image = UIImage(data: data) else { throw ImageProcessingError.invalidImage }
@@ -22,36 +24,63 @@ enum ImageProcessing {
     }
 
     static func jpegData(from image: UIImage, quality: CGFloat = 0.9) throws -> Data {
-        guard let data = image.jpegData(compressionQuality: quality) else {
+        guard let cgImage = cgImage(from: image) else { throw ImageProcessingError.invalidImage }
+        return try jpegData(from: cgImage, quality: quality)
+    }
+
+    static func jpegData(from cgImage: CGImage, quality: CGFloat = 0.9) throws -> Data {
+        let data = NSMutableData()
+        guard let dest = CGImageDestinationCreateWithData(
+            data as CFMutableData,
+            "public.jpeg" as CFString,
+            1,
+            nil
+        ) else {
             throw ImageProcessingError.invalidImage
         }
-        return data
+        let options: [CFString: Any] = [
+            kCGImageDestinationLossyCompressionQuality: quality
+        ]
+        CGImageDestinationAddImage(dest, cgImage, options as CFDictionary)
+        guard CGImageDestinationFinalize(dest) else { throw ImageProcessingError.invalidImage }
+        return data as Data
     }
 
     static func pngData(from image: UIImage) throws -> Data {
-        guard let data = image.pngData() else { throw ImageProcessingError.invalidImage }
-        return data
+        guard let cgImage = cgImage(from: image) else { throw ImageProcessingError.invalidImage }
+        return try pngData(from: cgImage)
     }
 
+    static func pngData(from cgImage: CGImage) throws -> Data {
+        let data = NSMutableData()
+        guard let dest = CGImageDestinationCreateWithData(
+            data as CFMutableData,
+            "public.png" as CFString,
+            1,
+            nil
+        ) else {
+            throw ImageProcessingError.invalidImage
+        }
+        CGImageDestinationAddImage(dest, cgImage, nil)
+        guard CGImageDestinationFinalize(dest) else { throw ImageProcessingError.invalidImage }
+        return data as Data
+    }
+
+    /// Thread-safe resize via Core Graphics (no UIGraphicsImageRenderer).
     static func resized(_ image: UIImage, maxDimension: CGFloat) -> UIImage {
-        let size = image.size
-        let maxSide = max(size.width, size.height)
-        // Always redraw so camera images without a CGImage get a bitmap (Vision needs cgImage).
-        let newSize: CGSize
-        if maxSide > maxDimension {
-            let scale = maxDimension / maxSide
-            newSize = CGSize(width: size.width * scale, height: size.height * scale)
-        } else {
-            newSize = size
-        }
-        guard newSize.width > 0, newSize.height > 0 else { return image }
-        let renderer = UIGraphicsImageRenderer(size: newSize)
-        return renderer.image { _ in
-            image.draw(in: CGRect(origin: .zero, size: newSize))
-        }
+        guard let source = cgImage(from: image) else { return image }
+        let pixelWidth = CGFloat(source.width)
+        let pixelHeight = CGFloat(source.height)
+        let maxSide = max(pixelWidth, pixelHeight)
+        let scale = maxSide > maxDimension ? (maxDimension / maxSide) : 1
+        let newW = max(1, Int((pixelWidth * scale).rounded()))
+        let newH = max(1, Int((pixelHeight * scale).rounded()))
+        guard let resized = redraw(source, width: newW, height: newH) else { return image }
+        return UIImage(cgImage: resized, scale: 1, orientation: .up)
     }
 
     static func pixelBuffer(from image: UIImage, width: Int, height: Int) throws -> CVPixelBuffer {
+        guard let source = cgImage(from: image) else { throw ImageProcessingError.invalidImage }
         let attrs: [String: Any] = [
             kCVPixelBufferCGImageCompatibilityKey as String: true,
             kCVPixelBufferCGBitmapContextCompatibilityKey as String: true
@@ -83,75 +112,106 @@ enum ImageProcessing {
         ) else {
             throw ImageProcessingError.pixelBufferFailed
         }
-
-        UIGraphicsPushContext(context)
-        context.translateBy(x: 0, y: CGFloat(height))
-        context.scaleBy(x: 1, y: -1)
-        image.draw(in: CGRect(x: 0, y: 0, width: width, height: height))
-        UIGraphicsPopContext()
+        context.interpolationQuality = .high
+        context.draw(source, in: CGRect(x: 0, y: 0, width: width, height: height))
         return buffer
     }
 
-    /// Applies a grayscale mask as alpha onto the source image and returns a transparent PNG-capable UIImage.
+    /// Applies a grayscale mask as alpha onto the source image (thread-safe CG path).
     static func applyMask(image: UIImage, mask: UIImage) throws -> UIImage {
-        let size = image.size
-        let renderer = UIGraphicsImageRenderer(size: size)
-        let result = renderer.image { context in
-            let rect = CGRect(origin: .zero, size: size)
-            image.draw(in: rect)
-            mask.draw(in: rect, blendMode: .destinationIn, alpha: 1)
+        guard let source = cgImage(from: image),
+              let maskCG = cgImage(from: mask) else {
+            throw ImageProcessingError.maskFailed
         }
-        guard result.cgImage != nil else { throw ImageProcessingError.maskFailed }
-        return result
+
+        let width = source.width
+        let height = source.height
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let bytesPerRow = width * 4
+        var pixels = [UInt8](repeating: 0, count: height * bytesPerRow)
+
+        guard let ctx = CGContext(
+            data: &pixels,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: bytesPerRow,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else {
+            throw ImageProcessingError.maskFailed
+        }
+        ctx.draw(source, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+        // Resize mask into gray buffer matching source.
+        var maskPixels = [UInt8](repeating: 0, count: width * height)
+        guard let maskCtx = CGContext(
+            data: &maskPixels,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width,
+            space: CGColorSpaceCreateDeviceGray(),
+            bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ) else {
+            throw ImageProcessingError.maskFailed
+        }
+        maskCtx.interpolationQuality = .high
+        maskCtx.draw(maskCG, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+        for i in 0..<(width * height) {
+            let alpha = maskPixels[i]
+            let o = i * 4
+            pixels[o + 0] = UInt8((Int(pixels[o + 0]) * Int(alpha)) / 255)
+            pixels[o + 1] = UInt8((Int(pixels[o + 1]) * Int(alpha)) / 255)
+            pixels[o + 2] = UInt8((Int(pixels[o + 2]) * Int(alpha)) / 255)
+            pixels[o + 3] = alpha
+        }
+
+        guard let out = ctx.makeImage() else { throw ImageProcessingError.maskFailed }
+        return UIImage(cgImage: out, scale: 1, orientation: .up)
     }
 
-    /// Crops a centered square around the opaque region of `mask`, with optional padding (0–0.4 of side).
+    /// Crops a centered square around the opaque region of `mask` (thread-safe).
     static func centeredSquareCrop(image: UIImage, mask: UIImage, padding: CGFloat = 0.1) throws -> UIImage {
-        guard let bounds = opaqueBounds(of: mask) else {
-            // Fallback: center square of the full image.
-            return centerSquare(image)
+        guard let source = cgImage(from: image) else { throw ImageProcessingError.invalidImage }
+        // Bounds are in source pixel space (mask is redrawn to match image when produced by parser).
+        guard var rect = opaquePixelBounds(of: mask, matching: source) else {
+            return UIImage(cgImage: centerSquareCG(source), scale: 1, orientation: .up)
         }
 
+        let imageSize = CGSize(width: source.width, height: source.height)
         let pad = max(0, min(0.4, padding))
-        var rect = bounds.insetBy(dx: -bounds.width * pad, dy: -bounds.height * pad)
-        rect = rect.intersection(CGRect(origin: .zero, size: image.size))
-        guard rect.width > 2, rect.height > 2 else { return centerSquare(image) }
+        rect = rect.insetBy(dx: -rect.width * pad, dy: -rect.height * pad)
+        rect = rect.intersection(CGRect(origin: .zero, size: imageSize))
+        guard rect.width > 2, rect.height > 2 else {
+            return UIImage(cgImage: centerSquareCG(source), scale: 1, orientation: .up)
+        }
 
-        let maxSide = min(image.size.width, image.size.height)
+        let maxSide = min(imageSize.width, imageSize.height)
         let side = min(max(rect.width, rect.height), maxSide)
         var originX = rect.midX - side / 2
         var originY = rect.midY - side / 2
-        originX = max(0, min(originX, image.size.width - side))
-        originY = max(0, min(originY, image.size.height - side))
-        let square = CGRect(x: originX, y: originY, width: side, height: side)
+        originX = max(0, min(originX, imageSize.width - side))
+        originY = max(0, min(originY, imageSize.height - side))
 
-        let format = UIGraphicsImageRendererFormat.default()
-        format.scale = image.scale
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: format)
-        return renderer.image { _ in
-            image.draw(at: CGPoint(x: -square.minX, y: -square.minY))
+        let cropRect = CGRect(x: originX, y: originY, width: side, height: side)
+        guard let cropped = redraw(source, crop: cropRect, outputSize: CGSize(width: side, height: side)) else {
+            throw ImageProcessingError.invalidImage
         }
+        return UIImage(cgImage: cropped, scale: 1, orientation: .up)
     }
 
     static func centerSquare(_ image: UIImage) -> UIImage {
-        let side = min(image.size.width, image.size.height)
-        let origin = CGPoint(
-            x: (image.size.width - side) / 2,
-            y: (image.size.height - side) / 2
-        )
-        let format = UIGraphicsImageRendererFormat.default()
-        format.scale = image.scale
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: format)
-        return renderer.image { _ in
-            image.draw(at: CGPoint(x: -origin.x, y: -origin.y))
-        }
+        guard let source = cgImage(from: image) else { return image }
+        return UIImage(cgImage: centerSquareCG(source), scale: 1, orientation: .up)
     }
 
-    /// Bounding box of non-black pixels in a grayscale/alpha mask, in image points.
-    static func opaqueBounds(of mask: UIImage) -> CGRect? {
-        guard let cgImage = mask.cgImage else { return nil }
-        let width = cgImage.width
-        let height = cgImage.height
+    /// Bounding box of non-black pixels, mapped into `target` pixel coordinates.
+    static func opaquePixelBounds(of mask: UIImage, matching target: CGImage) -> CGRect? {
+        guard let maskCG = cgImage(from: mask) else { return nil }
+        let width = target.width
+        let height = target.height
         guard width > 0, height > 0 else { return nil }
 
         var pixels = [UInt8](repeating: 0, count: width * height)
@@ -164,36 +224,39 @@ enum ImageProcessing {
             space: CGColorSpaceCreateDeviceGray(),
             bitmapInfo: CGImageAlphaInfo.none.rawValue
         ) else { return nil }
-        ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+        ctx.interpolationQuality = .high
+        ctx.draw(maskCG, in: CGRect(x: 0, y: 0, width: width, height: height))
 
         var minX = width, minY = height, maxX = 0, maxY = 0
         var found = false
         for y in 0..<height {
-            for x in 0..<width {
-                if pixels[y * width + x] > 24 {
-                    found = true
-                    minX = min(minX, x)
-                    minY = min(minY, y)
-                    maxX = max(maxX, x)
-                    maxY = max(maxY, y)
-                }
+            let row = y * width
+            for x in 0..<width where pixels[row + x] > 24 {
+                found = true
+                if x < minX { minX = x }
+                if y < minY { minY = y }
+                if x > maxX { maxX = x }
+                if y > maxY { maxY = y }
             }
         }
         guard found else { return nil }
-
-        let scaleX = mask.size.width / CGFloat(width)
-        let scaleY = mask.size.height / CGFloat(height)
         return CGRect(
-            x: CGFloat(minX) * scaleX,
-            y: CGFloat(minY) * scaleY,
-            width: CGFloat(maxX - minX + 1) * scaleX,
-            height: CGFloat(maxY - minY + 1) * scaleY
+            x: CGFloat(minX),
+            y: CGFloat(minY),
+            width: CGFloat(maxX - minX + 1),
+            height: CGFloat(maxY - minY + 1)
         )
+    }
+
+    /// Bounding box of non-black pixels in a grayscale/alpha mask, in image points.
+    static func opaqueBounds(of mask: UIImage) -> CGRect? {
+        guard let cg = cgImage(from: mask) else { return nil }
+        return opaquePixelBounds(of: mask, matching: cg)
     }
 
     static func dominantColors(from image: UIImage, maxColors: Int = 5) -> [UIColor] {
         let sample = resized(image, maxDimension: 64)
-        guard let cgImage = sample.cgImage else { return [] }
+        guard let cgImage = cgImage(from: sample) else { return [] }
 
         let width = cgImage.width
         let height = cgImage.height
@@ -282,5 +345,111 @@ enum ImageProcessing {
         case 0.8..<0.95: return "Pink"
         default: return "Neutral"
         }
+    }
+
+    // MARK: - CG helpers (background-safe)
+
+    static func cgImage(from image: UIImage) -> CGImage? {
+        if let cg = image.cgImage { return cg }
+        if let ci = image.ciImage {
+            return CIContext(options: [.useSoftwareRenderer: false]).createCGImage(ci, from: ci.extent)
+        }
+        guard let data = image.jpegData(compressionQuality: 0.95),
+              let decoded = UIImage(data: data)?.cgImage else {
+            return nil
+        }
+        return decoded
+    }
+
+    static func redraw(_ source: CGImage, width: Int, height: Int) -> CGImage? {
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+        ctx.interpolationQuality = .high
+        ctx.draw(source, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return ctx.makeImage()
+    }
+
+    static func redraw(_ source: CGImage, crop: CGRect, outputSize: CGSize) -> CGImage? {
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let outW = max(1, Int(outputSize.width.rounded()))
+        let outH = max(1, Int(outputSize.height.rounded()))
+        guard let ctx = CGContext(
+            data: nil,
+            width: outW,
+            height: outH,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+        ctx.interpolationQuality = .high
+        // Draw so the crop rect fills the output.
+        let drawRect = CGRect(
+            x: -crop.origin.x,
+            y: -crop.origin.y,
+            width: CGFloat(source.width),
+            height: CGFloat(source.height)
+        )
+        ctx.draw(source, in: drawRect)
+        return ctx.makeImage()
+    }
+
+    private static func centerSquareCG(_ source: CGImage) -> CGImage {
+        let side = min(source.width, source.height)
+        let x = (source.width - side) / 2
+        let y = (source.height - side) / 2
+        let rect = CGRect(x: x, y: y, width: side, height: side)
+        if let cropped = source.cropping(to: rect) { return cropped }
+        return redraw(source, width: side, height: side) ?? source
+    }
+
+    /// RGBA8888 bytes for a CGImage resized to width×height (thread-safe).
+    static func rgbaBytes(from image: UIImage, width: Int, height: Int) throws -> [UInt8] {
+        guard let source = cgImage(from: image) else { throw ImageProcessingError.invalidImage }
+        var bytes = [UInt8](repeating: 0, count: width * height * 4)
+        guard let ctx = CGContext(
+            data: &bytes,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width * 4,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else {
+            throw ImageProcessingError.invalidImage
+        }
+        ctx.interpolationQuality = .high
+        ctx.draw(source, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return bytes
+    }
+
+    static func grayImage(from pixels: [UInt8], width: Int, height: Int) -> UIImage? {
+        guard pixels.count >= width * height else { return nil }
+        let data = Data(pixels)
+        guard let provider = CGDataProvider(data: data as CFData),
+              let cgImage = CGImage(
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bitsPerPixel: 8,
+                bytesPerRow: width,
+                space: CGColorSpaceCreateDeviceGray(),
+                bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.none.rawValue),
+                provider: provider,
+                decode: nil,
+                shouldInterpolate: false,
+                intent: .defaultIntent
+              ) else {
+            return nil
+        }
+        return UIImage(cgImage: cgImage, scale: 1, orientation: .up)
     }
 }

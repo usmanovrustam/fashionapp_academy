@@ -8,7 +8,6 @@ struct PhotoCameraView: View {
     let onComplete: (Result<UIImage, Error>) -> Void
 
     @StateObject private var model = PhotoCaptureModel()
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ZStack {
@@ -25,7 +24,7 @@ struct PhotoCameraView: View {
                         .multilineTextAlignment(.center)
                         .padding()
                     Button(NSLocalizedString("Close", comment: "")) {
-                        onComplete(.failure(CameraCaptureError.unavailable))
+                        model.finish(.failure(CameraCaptureError.unavailable))
                     }
                     .sylyoGlassProminent()
                     .padding(.horizontal, 40)
@@ -38,7 +37,7 @@ struct PhotoCameraView: View {
             VStack {
                 HStack {
                     Button(NSLocalizedString("Cancel", comment: "")) {
-                        onComplete(.failure(CameraCaptureError.cancelled))
+                        model.finish(.failure(CameraCaptureError.cancelled))
                     }
                     .foregroundStyle(.white)
                     .padding()
@@ -57,7 +56,7 @@ struct PhotoCameraView: View {
                             .frame(width: 62, height: 62)
                     }
                 }
-                .disabled(!model.isSessionRunning || model.isCapturing)
+                .disabled(!model.isSessionRunning || model.isCapturing || model.hasFinished)
                 .padding(.bottom, 36)
                 .accessibilityLabel(NSLocalizedString("Take photo", comment: ""))
             }
@@ -68,13 +67,9 @@ struct PhotoCameraView: View {
         .onDisappear {
             model.stop()
         }
-        .onChange(of: model.capturedImage) { _, image in
-            guard let image else { return }
-            onComplete(.success(image))
-        }
-        .onChange(of: model.captureError) { _, error in
-            guard let error else { return }
-            onComplete(.failure(error))
+        .onChange(of: model.completion) { _, result in
+            guard let result else { return }
+            onComplete(result)
         }
     }
 }
@@ -85,12 +80,20 @@ final class PhotoCaptureModel: NSObject, ObservableObject {
     @Published var isSessionRunning = false
     @Published var isCapturing = false
     @Published var setupError: String?
-    @Published var capturedImage: UIImage?
-    @Published var captureError: Error?
+    @Published var hasFinished = false
+    @Published var completion: Result<UIImage, Error>?
 
     private let photoOutput = AVCapturePhotoOutput()
     private let sessionQueue = DispatchQueue(label: "sylyo.photo.camera.session")
     private var configured = false
+
+    func finish(_ result: Result<UIImage, Error>) {
+        guard !hasFinished else { return }
+        hasFinished = true
+        isCapturing = false
+        completion = result
+        stop()
+    }
 
     func start() async {
         let auth = await CameraAuthorization.ensureAuthorized()
@@ -129,10 +132,9 @@ final class PhotoCaptureModel: NSObject, ObservableObject {
     }
 
     func capturePhoto() {
-        guard !isCapturing else { return }
+        guard !isCapturing, !hasFinished else { return }
         isCapturing = true
         let settings = AVCapturePhotoSettings()
-        // Still JPEG only — never enable depth / Portrait delivery on the capture request.
         if let device = session.inputs
             .compactMap({ ($0 as? AVCaptureDeviceInput)?.device })
             .first,
@@ -153,7 +155,6 @@ final class PhotoCaptureModel: NSObject, ObservableObject {
         session.beginConfiguration()
         session.sessionPreset = .photo
 
-        // Single wide-angle back camera — never virtual dual / Portrait devices.
         guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)
                 ?? AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front)
                 ?? AVCaptureDevice.default(for: .video) else {
@@ -195,8 +196,7 @@ extension PhotoCaptureModel: AVCapturePhotoCaptureDelegate {
     ) {
         if let error {
             Task { @MainActor in
-                self.isCapturing = false
-                self.captureError = error
+                self.finish(.failure(error))
             }
             return
         }
@@ -204,15 +204,13 @@ extension PhotoCaptureModel: AVCapturePhotoCaptureDelegate {
         guard let data = photo.fileDataRepresentation(),
               let image = UIImage(data: data) else {
             Task { @MainActor in
-                self.isCapturing = false
-                self.captureError = CameraCaptureError.unavailable
+                self.finish(.failure(CameraCaptureError.unavailable))
             }
             return
         }
 
         Task { @MainActor in
-            self.isCapturing = false
-            self.capturedImage = image
+            self.finish(.success(image))
         }
     }
 }

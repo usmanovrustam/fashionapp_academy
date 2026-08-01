@@ -332,6 +332,7 @@ final class DefaultClothingScanPipeline: ClothingScanPipeline {
             genderNeutral: metadata.genderNeutral,
             suggestedName: metadata.suggestedName,
             confidence: confidence,
+            // Square crop is what we store to Firebase Storage as the wardrobe photo.
             originalImageData: parsed.squareCropJPEG,
             transparentImageData: transparentData,
             processedAt: Date()

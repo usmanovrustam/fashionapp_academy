@@ -59,11 +59,14 @@ final class U2NetClothingSegmenter: ClothingSegmenter {
 
     private static func fullOpacityMaskPNG(from imageData: Data) async throws -> Data {
         let image = try ImageProcessing.uiImage(from: imageData)
-        let size = image.size
-        let renderer = UIGraphicsImageRenderer(size: size)
-        let mask = renderer.image { ctx in
-            UIColor.white.setFill()
-            ctx.fill(CGRect(origin: .zero, size: size))
+        guard let source = ImageProcessing.cgImage(from: image) else {
+            throw ImageProcessingError.invalidImage
+        }
+        let width = source.width
+        let height = source.height
+        let pixels = [UInt8](repeating: 255, count: width * height)
+        guard let mask = ImageProcessing.grayImage(from: pixels, width: width, height: height) else {
+            throw ImageProcessingError.maskFailed
         }
         return try ImageProcessing.pngData(from: mask)
     }
@@ -155,16 +158,8 @@ final class MaskBackgroundRemover: BackgroundRemover {
     func removeBackground(imageData: Data, maskData: Data) async throws -> Data {
         let image = try ImageProcessing.uiImage(from: imageData)
         let mask = try ImageProcessing.uiImage(from: maskData)
-        let sizedMask: UIImage
-        if mask.size != image.size {
-            let renderer = UIGraphicsImageRenderer(size: image.size)
-            sizedMask = renderer.image { _ in
-                mask.draw(in: CGRect(origin: .zero, size: image.size))
-            }
-        } else {
-            sizedMask = mask
-        }
-        let cutout = try ImageProcessing.applyMask(image: image, mask: sizedMask)
+        // applyMask resizes the mask via Core Graphics — no UIGraphicsImageRenderer.
+        let cutout = try ImageProcessing.applyMask(image: image, mask: mask)
         return try ImageProcessing.pngData(from: cutout)
     }
 }

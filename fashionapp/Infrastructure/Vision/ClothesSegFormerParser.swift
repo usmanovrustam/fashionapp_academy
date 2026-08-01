@@ -7,7 +7,9 @@ import CoreML
 ///
 /// Detects garment classes (hat, shoes, pants, dress, bag, …), builds a mask,
 /// and returns a centered square crop ready for Firebase Storage.
-final class ClothesSegFormerParser {
+///
+/// Safe for background threads: uses Core Graphics + pointer I/O (no UIGraphicsImageRenderer).
+final class ClothesSegFormerParser: @unchecked Sendable {
     static let shared = ClothesSegFormerParser()
 
     private let model: MLModel?
@@ -29,9 +31,16 @@ final class ClothesSegFormerParser {
 
     private init() {
         self.model = Self.loadModel()
+        #if DEBUG
+        if model != nil {
+            print("✅ ClothesSegFormer loaded")
+        } else {
+            print("⚠️ ClothesSegFormer missing — scan will use Vision + U²-Net fallback")
+        }
+        #endif
     }
 
-    struct ParseResult {
+    struct ParseResult: Sendable {
         var category: ClothingCategory
         var subcategory: String
         var labelName: String
@@ -40,7 +49,6 @@ final class ClothesSegFormerParser {
         var squareCropJPEG: Data
         /// Soft garment mask matching the square crop size (PNG grayscale).
         var squareMaskPNG: Data
-        var squareImage: UIImage
     }
 
     func parse(imageData: Data) async throws -> ParseResult {
@@ -49,13 +57,14 @@ final class ClothesSegFormerParser {
         }
 
         let image = try ImageProcessing.uiImage(from: imageData)
-        let squareReady = ImageProcessing.resized(image, maxDimension: 2048)
+        let prepared = ImageProcessing.resized(image, maxDimension: 1600)
 
-        let pixelValues = try makePixelValues(from: squareReady)
+        let pixelValues = try makePixelValues(from: prepared)
         let input = try MLDictionaryFeatureProvider(dictionary: [
             "pixel_values": MLFeatureValue(multiArray: pixelValues)
         ])
 
+        // Core ML prediction is the heavy step — keep off the main actor.
         let output = try model.prediction(from: input)
         let logits = output.featureValue(for: "logits")?.multiArrayValue
             ?? output.featureValue(for: "var_1196")?.multiArrayValue
@@ -63,13 +72,22 @@ final class ClothesSegFormerParser {
             throw DomainError.scanFailed("ClothesSegFormer produced no logits.")
         }
 
-        let (classMap, scores) = argmaxMap(from: logits)
+        let (classMap, width, height, scores) = try argmaxMap(from: logits)
         guard let best = pickBestGarment(scores: scores) else {
             throw DomainError.noClothingDetected
         }
 
-        let maskFull = maskImage(classMap: classMap, targetClass: best.classID, targetSize: squareReady.size)
-        let square = try ImageProcessing.centeredSquareCrop(image: squareReady, mask: maskFull, padding: 0.12)
+        guard let maskFull = maskImage(
+            classMap: classMap,
+            width: width,
+            height: height,
+            targetClass: best.classID,
+            targetSize: prepared.size
+        ) else {
+            throw DomainError.scanFailed("Failed to build garment mask.")
+        }
+
+        let square = try ImageProcessing.centeredSquareCrop(image: prepared, mask: maskFull, padding: 0.12)
         let squareMask = try ImageProcessing.centeredSquareCrop(image: maskFull, mask: maskFull, padding: 0.12)
         let jpeg = try ImageProcessing.jpegData(from: square, quality: 0.92)
         let maskPNG = try ImageProcessing.pngData(from: squareMask)
@@ -81,8 +99,7 @@ final class ClothesSegFormerParser {
             labelName: Self.labels[best.classID],
             confidence: best.score,
             squareCropJPEG: jpeg,
-            squareMaskPNG: maskPNG,
-            squareImage: square
+            squareMaskPNG: maskPNG
         )
     }
 
@@ -106,170 +123,151 @@ final class ClothesSegFormerParser {
         return nil
     }
 
-    // MARK: - Preprocess
+    // MARK: - Preprocess (pointer-fast)
 
     private func makePixelValues(from image: UIImage) throws -> MLMultiArray {
-        let size = CGSize(width: inputSize, height: inputSize)
-        let renderer = UIGraphicsImageRenderer(size: size)
-        let scaled = renderer.image { _ in
-            image.draw(in: CGRect(origin: .zero, size: size))
-        }
-        guard let cgImage = scaled.cgImage else { throw DomainError.invalidImage }
-
         let width = inputSize
         let height = inputSize
-        let bytesPerPixel = 4
-        let bytesPerRow = width * bytesPerPixel
-        var rgba = [UInt8](repeating: 0, count: height * bytesPerRow)
-        guard let ctx = CGContext(
-            data: &rgba,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: bytesPerRow,
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else {
-            throw DomainError.invalidImage
-        }
-        ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+        let rgba = try ImageProcessing.rgbaBytes(from: image, width: width, height: height)
 
         let array = try MLMultiArray(
             shape: [1, 3, NSNumber(value: height), NSNumber(value: width)],
             dataType: .float32
         )
-        for y in 0..<height {
-            for x in 0..<width {
-                let i = (y * width + x) * 4
-                let r = (Float(rgba[i]) / 255.0 - mean[0]) / std[0]
-                let g = (Float(rgba[i + 1]) / 255.0 - mean[1]) / std[1]
-                let b = (Float(rgba[i + 2]) / 255.0 - mean[2]) / std[2]
-                array[[0, 0, y, x] as [NSNumber]] = NSNumber(value: r)
-                array[[0, 1, y, x] as [NSNumber]] = NSNumber(value: g)
-                array[[0, 2, y, x] as [NSNumber]] = NSNumber(value: b)
-            }
+        let plane = width * height
+        let ptr = array.dataPointer.bindMemory(to: Float.self, capacity: 3 * plane)
+
+        let inv255: Float = 1.0 / 255.0
+        for i in 0..<plane {
+            let o = i * 4
+            let r = Float(rgba[o]) * inv255
+            let g = Float(rgba[o + 1]) * inv255
+            let b = Float(rgba[o + 2]) * inv255
+            ptr[i] = (r - mean[0]) / std[0]
+            ptr[plane + i] = (g - mean[1]) / std[1]
+            ptr[2 * plane + i] = (b - mean[2]) / std[2]
         }
         return array
     }
 
-    // MARK: - Postprocess
+    // MARK: - Postprocess (pointer-fast)
 
-    private func argmaxMap(from logits: MLMultiArray) -> ([[UInt8]], [Float]) {
-        // Expected shape [1, 18, H, W]
+    private func argmaxMap(
+        from logits: MLMultiArray
+    ) throws -> (classMap: [UInt8], width: Int, height: Int, scores: [Float]) {
         let shape = logits.shape.map(\.intValue)
-        let classes = shape.count >= 4 ? shape[1] : 18
-        let height = shape.count >= 4 ? shape[2] : shape[shape.count - 2]
-        let width = shape.count >= 4 ? shape[3] : shape[shape.count - 1]
+        guard shape.count >= 4 else {
+            throw DomainError.scanFailed("Unexpected logits shape.")
+        }
+        let classes = shape[1]
+        let height = shape[2]
+        let width = shape[3]
+        let plane = width * height
 
-        var map = Array(repeating: Array(repeating: UInt8(0), count: width), count: height)
-        var pixelCounts = Array(repeating: 0, count: classes)
-        var scoreSums = Array(repeating: Float(0), count: classes)
+        var classMap = [UInt8](repeating: 0, count: plane)
+        var pixelCounts = [Int](repeating: 0, count: classes)
 
-        for y in 0..<height {
-            for x in 0..<width {
-                var bestClass = 0
-                var bestValue = -Float.greatestFiniteMagnitude
-                for c in 0..<classes {
-                    let value = floatValue(logits, c: c, y: y, x: x, classes: classes, height: height, width: width)
-                    if value > bestValue {
-                        bestValue = value
-                        bestClass = c
-                    }
-                }
-                map[y][x] = UInt8(bestClass)
-                pixelCounts[bestClass] += 1
-                // Softmax-ish confidence proxy via max logit (normalized later)
-                scoreSums[bestClass] += bestValue
+        let count = logits.count
+        // Copy to Float buffer (handles FLOAT16 storage via NSNumber bridge if needed).
+        var floats = [Float](repeating: 0, count: count)
+        switch logits.dataType {
+        case .float32:
+            let src = logits.dataPointer.bindMemory(to: Float.self, capacity: count)
+            floats.withUnsafeMutableBufferPointer { dst in
+                dst.baseAddress!.update(from: src, count: count)
+            }
+        case .float16:
+            // FLOAT16 logits from Core ML mlprogram — widen to Float for argmax.
+            let src = logits.dataPointer.bindMemory(to: UInt16.self, capacity: count)
+            for i in 0..<count {
+                floats[i] = Float(Float16(bitPattern: src[i]))
+            }
+        default:
+            for i in 0..<count {
+                floats[i] = logits[i].floatValue
             }
         }
 
-        let totalPixels = Float(max(width * height, 1))
-        var scores = Array(repeating: Float(0), count: classes)
-        for c in 0..<classes {
-            let coverage = Float(pixelCounts[c]) / totalPixels
-            scores[c] = coverage
+        for i in 0..<plane {
+            var bestClass = 0
+            var bestValue = -Float.greatestFiniteMagnitude
+            for c in 0..<classes {
+                let value = floats[c * plane + i]
+                if value > bestValue {
+                    bestValue = value
+                    bestClass = c
+                }
+            }
+            classMap[i] = UInt8(bestClass)
+            pixelCounts[bestClass] += 1
         }
-        return (map, scores)
-    }
 
-    private func floatValue(
-        _ logits: MLMultiArray,
-        c: Int,
-        y: Int,
-        x: Int,
-        classes: Int,
-        height: Int,
-        width: Int
-    ) -> Float {
-        let index: [NSNumber] = [0, c as NSNumber, y as NSNumber, x as NSNumber]
-        let number = logits[index]
-        // FLOAT16 outputs come through as NSNumber already.
-        return number.floatValue
+        let total = Float(max(plane, 1))
+        let scores = pixelCounts.map { Float($0) / total }
+        return (classMap, width, height, scores)
     }
 
     private func pickBestGarment(scores: [Float]) -> (classID: Int, score: Double)? {
+        // Slightly low threshold so flat-lay product photos still register.
         var bestID: Int?
-        var bestScore: Float = 0.02 // minimum coverage ~2% of frame
+        var bestScore: Float = 0.012
         for id in Self.garmentClassIDs {
             guard id < scores.count else { continue }
-            // Merge left/right shoes into a shared score for selection.
             var score = scores[id]
             if id == 9, scores.count > 10 { score += scores[10] }
-            if id == 10 { continue } // handled with left shoe
+            if id == 10 { continue }
             if score > bestScore {
                 bestScore = score
                 bestID = id
             }
         }
         guard let bestID else { return nil }
-        // Map merged shoe score back to Left-shoe id for labeling if either shoe won.
         let labelID = (bestID == 9 || bestID == 10) ? 9 : bestID
-        return (labelID, Double(min(0.98, max(0.35, bestScore * 4))))
+        return (labelID, Double(min(0.98, max(0.35, bestScore * 5))))
     }
 
-    private func maskImage(classMap: [[UInt8]], targetClass: Int, targetSize: CGSize) -> UIImage {
-        let height = classMap.count
-        let width = classMap.first?.count ?? 0
+    private func maskImage(
+        classMap: [UInt8],
+        width: Int,
+        height: Int,
+        targetClass: Int,
+        targetSize: CGSize
+    ) -> UIImage? {
         var pixels = [UInt8](repeating: 0, count: width * height)
-
-        let shoePair: Set<Int> = [9, 10]
-        for y in 0..<height {
-            for x in 0..<width {
-                let cls = Int(classMap[y][x])
-                let match: Bool
-                if shoePair.contains(targetClass) {
-                    match = shoePair.contains(cls)
-                } else {
-                    match = cls == targetClass
-                }
-                pixels[y * width + x] = match ? 255 : 0
+        let shoePair: Set<UInt8> = [9, 10]
+        let target = UInt8(targetClass)
+        if shoePair.contains(target) {
+            for i in 0..<classMap.count where shoePair.contains(classMap[i]) {
+                pixels[i] = 255
+            }
+        } else {
+            for i in 0..<classMap.count where classMap[i] == target {
+                pixels[i] = 255
             }
         }
 
-        let colorSpace = CGColorSpaceCreateDeviceGray()
-        let data = Data(pixels)
-        guard let provider = CGDataProvider(data: data as CFData),
-              let cgMask = CGImage(
-                width: width,
-                height: height,
-                bitsPerComponent: 8,
-                bitsPerPixel: 8,
-                bytesPerRow: width,
-                space: colorSpace,
-                bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.none.rawValue),
-                provider: provider,
-                decode: nil,
-                shouldInterpolate: false,
-                intent: .defaultIntent
-              ) else {
-            return UIImage()
-        }
+        guard let small = ImageProcessing.grayImage(from: pixels, width: width, height: height),
+              let smallCG = small.cgImage else { return nil }
 
-        let mask = UIImage(cgImage: cgMask)
-        let renderer = UIGraphicsImageRenderer(size: targetSize)
-        return renderer.image { _ in
-            mask.draw(in: CGRect(origin: .zero, size: targetSize))
+        let outW = max(1, Int(targetSize.width.rounded()))
+        let outH = max(1, Int(targetSize.height.rounded()))
+        guard let scaled = ImageProcessing.redraw(smallCG, width: outW, height: outH) else { return nil }
+        // Convert RGB redraw of gray back to gray UIImage via luminance approx — redraw gray properly:
+        var gray = [UInt8](repeating: 0, count: outW * outH)
+        guard let ctx = CGContext(
+            data: &gray,
+            width: outW,
+            height: outH,
+            bitsPerComponent: 8,
+            bytesPerRow: outW,
+            space: CGColorSpaceCreateDeviceGray(),
+            bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ) else {
+            return UIImage(cgImage: scaled, scale: 1, orientation: .up)
         }
+        ctx.interpolationQuality = .high
+        ctx.draw(smallCG, in: CGRect(x: 0, y: 0, width: outW, height: outH))
+        return ImageProcessing.grayImage(from: gray, width: outW, height: outH)
     }
 
     private static func mapLabel(_ classID: Int) -> (category: ClothingCategory, subcategory: String) {
