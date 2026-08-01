@@ -1,5 +1,20 @@
 import Foundation
 
+struct GeocodedPlace: Equatable, Hashable {
+    var name: String
+    var latitude: Double
+    var longitude: Double
+    var country: String?
+    var admin1: String?
+
+    var displayName: String {
+        [name, admin1, country]
+            .compactMap { $0 }
+            .filter { !$0.isEmpty }
+            .joined(separator: ", ")
+    }
+}
+
 /// Free location-based weather fallback when WeatherKit JWT auth isn’t available.
 /// https://open-meteo.com/
 actor OpenMeteoWeatherClient {
@@ -9,51 +24,55 @@ actor OpenMeteoWeatherClient {
         self.session = session
     }
 
-    func fetchCurrent(
-        latitude: Double,
-        longitude: Double,
-        locationName: String
-    ) async throws -> (WeatherSnapshot, [DailyWeatherForecast]) {
-        var components = URLComponents(string: "https://api.open-meteo.com/v1/forecast")!
+    func geocode(destination: String) async throws -> GeocodedPlace {
+        let trimmed = destination.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            throw DomainError.weatherUnavailable("Enter a destination.")
+        }
+
+        var components = URLComponents(string: "https://geocoding-api.open-meteo.com/v1/search")!
         components.queryItems = [
-            URLQueryItem(name: "latitude", value: String(latitude)),
-            URLQueryItem(name: "longitude", value: String(longitude)),
-            URLQueryItem(
-                name: "current",
-                value: [
-                    "temperature_2m",
-                    "relative_humidity_2m",
-                    "apparent_temperature",
-                    "precipitation_probability",
-                    "weather_code",
-                    "wind_speed_10m",
-                    "uv_index"
-                ].joined(separator: ",")
-            ),
-            URLQueryItem(
-                name: "daily",
-                value: [
-                    "weather_code",
-                    "temperature_2m_max",
-                    "temperature_2m_min",
-                    "precipitation_probability_max"
-                ].joined(separator: ",")
-            ),
-            URLQueryItem(name: "timezone", value: "auto"),
-            URLQueryItem(name: "forecast_days", value: "3"),
-            URLQueryItem(name: "wind_speed_unit", value: "kmh")
+            URLQueryItem(name: "name", value: trimmed),
+            URLQueryItem(name: "count", value: "1"),
+            URLQueryItem(name: "language", value: "en"),
+            URLQueryItem(name: "format", value: "json")
         ]
 
         guard let url = components.url else {
-            throw DomainError.weatherUnavailable("Invalid weather request.")
+            throw DomainError.weatherUnavailable("Invalid destination lookup.")
         }
 
         let (data, response) = try await session.data(from: url)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            throw DomainError.weatherUnavailable("Weather service returned an error.")
+            throw DomainError.weatherUnavailable("Could not look up that destination.")
         }
 
-        let decoded = try JSONDecoder().decode(OpenMeteoResponse.self, from: data)
+        let decoded = try JSONDecoder().decode(OpenMeteoGeocodingResponse.self, from: data)
+        guard let result = decoded.results?.first else {
+            throw DomainError.weatherUnavailable("No place found for “\(trimmed)”. Try a city name.")
+        }
+
+        return GeocodedPlace(
+            name: result.name,
+            latitude: result.latitude,
+            longitude: result.longitude,
+            country: result.country,
+            admin1: result.admin1
+        )
+    }
+
+    func fetchCurrent(
+        latitude: Double,
+        longitude: Double,
+        locationName: String,
+        forecastDays: Int = 3
+    ) async throws -> (WeatherSnapshot, [DailyWeatherForecast]) {
+        let decoded = try await fetchForecastResponse(
+            latitude: latitude,
+            longitude: longitude,
+            forecastDays: forecastDays,
+            includeCurrent: true
+        )
         guard let current = decoded.current else {
             throw DomainError.weatherUnavailable("Weather response was incomplete.")
         }
@@ -79,6 +98,79 @@ actor OpenMeteoWeatherClient {
 
         let forecast = Self.makeForecast(from: decoded.daily)
         return (snapshot, forecast)
+    }
+
+    /// Destination forecast for trip packing (no current conditions required).
+    func fetchDestinationForecast(
+        latitude: Double,
+        longitude: Double,
+        locationName: String,
+        forecastDays: Int = 14
+    ) async throws -> [DailyWeatherForecast] {
+        let decoded = try await fetchForecastResponse(
+            latitude: latitude,
+            longitude: longitude,
+            forecastDays: min(max(forecastDays, 1), 16),
+            includeCurrent: false
+        )
+        let forecast = Self.makeForecast(from: decoded.daily)
+        guard !forecast.isEmpty else {
+            throw DomainError.weatherUnavailable("No forecast available for \(locationName).")
+        }
+        return forecast
+    }
+
+    private func fetchForecastResponse(
+        latitude: Double,
+        longitude: Double,
+        forecastDays: Int,
+        includeCurrent: Bool
+    ) async throws -> OpenMeteoResponse {
+        var components = URLComponents(string: "https://api.open-meteo.com/v1/forecast")!
+        var items: [URLQueryItem] = [
+            URLQueryItem(name: "latitude", value: String(latitude)),
+            URLQueryItem(name: "longitude", value: String(longitude)),
+            URLQueryItem(
+                name: "daily",
+                value: [
+                    "weather_code",
+                    "temperature_2m_max",
+                    "temperature_2m_min",
+                    "precipitation_probability_max"
+                ].joined(separator: ",")
+            ),
+            URLQueryItem(name: "timezone", value: "auto"),
+            URLQueryItem(name: "forecast_days", value: String(min(max(forecastDays, 1), 16))),
+            URLQueryItem(name: "wind_speed_unit", value: "kmh")
+        ]
+        if includeCurrent {
+            items.append(
+                URLQueryItem(
+                    name: "current",
+                    value: [
+                        "temperature_2m",
+                        "relative_humidity_2m",
+                        "apparent_temperature",
+                        "precipitation_probability",
+                        "weather_code",
+                        "wind_speed_10m",
+                        "uv_index"
+                    ].joined(separator: ",")
+                )
+            )
+        }
+        components.queryItems = items
+
+        guard let url = components.url else {
+            throw DomainError.weatherUnavailable("Invalid weather request.")
+        }
+
+        let (data, response) = try await session.data(from: url)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw DomainError.weatherUnavailable("Weather service returned an error.")
+        }
+
+        return try JSONDecoder().decode(OpenMeteoResponse.self, from: data)
     }
 
     private static func makeForecast(from daily: OpenMeteoDaily?) -> [DailyWeatherForecast] {
@@ -138,6 +230,18 @@ actor OpenMeteoWeatherClient {
             return ("cloud.fill", "Cloudy")
         }
     }
+}
+
+private struct OpenMeteoGeocodingResponse: Decodable {
+    let results: [OpenMeteoGeocodingResult]?
+}
+
+private struct OpenMeteoGeocodingResult: Decodable {
+    let name: String
+    let latitude: Double
+    let longitude: Double
+    let country: String?
+    let admin1: String?
 }
 
 private struct OpenMeteoResponse: Decodable {

@@ -170,7 +170,7 @@ actor FirebaseEventRepository: EventRepository {
         let snapshot = try await db.collection(FirestorePaths.events(uid: uid)).getDocuments()
         return try snapshot.documents
             .map { try FirestoreCoding.decode(CalendarEvent.self, from: $0.data()) }
-            .filter { $0.startDate >= from && $0.startDate <= to }
+            .filter { $0.startDate <= to && $0.endDate >= from }
     }
 
     func save(_ event: CalendarEvent) async throws {
