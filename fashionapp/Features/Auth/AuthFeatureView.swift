@@ -5,7 +5,7 @@ import SwiftUI
 final class AuthViewModel: ObservableObject {
     enum Mode: String, CaseIterable, Identifiable {
         case signIn = "Sign In"
-        case signUp = "Create Account"
+        case signUp = "Register"
 
         var id: String { rawValue }
 
@@ -15,7 +15,7 @@ final class AuthViewModel: ObservableObject {
         var loadingTitle: String {
             switch self {
             case .signIn: return "Signing In…"
-            case .signUp: return "Creating Account…"
+            case .signUp: return "Registering…"
             }
         }
 
@@ -193,10 +193,10 @@ struct AuthFeatureView: View {
 
                     dividerLabel("or use email")
 
-                    modePicker
                     formFields
                     statusMessages
                     emailActions
+                    modeSwitchLink
                     guestAction
                     privacyFootnote
                 }
@@ -233,6 +233,7 @@ struct AuthFeatureView: View {
             Text(viewModel.mode == .signIn ? "Sign in to your account" : "Create your account")
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(AppColors.textPrimary)
+                .animation(nil, value: viewModel.mode)
 
             Text("Sync your wardrobe and get personalized outfits across devices. Sign in with Apple is fast and private — or continue as a guest.")
                 .font(.subheadline)
@@ -282,22 +283,43 @@ struct AuthFeatureView: View {
         .accessibilityHidden(true)
     }
 
-    // MARK: - Mode
+    // MARK: - Mode switch (text link — no segmented control)
 
-    private var modePicker: some View {
-        Picker("Account mode", selection: $viewModel.mode) {
-            ForEach(AuthViewModel.Mode.allCases) { mode in
-                Text(mode.rawValue).tag(mode)
+    private var modeSwitchLink: some View {
+        HStack(spacing: 4) {
+            if viewModel.mode == .signIn {
+                Text("Don't have an account?")
+                    .foregroundStyle(AppColors.textSecondary)
+                Button("Register") {
+                    withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
+                        viewModel.mode = .signUp
+                        viewModel.errorMessage = nil
+                        viewModel.infoMessage = nil
+                        focusedField = .name
+                    }
+                }
+                .fontWeight(.semibold)
+                .foregroundStyle(AppColors.brand)
+            } else {
+                Text("Already have an account?")
+                    .foregroundStyle(AppColors.textSecondary)
+                Button("Sign In") {
+                    withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
+                        viewModel.mode = .signIn
+                        viewModel.errorMessage = nil
+                        viewModel.infoMessage = nil
+                        focusedField = .email
+                    }
+                }
+                .fontWeight(.semibold)
+                .foregroundStyle(AppColors.brand)
             }
         }
-        .pickerStyle(.segmented)
+        .font(.subheadline)
+        .frame(maxWidth: .infinity)
         .frame(minHeight: 44)
-        .onChange(of: viewModel.mode) { _, _ in
-            viewModel.errorMessage = nil
-            viewModel.infoMessage = nil
-            focusedField = viewModel.mode == .signUp ? .name : .email
-        }
-        .accessibilityLabel("Sign In or Create Account")
+        .multilineTextAlignment(.center)
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: - Fields
