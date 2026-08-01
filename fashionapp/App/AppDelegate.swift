@@ -4,6 +4,7 @@ import FirebaseAnalytics
 
 /// Owns app composition after Firebase is configured.
 /// Subclasses `UIResponder` so GoogleUtilities recognizes a real UIApplicationDelegate.
+@MainActor
 @objc(SylyoAppDelegate)
 final class AppDelegate: UIResponder, UIApplicationDelegate {
     /// Created only after `FirebaseApp.configure()` succeeds (or is skipped safely).
