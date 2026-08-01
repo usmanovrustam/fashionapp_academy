@@ -5,6 +5,12 @@ struct AuthUser: Equatable, Hashable, Identifiable {
     var email: String?
     var displayName: String?
     var isAnonymous: Bool
+    /// Firebase provider IDs (e.g. `password`, `apple.com`, `anonymous`).
+    var providerIDs: [String] = []
+
+    var usesSignInWithApple: Bool {
+        providerIDs.contains("apple.com")
+    }
 }
 
 enum AuthError: LocalizedError, Equatable {
@@ -14,6 +20,7 @@ enum AuthError: LocalizedError, Equatable {
     case emailAlreadyInUse
     case weakPassword
     case network
+    case cancelled
     case underlying(String)
 
     var errorDescription: String? {
@@ -30,6 +37,8 @@ enum AuthError: LocalizedError, Equatable {
             return "Password should be at least 6 characters."
         case .network:
             return "Network error. Check your connection and try again."
+        case .cancelled:
+            return "Sign in was cancelled."
         case .underlying(let message):
             return message
         }
@@ -47,6 +56,8 @@ protocol AuthServicing: AnyObject {
     func signInAnonymously() async throws -> AuthUser
     func signIn(email: String, password: String) async throws -> AuthUser
     func signUp(email: String, password: String, displayName: String?) async throws -> AuthUser
+    /// Completes Sign in with Apple using the identity token + original raw nonce.
+    func signInWithApple(idToken: String, rawNonce: String, fullName: PersonNameComponents?) async throws -> AuthUser
     func updateDisplayName(_ name: String) async throws
     func signOut() throws
     func sendPasswordReset(email: String) async throws

@@ -1,4 +1,5 @@
 import Foundation
+import AuthenticationServices
 import FirebaseAuth
 import Combine
 
@@ -108,6 +109,35 @@ final class FirebaseAuthService: ObservableObject, AuthServicing {
         }
     }
 
+    func signInWithApple(idToken: String, rawNonce: String, fullName: PersonNameComponents?) async throws -> AuthUser {
+        try ensureConfigured()
+        do {
+            let credential = OAuthProvider.credential(
+                providerID: "apple.com",
+                idToken: idToken,
+                rawNonce: rawNonce,
+                accessToken: nil
+            )
+            let result = try await Auth.auth().signIn(with: credential)
+            // Full name is only provided on first Apple authorization — persist when present.
+            if let fullName,
+               result.user.displayName == nil || result.user.displayName?.isEmpty == true {
+                let formatted = PersonNameComponentsFormatter.localizedString(from: fullName, style: .default)
+                if !formatted.isEmpty {
+                    let request = result.user.createProfileChangeRequest()
+                    request.displayName = formatted
+                    try? await request.commitChanges()
+                }
+            }
+            let mapped = Self.map(result.user)
+            currentUser = mapped
+            AuthSession.shared.userID = mapped.id
+            return mapped
+        } catch {
+            throw mapError(error)
+        }
+    }
+
     private func ensureConfigured() throws {
         guard isFirebaseConfigured else { throw AuthError.notConfigured }
     }
@@ -117,12 +147,17 @@ final class FirebaseAuthService: ObservableObject, AuthServicing {
             id: user.uid,
             email: user.email,
             displayName: user.displayName,
-            isAnonymous: user.isAnonymous
+            isAnonymous: user.isAnonymous,
+            providerIDs: user.providerData.map(\.providerID)
         )
     }
 
     private func mapError(_ error: Error) -> AuthError {
         let nsError = error as NSError
+        if nsError.domain == ASAuthorizationError.errorDomain,
+           nsError.code == ASAuthorizationError.canceled.rawValue {
+            return .cancelled
+        }
         guard nsError.domain == AuthErrorDomain,
               let code = AuthErrorCode(rawValue: nsError.code) else {
             return .underlying(error.localizedDescription)

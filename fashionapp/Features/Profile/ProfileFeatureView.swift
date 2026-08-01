@@ -198,9 +198,16 @@ struct ProfileFeatureView: View {
     private var accountCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 12) {
-                Text(NSLocalizedString("Firebase Account", comment: ""))
+                Text(NSLocalizedString("Account", comment: ""))
                     .font(AppTypography.headline)
-                if let email = viewModel.authUser?.email {
+                if viewModel.authUser?.usesSignInWithApple == true {
+                    // HIG Sign in with Apple — indicate current sign-in method.
+                    Text("Using Sign in with Apple")
+                        .foregroundStyle(.secondary)
+                    if let email = viewModel.authUser?.email {
+                        Text(email).foregroundStyle(.secondary)
+                    }
+                } else if let email = viewModel.authUser?.email {
                     Text(email).foregroundStyle(.secondary)
                 } else if viewModel.authUser?.isAnonymous == true {
                     Text("Signed in anonymously").foregroundStyle(.secondary)

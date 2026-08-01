@@ -1,6 +1,6 @@
 # Firebase Setup (real project only)
 
-Sylyo does **not** use mock auth or mock databases. Auth is **Firebase Authentication** only (email/password + anonymous). Wardrobe, images, and analytics all require your Firebase project. There is no CloudKit dependency — see `CLEAN_BUILD.md` if an old install still logs CloudKit.
+Sylyo does **not** use mock auth or mock databases. Auth is **Firebase Authentication** (email/password, **Sign in with Apple**, and anonymous). Wardrobe, images, and analytics all require your Firebase project. There is no CloudKit dependency — see `CLEAN_BUILD.md` if an old install still logs CloudKit.
 
 ## Current status
 
@@ -8,7 +8,7 @@ Sylyo does **not** use mock auth or mock databases. Auth is **Firebase Authentic
 |---|---|
 | Project | `sylyo-fashion` (display: stylo) |
 | GoogleService-Info.plist | In repo |
-| Authentication | Email/Password + Anonymous enabled |
+| Authentication | Email/Password + Apple + Anonymous enabled |
 | Firestore | Database + rules deployed |
 | Storage | Bucket `sylyo-fashion.firebasestorage.app` + rules |
 | Google Analytics | Property `548069136` linked |
@@ -28,8 +28,9 @@ Firestore database + security rules are deployed.
 
 ### Finish these 3 console steps (one-time)
 
-1. **Authentication** → Get started → enable **Email/Password** and **Anonymous**  
-   https://console.firebase.google.com/project/sylyo-fashion/authentication/providers
+1. **Authentication** → Get started → enable **Email/Password**, **Apple**, and **Anonymous**  
+   https://console.firebase.google.com/project/sylyo-fashion/authentication/providers  
+   For Apple: add the Services ID / team + key from Apple Developer (Sign in with Apple), and enable the capability on the `apple.academy.stylo` App ID.
 2. **Storage** → Get started (may ask to enable billing / Blaze)  
    https://console.firebase.google.com/project/sylyo-fashion/storage
 3. **BigQuery** link (Analytics)  
@@ -43,7 +44,7 @@ In Firebase Console enable:
 
 | Product | Settings |
 |---|---|
-| Authentication | Email/Password **on**; Anonymous **on** (guest) |
+| Authentication | Email/Password **on**; Apple **on**; Anonymous **on** (guest) |
 | Cloud Firestore | Production or test mode, then deploy rules below |
 | Storage | Default bucket, deploy rules below |
 | Analytics | Enabled (default) |
