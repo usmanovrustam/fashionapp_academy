@@ -223,7 +223,7 @@ struct AuthFeatureView: View {
                         if viewModel.isLoading {
                             ProgressView()
                                 .controlSize(.small)
-                                .tint(AppColors.textPrimary)
+                                .tint(.white)
                         }
                         Text(viewModel.mode.ctaTitle)
                             .font(.system(size: 17, weight: .semibold, design: .rounded))

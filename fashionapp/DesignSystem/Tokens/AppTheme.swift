@@ -215,28 +215,35 @@ struct LiquidGlassButtonStyle: ButtonStyle {
     var isDisabled: Bool = false
 
     func makeBody(configuration: Configuration) -> some View {
-        let fill = tint ?? AppColors.brand
-        return configuration.label
+        configuration.label
             .font(AppTypography.headline)
             .foregroundStyle(Color.white)
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 22)
             .padding(.vertical, 16)
             .background {
-                Capsule()
-                    .fill(
-                        LinearGradient(
-                            colors: prominent
-                                ? [fill, AppColors.accent.opacity(tint == nil ? 1 : 0.85)]
-                                : [fill.opacity(0.92), fill.opacity(0.78)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                capsuleFill
+                    .opacity(isDisabled ? 0.45 : (configuration.isPressed ? 0.88 : 1))
             }
-            .opacity(isDisabled ? 0.45 : (configuration.isPressed ? 0.88 : 1))
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
+    }
+
+    @ViewBuilder
+    private var capsuleFill: some View {
+        if let tint {
+            Capsule().fill(tint.opacity(prominent ? 0.95 : 0.82))
+        } else if prominent {
+            Capsule().fill(
+                LinearGradient(
+                    colors: [AppColors.brand, AppColors.accent],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+        } else {
+            Capsule().fill(AppColors.brand.opacity(0.82))
+        }
     }
 }
 
