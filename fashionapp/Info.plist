@@ -6,6 +6,10 @@
 	<string>Nook</string>
 	<key>CFBundleName</key>
 	<string>Nook</string>
+	<!-- Export compliance: only standard HTTPS/TLS via Apple OS / Firebase — not proprietary crypto. -->
+	<!-- App Store Connect equivalent: “None of the algorithms mentioned above”. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>UIUserInterfaceStyle</key>
 	<string>Light</string>
 	<!-- SwiftUI owns the app lifecycle; disable Firebase's AppDelegate swizzler (fixes I-SWZ001014). -->
