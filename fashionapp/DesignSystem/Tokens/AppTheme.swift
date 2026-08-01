@@ -1,18 +1,18 @@
 import SwiftUI
 
-/// Soft pastel brand — sky blue + mint (air, calm, wearable).
+/// Soft pastel brown brand — mocha / sand / warm cream.
 enum AppColors {
-    /// Pastel sky blue — primary brand.
-    static let brand = Color(red: 0.42, green: 0.68, blue: 0.93)
-    /// Soft mint accent.
-    static let accent = Color(red: 0.62, green: 0.88, blue: 0.82)
-    /// Soft blush highlight for warm contrast.
-    static let blush = Color(red: 1.0, green: 0.80, blue: 0.84)
-    /// Readable ink (blue-gray, not harsh black).
-    static let ink = Color(red: 0.18, green: 0.28, blue: 0.40)
+    /// Pastel mocha brown — primary.
+    static let brand = Color(red: 0.72, green: 0.56, blue: 0.44)
+    /// Soft sand accent.
+    static let accent = Color(red: 0.88, green: 0.78, blue: 0.66)
+    /// Warm cream highlight.
+    static let blush = Color(red: 0.95, green: 0.90, blue: 0.84)
+    /// Warm readable ink.
+    static let ink = Color(red: 0.30, green: 0.22, blue: 0.18)
 
-    static let backgroundTop = Color(red: 0.93, green: 0.97, blue: 1.0)
-    static let backgroundBottom = Color(red: 0.96, green: 0.95, blue: 0.99)
+    static let backgroundTop = Color(red: 0.99, green: 0.97, blue: 0.94)
+    static let backgroundBottom = Color(red: 0.96, green: 0.93, blue: 0.88)
 
     static let primaryGradient = LinearGradient(
         colors: [brand, accent],
@@ -64,19 +64,19 @@ struct SoftBackground: View {
         ZStack {
             AppColors.softBackground
             RadialGradient(
-                colors: [AppColors.brand.opacity(0.22), Color.clear],
+                colors: [AppColors.brand.opacity(0.20), Color.clear],
                 center: .topTrailing,
                 startRadius: 20,
                 endRadius: 420
             )
             RadialGradient(
-                colors: [AppColors.accent.opacity(0.20), Color.clear],
+                colors: [AppColors.accent.opacity(0.22), Color.clear],
                 center: .bottomLeading,
                 startRadius: 10,
                 endRadius: 380
             )
             RadialGradient(
-                colors: [AppColors.blush.opacity(0.16), Color.clear],
+                colors: [AppColors.blush.opacity(0.28), Color.clear],
                 center: .bottomTrailing,
                 startRadius: 10,
                 endRadius: 300
@@ -197,24 +197,28 @@ private struct LiquidGlassCapsuleModifier: ViewModifier {
     }
 }
 
-/// Pastel glass CTA.
+/// Pastel brown CTA with white label text.
 struct LiquidGlassButtonStyle: ButtonStyle {
     var prominent: Bool = true
     var tint: Color? = AppColors.brand
     var isDisabled: Bool = false
 
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
+        let fill = tint ?? AppColors.brand
+        return configuration.label
             .font(AppTypography.headline)
-            .foregroundStyle(prominent ? AppColors.ink : AppColors.brand)
+            .foregroundStyle(Color.white)
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 22)
             .padding(.vertical, 16)
+            .background {
+                Capsule()
+                    .fill(fill.opacity(isDisabled ? 0.45 : (configuration.isPressed ? 0.82 : (prominent ? 0.95 : 0.78))))
+            }
             .liquidGlassCapsule(
                 interactive: !isDisabled,
-                tint: prominent ? (tint ?? AppColors.brand) : tint
+                tint: fill
             )
-            .opacity(isDisabled ? 0.45 : (configuration.isPressed ? 0.86 : 1))
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
     }
