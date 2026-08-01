@@ -225,11 +225,11 @@ private struct RecommendationCardView: View {
                                 Text("Nope")
                             }
                             .font(.headline)
-                            .foregroundColor(AppColors.brand)
+                            .foregroundColor(AppColors.ink)
                             .padding(.horizontal, 28)
                             .padding(.vertical, 14)
                         }
-                        .liquidGlassCapsule(tint: AppColors.brand)
+                        .liquidGlassCapsule()
 
                         Button(action: onYeah) {
                             HStack {
@@ -237,18 +237,18 @@ private struct RecommendationCardView: View {
                                 Text("Yeah")
                             }
                             .font(.headline)
-                            .foregroundColor(.white)
+                            .foregroundColor(AppColors.ink)
                             .padding(.horizontal, 28)
                             .padding(.vertical, 14)
                         }
-                        .liquidGlassCapsule(tint: AppColors.accent)
+                        .liquidGlassCapsule()
                     }
                 }
             }
         }
         .padding(.vertical, 32)
         .padding(.horizontal, 20)
-        .liquidGlass(cornerRadius: AppRadius.xxLarge, tint: AppColors.brand)
+        .liquidGlass(cornerRadius: AppRadius.xxLarge)
         .task {
             if let path = recommendation.items.first?.transparentImagePath
                 ?? recommendation.items.first?.originalImagePath {

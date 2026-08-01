@@ -32,7 +32,7 @@ struct OnboardingView: View {
                                 .frame(width: 88, height: 88)
                                 .foregroundStyle(AppColors.primaryGradient)
                                 .padding(28)
-                                .liquidGlass(cornerRadius: 40, tint: AppColors.brand)
+                                .liquidGlass(cornerRadius: 40)
                                 .scaleEffect(page == idx ? 1.0 : 0.92)
                                 .animation(.spring(response: 0.5, dampingFraction: 0.75), value: page)
                         }
@@ -104,7 +104,7 @@ struct OnboardingView: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
-            .liquidGlassCapsule(interactive: false, tint: AppColors.brand)
+            .liquidGlassCapsule(interactive: false)
         }
     }
 
@@ -126,7 +126,7 @@ struct OnboardingView: View {
                        : NSLocalizedString("Next", comment: ""))
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(LiquidGlassButtonStyle(prominent: true, tint: AppColors.brand))
+            .buttonStyle(LiquidGlassButtonStyle(prominent: true))
             .sylyoGlassEffectID("splash-primary", in: glassNamespace)
         }
     }

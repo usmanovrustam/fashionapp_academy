@@ -222,7 +222,7 @@ struct AuthFeatureView: View {
                         if viewModel.isLoading {
                             ProgressView()
                                 .controlSize(.small)
-                                .tint(.white)
+                                .tint(AppColors.ink)
                         }
                         Text(viewModel.mode.ctaTitle)
                             .font(.system(size: 17, weight: .semibold, design: .rounded))
@@ -232,14 +232,13 @@ struct AuthFeatureView: View {
                 }
                 .buttonStyle(LiquidGlassButtonStyle(
                     prominent: true,
-                    tint: AppColors.brand,
                     isDisabled: !viewModel.canSubmit
                 ))
                 .disabled(!viewModel.canSubmit)
                 .sylyoGlassEffectID("auth-primary", in: glassNamespace)
             }
             .padding(22)
-            .liquidGlass(cornerRadius: 28, tint: AppColors.brand.opacity(0.55))
+            .liquidGlass(cornerRadius: 28)
         }
     }
 
@@ -261,8 +260,8 @@ struct AuthFeatureView: View {
                         .background {
                             if viewModel.mode == mode {
                                 Capsule()
-                                    .fill(AppColors.accent.opacity(0.35))
-                                    .liquidGlassCapsule(interactive: false, tint: AppColors.accent)
+                                    .fill(Color.clear)
+                                    .liquidGlassCapsule(interactive: false)
                             }
                         }
                 }
@@ -270,14 +269,14 @@ struct AuthFeatureView: View {
             }
         }
         .padding(4)
-        .liquidGlassCapsule(interactive: false, tint: AppColors.brand.opacity(0.35))
+        .liquidGlassCapsule(interactive: false)
     }
 
     private var passwordField: some View {
         HStack(spacing: 12) {
             Image(systemName: "lock")
                 .font(.body.weight(.medium))
-                .foregroundStyle(AppColors.brand)
+                .foregroundStyle(AppColors.ink.opacity(0.55))
                 .frame(width: 22)
 
             Group {
@@ -304,10 +303,10 @@ struct AuthFeatureView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 15)
-        .liquidGlass(cornerRadius: AppRadius.medium, interactive: true, tint: AppColors.brand.opacity(0.4))
+        .liquidGlass(cornerRadius: AppRadius.medium, interactive: true)
         .overlay {
             RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
-                .stroke(AppColors.accent.opacity(focusedField == .password ? 0.55 : 0.18), lineWidth: 1)
+                .stroke(AppColors.ink.opacity(focusedField == .password ? 0.28 : 0.10), lineWidth: 1)
         }
     }
 
@@ -335,7 +334,6 @@ struct AuthFeatureView: View {
             }
             .buttonStyle(LiquidGlassButtonStyle(
                 prominent: false,
-                tint: AppColors.brand,
                 isDisabled: viewModel.isLoading
             ))
             .disabled(viewModel.isLoading)
@@ -351,7 +349,7 @@ struct AuthFeatureView: View {
                 .foregroundStyle(Color(red: 0.72, green: 0.22, blue: 0.24))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(12)
-                .liquidGlass(cornerRadius: 14, tint: .red.opacity(0.35))
+                .liquidGlass(cornerRadius: 14)
                 .transition(.opacity.combined(with: .move(edge: .top)))
         }
 
@@ -361,7 +359,7 @@ struct AuthFeatureView: View {
                 .foregroundStyle(Color(red: 0.22, green: 0.48, blue: 0.34))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(12)
-                .liquidGlass(cornerRadius: 14, tint: .green.opacity(0.35))
+                .liquidGlass(cornerRadius: 14)
                 .transition(.opacity.combined(with: .move(edge: .top)))
         }
     }
@@ -377,7 +375,7 @@ struct AuthFeatureView: View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.body.weight(.medium))
-                .foregroundStyle(AppColors.brand)
+                .foregroundStyle(AppColors.ink.opacity(0.55))
                 .frame(width: 22)
 
             TextField(title, text: text)
@@ -389,10 +387,10 @@ struct AuthFeatureView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 15)
-        .liquidGlass(cornerRadius: AppRadius.medium, interactive: true, tint: AppColors.brand.opacity(0.4))
+        .liquidGlass(cornerRadius: AppRadius.medium, interactive: true)
         .overlay {
             RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
-                .stroke(AppColors.accent.opacity(focusedField == field ? 0.55 : 0.18), lineWidth: 1)
+                .stroke(AppColors.ink.opacity(focusedField == field ? 0.28 : 0.10), lineWidth: 1)
         }
     }
 }

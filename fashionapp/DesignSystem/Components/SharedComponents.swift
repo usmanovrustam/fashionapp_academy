@@ -84,14 +84,14 @@ struct LoadingRingsView: View {
                     }
                 }
                 .padding(28)
-                .liquidGlass(cornerRadius: 40, tint: AppColors.brand)
+                .liquidGlass(cornerRadius: 40)
 
                 Text(message)
                     .font(AppTypography.roundedMedium)
                     .foregroundColor(.primary)
                     .padding(.horizontal, 18)
                     .padding(.vertical, 10)
-                    .liquidGlassCapsule(tint: AppColors.accent)
+                    .liquidGlassCapsule()
             }
         }
         .onAppear { spinning = true }
@@ -111,7 +111,7 @@ struct EmptyWardrobeState: View {
                     .font(.system(size: 54))
                     .foregroundStyle(AppColors.primaryGradient)
                     .padding(28)
-                    .liquidGlass(cornerRadius: 36, tint: AppColors.brand)
+                    .liquidGlass(cornerRadius: 36)
 
                 Text(title)
                     .font(AppTypography.title2)
@@ -183,7 +183,7 @@ struct StatCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .liquidGlass(cornerRadius: AppRadius.medium, tint: AppColors.brand)
+        .liquidGlass(cornerRadius: AppRadius.medium)
     }
 }
 
