@@ -165,6 +165,12 @@ struct AuthFeatureView: View {
         case name, email, password
     }
 
+    /// Shared metrics so every text field stays the same height (HIG: consistent widths/layout).
+    private enum FieldMetrics {
+        static let height: CGFloat = 52
+        static let control: CGFloat = 28
+    }
+
     init(auth: AuthServicing, analytics: AnalyticsTracking) {
         _viewModel = StateObject(wrappedValue: AuthViewModel(auth: auth, analytics: analytics))
     }
@@ -388,7 +394,7 @@ struct AuthFeatureView: View {
                             Image(systemName: viewModel.isPasswordVisible ? "eye.slash" : "eye")
                                 .font(.body)
                                 .foregroundStyle(AppColors.placeholder)
-                                .frame(width: 36, height: 36)
+                                .frame(width: FieldMetrics.control, height: FieldMetrics.control)
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
@@ -426,8 +432,9 @@ struct AuthFeatureView: View {
 
             content()
                 .padding(.horizontal, 16)
-                .padding(.vertical, 14)
-                .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+                // Fixed height — trailing icons must not grow the field.
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(height: FieldMetrics.height)
                 .liquidGlass(cornerRadius: AppRadius.medium, interactive: true)
                 .accessibilityLabel(title)
         }
@@ -444,7 +451,7 @@ struct AuthFeatureView: View {
                 Image(systemName: "xmark.circle.fill")
                     .font(.body)
                     .foregroundStyle(AppColors.placeholder)
-                    .frame(width: 36, height: 36)
+                    .frame(width: FieldMetrics.control, height: FieldMetrics.control)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
