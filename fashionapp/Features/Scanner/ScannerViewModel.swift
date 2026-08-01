@@ -6,21 +6,33 @@ import SwiftUI
 final class ScannerViewModel: ObservableObject {
     @Published var selectedImage: UIImage?
     @Published var previewImage: UIImage?
-    @Published var suggestedName = ""
-    @Published var editableName = ""
     @Published var scanResult: ClothingScanResult?
     @Published var isProcessing = false
     @Published var isSaving = false
     @Published var errorMessage: String?
+    @Published var showNoOutfitAlert = false
     @Published var showCamera = false
     @Published var showLibrary = false
     @Published var didSave = false
     @Published var savedItem: WardrobeItem?
 
+    // Reviewed draft — prefilled from scan; user must confirm before save.
+    @Published var draftName = ""
+    @Published var draftCategory: ClothingCategory = .top
+    @Published var draftType = ""
+    @Published var draftMaterial: Material = .cotton
+    @Published var draftColor = ""
+    @Published var draftSeason: Season = .allSeason
+    @Published var draftFormality: Double = 0.35
+
     private let scanAndSave: ScanAndSaveClothingUseCase
     private let pipeline: ClothingScanPipeline
     private let analytics: AnalyticsTracking
     let plannedDate: Date?
+
+    var canSave: Bool {
+        selectedImage != nil && scanResult != nil && !isProcessing && !isSaving
+    }
 
     init(container: AppContainer, plannedDate: Date? = nil) {
         self.scanAndSave = container.scanAndSaveUseCase
@@ -43,10 +55,11 @@ final class ScannerViewModel: ObservableObject {
     func handlePickedImage(_ image: UIImage) async {
         selectedImage = image
         previewImage = image
-        editableName = ""
         scanResult = nil
+        clearDraft()
         isProcessing = true
         errorMessage = nil
+        showNoOutfitAlert = false
         analytics.track(.scanStarted, parameters: ["source": "image"])
 
         do {
@@ -55,8 +68,7 @@ final class ScannerViewModel: ObservableObject {
             }
             let result = try await pipeline.scan(imageData: data)
             scanResult = result
-            suggestedName = result.suggestedName
-            editableName = result.suggestedName
+            applyDraft(from: result)
             if let transparent = result.transparentImageData {
                 previewImage = UIImage(data: transparent) ?? image
             }
@@ -64,6 +76,11 @@ final class ScannerViewModel: ObservableObject {
                 "category": result.detectedCategory.rawValue,
                 "confidence": String(format: "%.2f", result.confidence)
             ])
+        } catch DomainError.noClothingDetected {
+            scanResult = nil
+            clearDraft()
+            showNoOutfitAlert = true
+            analytics.track(.scanCompleted, parameters: ["outcome": "no_clothing"])
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -72,8 +89,7 @@ final class ScannerViewModel: ObservableObject {
     }
 
     func save() async {
-        guard let image = selectedImage,
-              let data = image.jpegData(compressionQuality: 0.92) else {
+        guard let scan = scanResult else {
             errorMessage = DomainError.invalidImage.localizedDescription
             return
         }
@@ -81,9 +97,18 @@ final class ScannerViewModel: ObservableObject {
         isSaving = true
         errorMessage = nil
         do {
+            let draft = ReviewedClothingDraft(
+                name: draftName,
+                category: draftCategory,
+                subcategory: draftType,
+                material: draftMaterial,
+                dominantColor: draftColor,
+                season: draftSeason,
+                formalityScore: draftFormality
+            )
             let item = try await scanAndSave.execute(
-                imageData: data,
-                overrideName: editableName,
+                scan: scan,
+                draft: draft,
                 plannedDate: plannedDate
             )
             savedItem = item
@@ -99,11 +124,39 @@ final class ScannerViewModel: ObservableObject {
         isSaving = false
     }
 
+    func clearFailedScan() {
+        selectedImage = nil
+        previewImage = nil
+        scanResult = nil
+        clearDraft()
+        showNoOutfitAlert = false
+    }
+
     func resetForm() {
         selectedImage = nil
         previewImage = nil
-        suggestedName = ""
-        editableName = ""
         scanResult = nil
+        clearDraft()
+        showNoOutfitAlert = false
+    }
+
+    private func applyDraft(from result: ClothingScanResult) {
+        draftName = result.suggestedName
+        draftCategory = result.detectedCategory
+        draftType = result.subcategory ?? ""
+        draftMaterial = result.material
+        draftColor = result.dominantColor ?? ""
+        draftSeason = result.seasons.first ?? .allSeason
+        draftFormality = result.formalityScore
+    }
+
+    private func clearDraft() {
+        draftName = ""
+        draftCategory = .top
+        draftType = ""
+        draftMaterial = .cotton
+        draftColor = ""
+        draftSeason = .allSeason
+        draftFormality = 0.35
     }
 }

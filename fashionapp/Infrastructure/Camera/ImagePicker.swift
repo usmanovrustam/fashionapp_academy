@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 import AVFoundation
 import PhotosUI
+import UniformTypeIdentifiers
 
 enum CameraCaptureError: LocalizedError, Equatable {
     case denied
@@ -42,6 +43,9 @@ struct SystemImagePicker: UIViewControllerRepresentable {
         picker.allowsEditing = false
         picker.modalPresentationStyle = .fullScreen
 
+        // Still images only — reduces Portrait / dual-camera (BackDual) session probes.
+        picker.mediaTypes = [UTType.image.identifier]
+
         switch source {
         case .camera:
             // Caller should gate with `CameraAuthorization`; still photo only (no Portrait / dual-cam).
@@ -51,6 +55,7 @@ struct SystemImagePicker: UIViewControllerRepresentable {
             }
             picker.cameraCaptureMode = .photo
             picker.showsCameraControls = true
+            picker.cameraFlashMode = .auto
         case .photoLibrary:
             picker.sourceType = .photoLibrary
         }

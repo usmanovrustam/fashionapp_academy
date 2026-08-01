@@ -1,27 +1,120 @@
 import Foundation
 import UIKit
+import Vision
 
-/// Heuristic clothing detector / metadata extractor.
-/// Replaceable later with Vision classification or a custom CoreML model.
+/// On-device Vision clothing detector. Rejects photos with no apparel so the UI can ask for a retake.
 final class HeuristicClothingDetector: ClothingDetector {
+    private let presenceThreshold: Float = 0.12
+    private let categoryThreshold: Float = 0.08
+
     func detectCategory(in imageData: Data) async throws -> (ClothingCategory, Double) {
         let image = try ImageProcessing.uiImage(from: imageData)
-        let aspect = image.size.height / max(image.size.width, 1)
+        guard let cgImage = image.cgImage else { throw DomainError.invalidImage }
 
-        // Aspect-ratio heuristics — intentionally simple and swappable.
-        if aspect > 1.6 {
-            return (.dress, 0.55)
+        let observations = try await classify(cgImage)
+        let apparelHits = observations.filter { isApparelRelated($0.identifier) }
+        let bestPresence = apparelHits.map(\.confidence).max() ?? 0
+
+        let mapped = observations.compactMap { observation -> (ClothingCategory, Float, String)? in
+            guard let category = mapCategory(for: observation.identifier) else { return nil }
+            return (category, observation.confidence, observation.identifier)
         }
-        if aspect > 1.25 {
-            return (.coat, 0.45)
+
+        let hasCategorySignal = mapped.contains { $0.1 >= categoryThreshold }
+        guard bestPresence >= presenceThreshold || hasCategorySignal else {
+            throw DomainError.noClothingDetected
         }
-        if aspect < 0.75 {
-            return (.shoes, 0.5)
+
+        if let best = mapped.max(by: { $0.1 < $1.1 }), best.1 >= categoryThreshold {
+            return (best.0, Double(max(best.1, 0.35)))
         }
-        if aspect < 0.95 {
-            return (.accessories, 0.4)
+
+        // Apparel present but label is generic — fall back to aspect heuristics.
+        return aspectCategory(for: image)
+    }
+
+    private func classify(_ cgImage: CGImage) async throws -> [VNClassificationObservation] {
+        try await withCheckedThrowingContinuation { continuation in
+            let request = VNClassifyImageRequest { request, error in
+                if let error {
+                    continuation.resume(throwing: DomainError.scanFailed(error.localizedDescription))
+                    return
+                }
+                let results = (request.results as? [VNClassificationObservation]) ?? []
+                continuation.resume(returning: results)
+            }
+
+            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+            do {
+                try handler.perform([request])
+            } catch {
+                continuation.resume(throwing: DomainError.scanFailed(error.localizedDescription))
+            }
         }
-        return (.top, 0.5)
+    }
+
+    private func isApparelRelated(_ identifier: String) -> Bool {
+        let id = identifier.lowercased()
+        let keywords = [
+            "apparel", "clothing", "garment", "fashion", "outerwear", "footwear",
+            "shirt", "t-shirt", "tee", "blouse", "sweater", "hoodie", "sweatshirt",
+            "jacket", "coat", "blazer", "parka", "windbreaker",
+            "dress", "gown", "skirt", "jumpsuit", "romper",
+            "pant", "pants", "trouser", "jean", "jeans", "short", "legging",
+            "shoe", "sneaker", "boot", "sandal", "heel", "loafer",
+            "hat", "cap", "beanie", "scarf", "shawl", "belt", "tie", "necktie",
+            "bag", "handbag", "backpack", "purse", "tote", "watch",
+            "jewelry", "necklace", "earring", "bracelet", "ring",
+            "swim", "bikini", "swimsuit", "activewear", "sportswear", "jersey",
+            "suit", "tuxedo", "pajama", "sleepwear", "robe", "lingerie",
+            "denim", "sock", "glove", "sunglasses", "accessory"
+        ]
+        return keywords.contains { id.contains($0) }
+    }
+
+    private func mapCategory(for identifier: String) -> ClothingCategory? {
+        let id = identifier.lowercased()
+
+        let rules: [(ClothingCategory, [String])] = [
+            (.dress, ["dress", "gown", "skirt", "jumpsuit", "romper"]),
+            (.bottom, ["jean", "pant", "trouser", "short", "legging", "chino"]),
+            (.shoes, ["shoe", "sneaker", "boot", "sandal", "heel", "loafer", "footwear"]),
+            (.coat, ["coat", "overcoat", "parka", "trench"]),
+            (.jacket, ["jacket", "blazer", "windbreaker", "bomber"]),
+            (.hat, ["hat", "cap", "beanie", "fedora"]),
+            (.scarf, ["scarf", "shawl"]),
+            (.bag, ["bag", "handbag", "backpack", "purse", "tote"]),
+            (.belt, ["belt"]),
+            (.watch, ["watch"]),
+            (.jewelry, ["jewelry", "necklace", "earring", "bracelet", "ring"]),
+            (.swimwear, ["swim", "bikini", "swimsuit"]),
+            (.sportswear, ["sport", "athletic", "activewear", "jersey", "gym"]),
+            (.formalwear, ["suit", "tuxedo", "formalwear"]),
+            (.sleepwear, ["sleep", "pajama", "robe", "lingerie"]),
+            (.top, ["shirt", "blouse", "sweater", "hoodie", "sweatshirt", "tee", "t-shirt", "top", "tank"]),
+            (.accessories, ["accessory", "sunglasses", "glove", "tie", "necktie"])
+        ]
+
+        for (category, keywords) in rules {
+            if keywords.contains(where: { id.contains($0) }) {
+                return category
+            }
+        }
+
+        // Generic apparel without a specific garment type.
+        if id.contains("apparel") || id.contains("clothing") || id.contains("garment") || id.contains("outerwear") {
+            return .top
+        }
+        return nil
+    }
+
+    private func aspectCategory(for image: UIImage) -> (ClothingCategory, Double) {
+        let aspect = image.size.height / max(image.size.width, 1)
+        if aspect > 1.6 { return (.dress, 0.45) }
+        if aspect > 1.25 { return (.coat, 0.4) }
+        if aspect < 0.75 { return (.shoes, 0.45) }
+        if aspect < 0.95 { return (.accessories, 0.35) }
+        return (.top, 0.4)
     }
 }
 
