@@ -223,7 +223,8 @@ private struct LiquidGlassCapsuleModifier: ViewModifier {
     }
 }
 
-/// Solid olive CTA (`#594f27`). `tint` overrides fill (e.g. destructive red).
+/// Primary CTA: olive fill `#594f27` + gold label `#fee697`.
+/// `tint` overrides fill (e.g. destructive red) and uses white label.
 struct LiquidGlassButtonStyle: ButtonStyle {
     var prominent: Bool = true
     var tint: Color? = nil
@@ -231,10 +232,14 @@ struct LiquidGlassButtonStyle: ButtonStyle {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    private var labelColor: Color {
+        tint == nil ? AppColors.brand : Color.white
+    }
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(AppTypography.headline)
-            .foregroundStyle(Color.white)
+            .foregroundStyle(labelColor)
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 22)
             .padding(.vertical, 16)
@@ -250,10 +255,8 @@ struct LiquidGlassButtonStyle: ButtonStyle {
     private var capsuleFill: some View {
         if let tint {
             Capsule().fill(tint.opacity(prominent ? 0.95 : 0.82))
-        } else if prominent {
-            Capsule().fill(AppColors.olive)
         } else {
-            Capsule().fill(AppColors.olive.opacity(0.90))
+            Capsule().fill(AppColors.olive.opacity(prominent ? 1 : 0.90))
         }
     }
 }

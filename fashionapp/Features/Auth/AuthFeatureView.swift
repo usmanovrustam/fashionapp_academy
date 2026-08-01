@@ -509,7 +509,7 @@ struct AuthFeatureView: View {
                 if viewModel.isLoading {
                     ProgressView()
                         .controlSize(.small)
-                        .tint(.white)
+                        .tint(AppColors.brand)
                 }
                 Text(viewModel.isLoading ? viewModel.mode.loadingTitle : viewModel.mode.ctaTitle)
             }
