@@ -12,7 +12,7 @@
 		A10000012E3A000000000003 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = A20000012E3A000000000003 /* FirebaseFirestore */; };
 		A10000012E3A000000000004 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = A20000012E3A000000000004 /* FirebaseStorage */; };
 		A10000012E3A000000000005 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = A20000012E3A000000000005 /* FirebaseAnalytics */; };
-		4355D68147DB4B32B8CC3C38 /* SylyoWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1BC920C6668041EF96C1148A /* SylyoWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4355D68147DB4B32B8CC3C38 /* NookWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1BC920C6668041EF96C1148A /* NookWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -21,7 +21,7 @@
 			containerPortal = B1F22C2C2DDF4B7600B1186F /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = A71CCD13486F4257AACB71AB;
-			remoteInfo = SylyoWidgets;
+			remoteInfo = NookWidgets;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -32,7 +32,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				4355D68147DB4B32B8CC3C38 /* SylyoWidgets.appex in Embed Foundation Extensions */,
+				4355D68147DB4B32B8CC3C38 /* NookWidgets.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -41,7 +41,7 @@
 
 /* Begin PBXFileReference section */
 		B1F22C342DDF4B7600B1186F /* fashionapp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = fashionapp.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		1BC920C6668041EF96C1148A /* SylyoWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SylyoWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		1BC920C6668041EF96C1148A /* NookWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NookWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -53,12 +53,12 @@
 			);
 			target = B1F22C332DDF4B7600B1186F /* fashionapp */;
 		};
-		05459CE53BD04F3EBFF267A7 /* Exceptions for "SylyoWidgets" folder in "SylyoWidgets" target */ = {
+		05459CE53BD04F3EBFF267A7 /* Exceptions for "NookWidgets" folder in "NookWidgets" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = A71CCD13486F4257AACB71AB /* SylyoWidgets */;
+			target = A71CCD13486F4257AACB71AB /* NookWidgets */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -71,12 +71,12 @@
 			path = fashionapp;
 			sourceTree = "<group>";
 		};
-		C373E15D541F424F839AB373 /* SylyoWidgets */ = {
+		C373E15D541F424F839AB373 /* NookWidgets */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				05459CE53BD04F3EBFF267A7 /* Exceptions for "SylyoWidgets" folder in "SylyoWidgets" target */,
+				05459CE53BD04F3EBFF267A7 /* Exceptions for "NookWidgets" folder in "NookWidgets" target */,
 			);
-			path = SylyoWidgets;
+			path = NookWidgets;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -108,7 +108,7 @@
 			isa = PBXGroup;
 			children = (
 				B1F22C362DDF4B7600B1186F /* fashionapp */,
-				C373E15D541F424F839AB373 /* SylyoWidgets */,
+				C373E15D541F424F839AB373 /* NookWidgets */,
 				B1F22C352DDF4B7600B1186F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -117,7 +117,7 @@
 			isa = PBXGroup;
 			children = (
 				B1F22C342DDF4B7600B1186F /* fashionapp.app */,
-				1BC920C6668041EF96C1148A /* SylyoWidgets.appex */,
+				1BC920C6668041EF96C1148A /* NookWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -154,9 +154,9 @@
 			productReference = B1F22C342DDF4B7600B1186F /* fashionapp.app */;
 			productType = "com.apple.product-type.application";
 		};
-		A71CCD13486F4257AACB71AB /* SylyoWidgets */ = {
+		A71CCD13486F4257AACB71AB /* NookWidgets */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 66D20AAA890344708436E9D0 /* Build configuration list for PBXNativeTarget "SylyoWidgets" */;
+			buildConfigurationList = 66D20AAA890344708436E9D0 /* Build configuration list for PBXNativeTarget "NookWidgets" */;
 			buildPhases = (
 				4B00D15C4D5A41119FC571A4 /* Sources */,
 				D0F469787238497BB1E24A95 /* Frameworks */,
@@ -167,13 +167,13 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				C373E15D541F424F839AB373 /* SylyoWidgets */,
+				C373E15D541F424F839AB373 /* NookWidgets */,
 			);
-			name = SylyoWidgets;
+			name = NookWidgets;
 			packageProductDependencies = (
 			);
-			productName = SylyoWidgets;
-			productReference = 1BC920C6668041EF96C1148A /* SylyoWidgets.appex */;
+			productName = NookWidgets;
+			productReference = 1BC920C6668041EF96C1148A /* NookWidgets.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
@@ -213,7 +213,7 @@
 			projectRoot = "";
 			targets = (
 				B1F22C332DDF4B7600B1186F /* fashionapp */,
-				A71CCD13486F4257AACB71AB /* SylyoWidgets */,
+				A71CCD13486F4257AACB71AB /* NookWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -255,7 +255,7 @@
 /* Begin PBXTargetDependency section */
 		1301883F532243EEB8F55009 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = A71CCD13486F4257AACB71AB /* SylyoWidgets */;
+			target = A71CCD13486F4257AACB71AB /* NookWidgets */;
 			targetProxy = 53DB97D98A24458CBCFCDA7B /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -469,12 +469,12 @@
 		7EE8483E3EA94D6D8ED4F965 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = SylyoWidgets/SylyoWidgets.entitlements;
+				CODE_SIGN_ENTITLEMENTS = NookWidgets/NookWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = T76V4FRBSW;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = SylyoWidgets/Info.plist;
+				INFOPLIST_FILE = NookWidgets/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Nook Widgets";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
@@ -500,12 +500,12 @@
 		79A8979207E94DDDBD0C2EE8 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = SylyoWidgets/SylyoWidgets.entitlements;
+				CODE_SIGN_ENTITLEMENTS = NookWidgets/NookWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = T76V4FRBSW;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = SylyoWidgets/Info.plist;
+				INFOPLIST_FILE = NookWidgets/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Nook Widgets";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
@@ -549,7 +549,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		66D20AAA890344708436E9D0 /* Build configuration list for PBXNativeTarget "SylyoWidgets" */ = {
+		66D20AAA890344708436E9D0 /* Build configuration list for PBXNativeTarget "NookWidgets" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				7EE8483E3EA94D6D8ED4F965 /* Debug */,

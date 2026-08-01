@@ -11,7 +11,7 @@ Domain/              Entities, protocols, use cases
 Data/Persistence/    Local image cache for Firebase Storage downloads
 Infrastructure/      Firebase Auth/Firestore/Storage/Analytics, Vision, WeatherKit, Widgets
 Features/            SwiftUI screens + view models
-SylyoWidgets/        iOS 27 WidgetKit extension (App Group sync)
+NookWidgets/        iOS 27 WidgetKit extension (App Group sync)
 ```
 
 **Backend (required):** Firebase Auth + Cloud Firestore + Cloud Storage + Analytics → BigQuery.
