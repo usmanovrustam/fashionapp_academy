@@ -112,7 +112,7 @@ struct ScannerFeatureView: View {
                 .font(AppTypography.title)
                 .foregroundStyle(AppColors.textPrimary)
                 .accessibilityAddTraits(.isHeader)
-            Text("Take a photo or choose one from your library. Sylyo scans for an outfit and suggests details for you to review.")
+            Text("Take a photo or choose one from your library. Sylyo finds the garment, crops it to a centered square, and suggests details for you to review.")
                 .font(AppTypography.body)
                 .foregroundStyle(AppColors.textSecondary)
                 .multilineTextAlignment(.center)

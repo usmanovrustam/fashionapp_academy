@@ -258,42 +258,109 @@ final class ColorAwareMetadataExtractor: ClothingMetadataExtractor {
 }
 
 /// Orchestrates the swappable CV stages into a single scan result.
+/// Prefers SegFormer clothes parsing (detect + mask + centered square crop),
+/// then falls back to Vision + U²-Net when the Core ML package is unavailable.
 final class DefaultClothingScanPipeline: ClothingScanPipeline {
     private let detector: ClothingDetector
     private let segmenter: ClothingSegmenter
     private let backgroundRemover: BackgroundRemover
     private let metadataExtractor: ClothingMetadataExtractor
+    private let clothesParser: ClothesSegFormerParser
 
     init(
         detector: ClothingDetector,
         segmenter: ClothingSegmenter,
         backgroundRemover: BackgroundRemover,
-        metadataExtractor: ClothingMetadataExtractor
+        metadataExtractor: ClothingMetadataExtractor,
+        clothesParser: ClothesSegFormerParser = .shared
     ) {
         self.detector = detector
         self.segmenter = segmenter
         self.backgroundRemover = backgroundRemover
         self.metadataExtractor = metadataExtractor
+        self.clothesParser = clothesParser
     }
 
     func scan(imageData: Data) async throws -> ClothingScanResult {
         guard !imageData.isEmpty else { throw DomainError.invalidImage }
 
+        if clothesParser.isAvailable {
+            return try await scanWithSegFormer(imageData: imageData)
+        }
+        return try await scanWithFallback(imageData: imageData)
+    }
+
+    /// SegFormer path: classify garment → square-center crop → cutout → metadata.
+    private func scanWithSegFormer(imageData: Data) async throws -> ClothingScanResult {
+        let parsed = try await clothesParser.parse(imageData: imageData)
+
+        var transparentData: Data?
+        do {
+            transparentData = try await backgroundRemover.removeBackground(
+                imageData: parsed.squareCropJPEG,
+                maskData: parsed.squareMaskPNG
+            )
+        } catch {
+            // Soft-fail cutout — still keep the square crop for Storage.
+            transparentData = nil
+        }
+
+        let metadataSource = transparentData ?? parsed.squareCropJPEG
+        var metadata = try await metadataExtractor.extract(
+            from: metadataSource,
+            category: parsed.category
+        )
+        // Prefer SegFormer type label over heuristic subcategory.
+        metadata.subcategory = parsed.subcategory
+        if !parsed.subcategory.isEmpty {
+            let colorPrefix = metadata.dominantColor.map { "\($0) " } ?? ""
+            metadata.suggestedName = "\(colorPrefix)\(parsed.subcategory)".trimmingCharacters(in: .whitespaces)
+        }
+
+        let confidence = min(1, (parsed.confidence + metadata.confidence) / 2)
+        return ClothingScanResult(
+            detectedCategory: parsed.category,
+            subcategory: parsed.subcategory,
+            colorPalette: metadata.colorPalette,
+            dominantColor: metadata.dominantColor,
+            material: metadata.material,
+            seasons: metadata.seasons,
+            temperatureBands: metadata.temperatureBands,
+            formalityScore: metadata.formalityScore,
+            styleTags: metadata.styleTags,
+            occasions: metadata.occasions,
+            genderNeutral: metadata.genderNeutral,
+            suggestedName: metadata.suggestedName,
+            confidence: confidence,
+            originalImageData: parsed.squareCropJPEG,
+            transparentImageData: transparentData,
+            processedAt: Date()
+        )
+    }
+
+    /// Legacy Vision + U²-Net path with square crop from the soft mask.
+    private func scanWithFallback(imageData: Data) async throws -> ClothingScanResult {
         let (category, detectionConfidence) = try await detector.detectCategory(in: imageData)
 
-        // Segmentation / cutout is best-effort — never fail the whole scan after outfit detection.
+        var squareJPEG = imageData
         var transparentData: Data?
         do {
             let maskData = try await segmenter.segment(imageData: imageData)
+            let image = try ImageProcessing.uiImage(from: imageData)
+            let mask = try ImageProcessing.uiImage(from: maskData)
+            let square = try ImageProcessing.centeredSquareCrop(image: image, mask: mask, padding: 0.12)
+            let squareMask = try ImageProcessing.centeredSquareCrop(image: mask, mask: mask, padding: 0.12)
+            squareJPEG = try ImageProcessing.jpegData(from: square, quality: 0.92)
+            let squareMaskPNG = try ImageProcessing.pngData(from: squareMask)
             transparentData = try await backgroundRemover.removeBackground(
-                imageData: imageData,
-                maskData: maskData
+                imageData: squareJPEG,
+                maskData: squareMaskPNG
             )
         } catch {
             transparentData = nil
         }
 
-        let metadataSource = transparentData ?? imageData
+        let metadataSource = transparentData ?? squareJPEG
         let metadata = try await metadataExtractor.extract(from: metadataSource, category: category)
         let confidence = min(1, (detectionConfidence + metadata.confidence) / 2)
 
@@ -311,7 +378,7 @@ final class DefaultClothingScanPipeline: ClothingScanPipeline {
             genderNeutral: metadata.genderNeutral,
             suggestedName: metadata.suggestedName,
             confidence: confidence,
-            originalImageData: imageData,
+            originalImageData: squareJPEG,
             transparentImageData: transparentData,
             processedAt: Date()
         )

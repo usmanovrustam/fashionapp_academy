@@ -105,6 +105,92 @@ enum ImageProcessing {
         return result
     }
 
+    /// Crops a centered square around the opaque region of `mask`, with optional padding (0–0.4 of side).
+    static func centeredSquareCrop(image: UIImage, mask: UIImage, padding: CGFloat = 0.1) throws -> UIImage {
+        guard let bounds = opaqueBounds(of: mask) else {
+            // Fallback: center square of the full image.
+            return centerSquare(image)
+        }
+
+        let pad = max(0, min(0.4, padding))
+        var rect = bounds.insetBy(dx: -bounds.width * pad, dy: -bounds.height * pad)
+        rect = rect.intersection(CGRect(origin: .zero, size: image.size))
+        guard rect.width > 2, rect.height > 2 else { return centerSquare(image) }
+
+        let maxSide = min(image.size.width, image.size.height)
+        let side = min(max(rect.width, rect.height), maxSide)
+        var originX = rect.midX - side / 2
+        var originY = rect.midY - side / 2
+        originX = max(0, min(originX, image.size.width - side))
+        originY = max(0, min(originY, image.size.height - side))
+        let square = CGRect(x: originX, y: originY, width: side, height: side)
+
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = image.scale
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: format)
+        return renderer.image { _ in
+            image.draw(at: CGPoint(x: -square.minX, y: -square.minY))
+        }
+    }
+
+    static func centerSquare(_ image: UIImage) -> UIImage {
+        let side = min(image.size.width, image.size.height)
+        let origin = CGPoint(
+            x: (image.size.width - side) / 2,
+            y: (image.size.height - side) / 2
+        )
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = image.scale
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: format)
+        return renderer.image { _ in
+            image.draw(at: CGPoint(x: -origin.x, y: -origin.y))
+        }
+    }
+
+    /// Bounding box of non-black pixels in a grayscale/alpha mask, in image points.
+    static func opaqueBounds(of mask: UIImage) -> CGRect? {
+        guard let cgImage = mask.cgImage else { return nil }
+        let width = cgImage.width
+        let height = cgImage.height
+        guard width > 0, height > 0 else { return nil }
+
+        var pixels = [UInt8](repeating: 0, count: width * height)
+        guard let ctx = CGContext(
+            data: &pixels,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width,
+            space: CGColorSpaceCreateDeviceGray(),
+            bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ) else { return nil }
+        ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+        var minX = width, minY = height, maxX = 0, maxY = 0
+        var found = false
+        for y in 0..<height {
+            for x in 0..<width {
+                if pixels[y * width + x] > 24 {
+                    found = true
+                    minX = min(minX, x)
+                    minY = min(minY, y)
+                    maxX = max(maxX, x)
+                    maxY = max(maxY, y)
+                }
+            }
+        }
+        guard found else { return nil }
+
+        let scaleX = mask.size.width / CGFloat(width)
+        let scaleY = mask.size.height / CGFloat(height)
+        return CGRect(
+            x: CGFloat(minX) * scaleX,
+            y: CGFloat(minY) * scaleY,
+            width: CGFloat(maxX - minX + 1) * scaleX,
+            height: CGFloat(maxY - minY + 1) * scaleY
+        )
+    }
+
     static func dominantColors(from image: UIImage, maxColors: Int = 5) -> [UIColor] {
         let sample = resized(image, maxDimension: 64)
         guard let cgImage = sample.cgImage else { return [] }

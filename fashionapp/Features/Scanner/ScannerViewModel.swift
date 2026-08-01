@@ -74,8 +74,13 @@ final class ScannerViewModel: ObservableObject {
             let result = try await self.runScan(imageData: data)
             scanResult = result
             applyDraft(from: result)
-            if let transparent = result.transparentImageData {
-                previewImage = UIImage(data: transparent) ?? prepared
+            // Preview the centered square crop (cutout when available).
+            if let transparent = result.transparentImageData,
+               let cutout = UIImage(data: transparent) {
+                previewImage = cutout
+            } else if let square = UIImage(data: result.originalImageData) {
+                previewImage = square
+                selectedImage = square
             }
             analytics.track(.scanCompleted, parameters: [
                 "category": result.detectedCategory.rawValue,
