@@ -100,7 +100,7 @@ final class DiscoverViewModel: ObservableObject {
     }
 
     func refreshWeather() async {
-        isWeatherLoading = weather == nil
+        isWeatherLoading = true
         weatherError = nil
 
         do {
@@ -115,9 +115,6 @@ final class DiscoverViewModel: ObservableObject {
         } catch {
             if weather == nil {
                 weatherError = error.localizedDescription
-            }
-            if forecast.isEmpty {
-                forecast = []
             }
         }
 
