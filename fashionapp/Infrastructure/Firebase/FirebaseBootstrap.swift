@@ -12,8 +12,14 @@ enum FirebaseBootstrap {
 
     @discardableResult
     static func configureIfPossible() -> Bool {
+        // Already live — common when AppDelegate configured before App.init.
+        if FirebaseApp.app() != nil {
+            didAttemptConfigure = true
+            return true
+        }
+
         if didAttemptConfigure {
-            return isConfigured
+            return false
         }
         didAttemptConfigure = true
 
@@ -24,15 +30,13 @@ enum FirebaseBootstrap {
             return false
         }
 
-        if FirebaseApp.app() == nil {
-            FirebaseApp.configure()
-        }
+        FirebaseApp.configure()
 
         #if DEBUG
         if let projectID = FirebaseConfig.projectID {
             print("✅ Firebase configured for project: \(projectID)")
         }
         #endif
-        return true
+        return FirebaseApp.app() != nil
     }
 }

@@ -117,9 +117,10 @@ final class AppContainer: ObservableObject {
             self?.objectWillChange.send()
         }
 
+        // Avoid reserved Analytics key prefixes (`firebase_`, `google_`, `ga_`).
         analytics.track(.appOpen, parameters: [
-            "firebase_configured": FirebaseConfig.isConfigured ? "true" : "false",
-            "firebase_project": FirebaseConfig.projectID ?? "missing"
+            "is_configured": FirebaseConfig.isConfigured ? "true" : "false",
+            "project_id": FirebaseConfig.projectID ?? "missing"
         ])
     }
 

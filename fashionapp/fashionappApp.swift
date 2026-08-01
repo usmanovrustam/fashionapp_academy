@@ -2,10 +2,12 @@ import SwiftUI
 
 @main
 struct fashionappApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var container: AppContainer
 
     init() {
-        // Configure Firebase before any Auth/Firestore calls.
+        // Belt-and-suspenders: AppDelegate configures first; this covers any
+        // path where SwiftUI init runs before didFinishLaunching completes.
         _ = FirebaseBootstrap.configureIfPossible()
         _container = StateObject(wrappedValue: AppContainer())
     }

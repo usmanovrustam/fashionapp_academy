@@ -27,7 +27,15 @@ final class FirebaseAnalyticsTracker: AnalyticsTracking {
         var analyticsParams: [String: Any] = [:]
         for (key, value) in parameters {
             // GA4 param keys max 40 chars; values max 100.
+            // Reserved prefixes (`firebase_`, `google_`, `ga_`) are dropped by the SDK.
             let safeKey = String(key.prefix(40))
+            let lower = safeKey.lowercased()
+            if lower.hasPrefix("firebase_") || lower.hasPrefix("google_") || lower.hasPrefix("ga_") {
+                #if DEBUG
+                print("Analytics: dropping reserved parameter key '\(safeKey)'")
+                #endif
+                continue
+            }
             analyticsParams[safeKey] = String(value.prefix(100))
         }
         Analytics.logEvent(name.rawValue, parameters: analyticsParams)
