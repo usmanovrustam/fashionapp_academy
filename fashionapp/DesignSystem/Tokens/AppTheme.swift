@@ -34,23 +34,25 @@ enum AppColors {
     /// Legacy alias → primary text.
     static let ink = textPrimary
 
-    /// Soft cream-gold screen wash.
-    static let backgroundTop = Color(hex: 0xFFF8E8)
-    static let backgroundBottom = Color(hex: 0xFEE697)
+    /// Near-white screen base (keeps UI calm).
+    static let backgroundTop = Color.white
+    /// Very light gold tint of `#fee697` mixed toward white.
+    static let backgroundBottom = Color(hex: 0xFFFBF2)
 
-    /// Decorative gradient: amber → olive.
+    /// Decorative gradient: amber → olive (controls / icons — not full-screen fills).
     static let primaryGradient = LinearGradient(
         colors: [accent, olive],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
+    /// Subtle white → whisper-gold wash for all main tabs.
     static let softBackground = LinearGradient(
         colors: [backgroundTop, backgroundBottom],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
+        startPoint: .top,
+        endPoint: .bottom
     )
-    static let cardShadow = espresso.opacity(0.10)
-    static let brandShadow = olive.opacity(0.18)
+    static let cardShadow = espresso.opacity(0.08)
+    static let brandShadow = olive.opacity(0.12)
 
     // Legacy aliases.
     static let brandPurple = brand
@@ -101,24 +103,14 @@ enum AppTypography {
 struct SoftBackground: View {
     var body: some View {
         ZStack {
+            Color.white
+            // Single whisper of brand gold — no amber/olive washes on screens.
             AppColors.softBackground
             RadialGradient(
-                colors: [AppColors.brand.opacity(0.55), Color.clear],
+                colors: [AppColors.brand.opacity(0.10), Color.clear],
                 center: .topTrailing,
-                startRadius: 20,
-                endRadius: 420
-            )
-            RadialGradient(
-                colors: [AppColors.accent.opacity(0.16), Color.clear],
-                center: .bottomLeading,
-                startRadius: 10,
-                endRadius: 380
-            )
-            RadialGradient(
-                colors: [AppColors.olive.opacity(0.08), Color.clear],
-                center: .bottomTrailing,
-                startRadius: 10,
-                endRadius: 300
+                startRadius: 40,
+                endRadius: 480
             )
         }
         .ignoresSafeArea()

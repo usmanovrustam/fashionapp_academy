@@ -146,6 +146,9 @@ struct ProfileFeatureView: View {
                 dataSection
             }
             .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .nookSafeScreenInsets()
+            .nookScreenBackground()
             .navigationTitle(NSLocalizedString("Profile", comment: ""))
             .navigationBarTitleDisplayMode(.large)
             .task { await viewModel.load() }
