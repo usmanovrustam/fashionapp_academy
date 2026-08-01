@@ -113,7 +113,7 @@ actor FirebaseUserProfileRepository: UserProfileRepository {
         if let data = document.data() {
             return try FirestoreCoding.decode(UserProfile.self, from: data)
         }
-        var profile = UserProfile.default
+        let profile = UserProfile.default
         // Keep a stable UUID but key profile by Firebase uid via document path.
         try await save(profile)
         return profile

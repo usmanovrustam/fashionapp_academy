@@ -50,12 +50,14 @@ struct AnalyticsEvent: Identifiable, Codable, Equatable, Hashable {
     }
 }
 
+@MainActor
 protocol AnalyticsTracking: AnyObject {
     func track(_ name: AnalyticsEventName, parameters: [String: String])
     func setUserID(_ userID: String?)
     func setUserProperty(_ value: String?, forName name: String)
 }
 
+@MainActor
 extension AnalyticsTracking {
     func track(_ name: AnalyticsEventName) {
         track(name, parameters: [:])

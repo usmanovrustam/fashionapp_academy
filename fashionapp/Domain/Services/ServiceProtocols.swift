@@ -2,11 +2,13 @@ import Foundation
 
 // MARK: - Weather & Location
 
+@MainActor
 protocol LocationProviding: AnyObject {
     func currentCoordinate() async throws -> (latitude: Double, longitude: Double)
     func reverseGeocode(latitude: Double, longitude: Double) async throws -> String
 }
 
+@MainActor
 protocol WeatherProviding: AnyObject {
     func currentWeather() async throws -> WeatherSnapshot
     func dailyForecast(days: Int) async throws -> [DailyWeatherForecast]
@@ -85,6 +87,7 @@ protocol NotificationScheduling: AnyObject {
     func scheduleDailyOutfitReminder(at dateComponents: DateComponents) async throws
 }
 
+@MainActor
 protocol AppSettingsProviding: AnyObject {
     var didFinishOnboarding: Bool { get set }
     var selectedLanguage: String { get set }

@@ -37,6 +37,7 @@ enum AuthError: LocalizedError, Equatable {
 }
 
 /// Firebase Authentication surface used by the app.
+@MainActor
 protocol AuthServicing: AnyObject {
     var currentUser: AuthUser? { get }
     var isSignedIn: Bool { get }
@@ -51,6 +52,7 @@ protocol AuthServicing: AnyObject {
     func sendPasswordReset(email: String) async throws
 }
 
+@MainActor
 extension AuthServicing {
     var isSignedIn: Bool { currentUser != nil }
 }

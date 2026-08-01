@@ -116,7 +116,8 @@ struct DiscoverFeatureView: View {
                         .onChanged { dragOffset = $0.translation }
                         .onEnded { value in
                             if abs(value.translation.width) > 100 {
-                                swipe(value.translation.width > 0 ? 1 : -1)
+                                let accepted = value.translation.width > 0
+                                swipe(accepted ? 1 : -1, accepted: accepted)
                             } else {
                                 dragOffset = .zero
                             }
