@@ -36,9 +36,9 @@ struct ScannerFeatureView: View {
                     }
                 }
             }
-            // Camera as fullScreenCover avoids dual-camera Portrait session glitches in sheets.
+            // Custom AVFoundation photo camera — no UIImagePicker Portrait / BackDual probing.
             .fullScreenCover(isPresented: $viewModel.showCamera) {
-                SystemImagePicker(source: .camera) { result in
+                PhotoCameraView { result in
                     viewModel.showCamera = false
                     Task {
                         if case .success(let image) = result {

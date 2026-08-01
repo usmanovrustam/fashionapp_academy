@@ -27,10 +27,9 @@ enum CameraCaptureError: LocalizedError, Equatable {
     }
 }
 
-/// Camera capture using photo mode only (avoids Portrait / dual-camera session errors).
+/// Photo library picker (still images only). Camera uses `PhotoCameraView` instead of UIImagePickerController.
 struct SystemImagePicker: UIViewControllerRepresentable {
     enum Source {
-        case camera
         case photoLibrary
     }
 
@@ -42,24 +41,8 @@ struct SystemImagePicker: UIViewControllerRepresentable {
         picker.delegate = context.coordinator
         picker.allowsEditing = false
         picker.modalPresentationStyle = .fullScreen
-
-        // Still images only — reduces Portrait / dual-camera (BackDual) session probes.
         picker.mediaTypes = [UTType.image.identifier]
-
-        switch source {
-        case .camera:
-            // Caller should gate with `CameraAuthorization`; still photo only (no Portrait / dual-cam).
-            picker.sourceType = .camera
-            if UIImagePickerController.isCameraDeviceAvailable(.rear) {
-                picker.cameraDevice = .rear
-            }
-            picker.cameraCaptureMode = .photo
-            picker.showsCameraControls = true
-            picker.cameraFlashMode = .auto
-        case .photoLibrary:
-            picker.sourceType = .photoLibrary
-        }
-
+        picker.sourceType = .photoLibrary
         return picker
     }
 
@@ -93,7 +76,6 @@ struct SystemImagePicker: UIViewControllerRepresentable {
             }
         }
 
-        /// Parent SwiftUI presentation (`fullScreenCover` / `sheet`) owns dismiss.
         private func finish(result: Result<UIImage, Error>) {
             guard !didFinish else { return }
             didFinish = true
@@ -104,9 +86,16 @@ struct SystemImagePicker: UIViewControllerRepresentable {
 
 enum CameraAuthorization {
     static func ensureAuthorized() async -> Result<Void, Error> {
-        guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
+        // Prefer real capture hardware over UIImagePicker availability (which can lie on Simulator).
+        let discovery = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.builtInWideAngleCamera],
+            mediaType: .video,
+            position: .unspecified
+        )
+        guard !discovery.devices.isEmpty else {
             return .failure(CameraCaptureError.unavailable)
         }
+
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
             return .success(())

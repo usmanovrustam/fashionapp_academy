@@ -3,16 +3,19 @@ import FirebaseCore
 import FirebaseAnalytics
 
 /// Owns app composition after Firebase is configured.
-/// Subclasses `UIResponder` so GoogleUtilities recognizes a real UIApplicationDelegate.
-@MainActor
+///
+/// Important: do **not** mark this class `@MainActor`. GoogleUtilities checks
+/// `conforms(to: UIApplicationDelegate.self)` via the ObjC runtime; `@MainActor`
+/// on the class breaks that check and logs I-SWZ001014.
 @objc(SylyoAppDelegate)
 final class AppDelegate: UIResponder, UIApplicationDelegate {
     /// Created only after `FirebaseApp.configure()` succeeds (or is skipped safely).
     private(set) var sharedContainer: AppContainer
 
     override init() {
-        // Must run before Auth / Analytics / Firestore touch the default app.
+        // Configure before any Firebase product (Auth / Analytics / Storage) is touched.
         _ = FirebaseBootstrap.configureIfPossible()
+        // App launch is on the main thread; AppContainer is MainActor-isolated.
         sharedContainer = AppContainer()
         super.init()
     }
@@ -22,8 +25,10 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         _ = FirebaseBootstrap.configureIfPossible()
-        // Collection starts disabled in Info.plist; turn on only after configure.
-        Analytics.setAnalyticsCollectionEnabled(true)
+        // Collection starts disabled in Info.plist; enable only after configure.
+        if FirebaseBootstrap.isConfigured {
+            Analytics.setAnalyticsCollectionEnabled(true)
+        }
         return true
     }
 }
