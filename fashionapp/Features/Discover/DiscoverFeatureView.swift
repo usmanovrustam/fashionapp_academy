@@ -190,7 +190,7 @@ struct DiscoverFeatureView: View {
     private func weatherErrorContent(_ message: String) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
-                Image(systemName: "cloud.slash.fill")
+                Image(systemName: "exclamationmark.triangle.fill")
                     .font(.title2)
                     .foregroundStyle(AppColors.textTertiary)
                 VStack(alignment: .leading, spacing: 4) {

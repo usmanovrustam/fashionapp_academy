@@ -44,6 +44,20 @@ You should see Firebase bootstrap logs instead of `CloudKit Manager`.
 | `Outfit.swift` CloudKit manager | `FirebaseWardrobeRepository` |
 | Container `iCloud.apple.academy.fashionapp` | Firestore `users/{uid}/wardrobeItems` |
 
-## WeatherKit JWT errors
+## WeatherKit JWT errors (`Code=2`)
 
-`WeatherDaemon.WDSJWTAuthenticatorServiceListener` is **not CloudKit**. It means the App ID needs WeatherKit enabled in the Apple Developer portal for team `T76V4FRBSW` / bundle `apple.academy.stylo`. The app still runs; weather just falls back until that capability is active.
+`WeatherDaemon.WDSJWTAuthenticatorServiceListener.Errors Code=2` is **not a code bug**. Location works; Apple refuses to mint a WeatherKit JWT.
+
+For team `T76V4FRBSW` / bundle `apple.academy.stylo` you must enable WeatherKit in **two** places on the App ID:
+
+1. [Apple Developer → Identifiers](https://developer.apple.com/account/resources/identifiers/list) → `apple.academy.stylo`
+2. **Capabilities** tab → enable **WeatherKit** → Save
+3. **App Services** tab → enable **WeatherKit** → Save *(often missed)*
+4. In Xcode: Signing & Capabilities → confirm WeatherKit is present
+5. Product → Clean Build Folder, delete the app from the device, Run again (forces a fresh provisioning profile)
+
+Until that is done, Discover shows a weather error with retry; the rest of the app still works.
+
+## Firebase launch warnings
+
+A one-shot `I-COR000003` / Analytics “started” line can appear while the SDK loads; Sylyo configures Firebase in `AppDelegate.init` and again in `didFinishLaunching`. After a clean pull + rebuild you should see `✅ Firebase configured for project: sylyo-fashion`. The IDFA / `GoogleAppMeasurementIdentitySupport` line is expected unless you link AdSupport for ads.

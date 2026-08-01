@@ -167,7 +167,7 @@ final class WeatherKitService: WeatherProviding {
             if let cached = await cache.cachedSnapshot() {
                 return cached
             }
-            throw DomainError.weatherUnavailable(error.localizedDescription)
+            throw Self.mapWeatherError(error)
         }
     }
 
@@ -196,5 +196,23 @@ final class WeatherKitService: WeatherProviding {
             result += String(scalar)
         }
         return spaced.prefix(1).uppercased() + spaced.dropFirst()
+    }
+
+    /// JWT Code=2 almost always means WeatherKit App Services isn’t enabled on the App ID.
+    private static func mapWeatherError(_ error: Error) -> Error {
+        let nsError = error as NSError
+        let domain = nsError.domain.lowercased()
+        let isJWTAuthFailure =
+            domain.contains("weatherdaemon")
+            || domain.contains("wdsjwtauthenticator")
+            || domain.contains("weatherkit")
+            || (nsError.code == 2 && domain.contains("weather"))
+
+        if isJWTAuthFailure {
+            return DomainError.weatherUnavailable(
+                "WeatherKit isn’t authorized for this App ID. In Apple Developer → Identifiers → apple.academy.stylo, enable WeatherKit under both Capabilities and App Services, then refresh the provisioning profile in Xcode and reinstall the app."
+            )
+        }
+        return DomainError.weatherUnavailable(error.localizedDescription)
     }
 }
