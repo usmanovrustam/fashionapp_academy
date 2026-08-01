@@ -47,7 +47,7 @@ Cursor Firebase MCP is configured in `.cursor/mcp.json` (`npx firebase-tools@lat
 | AI stylist chat | Wardrobe intent assistant |
 | Liquid Glass UI | `.glassEffect` / `GlassEffectContainer` across custom surfaces |
 | Brand colors | Fashion rosewood + champagne (no purple) |
-| Home Screen widgets | Today Outfit (incl. `systemExtraLargePortrait`) + Wardrobe Glance |
+| Home Screen widgets | Today Outfit + Wardrobe Glance |
 | Analytics | Firebase Analytics + Firestore event mirror |
 | Analysis | BigQuery SQL in `bigquery/queries.sql` |
 
