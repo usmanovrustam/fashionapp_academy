@@ -36,9 +36,15 @@ enum ImageProcessing {
     static func resized(_ image: UIImage, maxDimension: CGFloat) -> UIImage {
         let size = image.size
         let maxSide = max(size.width, size.height)
-        guard maxSide > maxDimension else { return image }
-        let scale = maxDimension / maxSide
-        let newSize = CGSize(width: size.width * scale, height: size.height * scale)
+        // Always redraw so camera images without a CGImage get a bitmap (Vision needs cgImage).
+        let newSize: CGSize
+        if maxSide > maxDimension {
+            let scale = maxDimension / maxSide
+            newSize = CGSize(width: size.width * scale, height: size.height * scale)
+        } else {
+            newSize = size
+        }
+        guard newSize.width > 0, newSize.height > 0 else { return image }
         let renderer = UIGraphicsImageRenderer(size: newSize)
         return renderer.image { _ in
             image.draw(in: CGRect(origin: .zero, size: newSize))
