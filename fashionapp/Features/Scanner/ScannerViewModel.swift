@@ -63,14 +63,19 @@ final class ScannerViewModel: ObservableObject {
         analytics.track(.scanStarted, parameters: ["source": "image"])
 
         do {
-            guard let data = image.jpegData(compressionQuality: 0.92) else {
+            // Normalize orientation + bound size before Vision/CoreML.
+            let prepared = ImageProcessing.resized(image, maxDimension: 2048)
+            guard let data = prepared.jpegData(compressionQuality: 0.9) else {
                 throw DomainError.invalidImage
             }
-            let result = try await pipeline.scan(imageData: data)
+
+            // Yield so the shimmer can paint, then run Vision/CoreML work.
+            await Task.yield()
+            let result = try await self.runScan(imageData: data)
             scanResult = result
             applyDraft(from: result)
             if let transparent = result.transparentImageData {
-                previewImage = UIImage(data: transparent) ?? image
+                previewImage = UIImage(data: transparent) ?? prepared
             }
             analytics.track(.scanCompleted, parameters: [
                 "category": result.detectedCategory.rawValue,
@@ -86,6 +91,23 @@ final class ScannerViewModel: ObservableObject {
         }
 
         isProcessing = false
+    }
+
+    /// Runs the scan pipeline on a background queue so capture doesn’t block/crash the UI thread.
+    private func runScan(imageData: Data) async throws -> ClothingScanResult {
+        let pipeline = self.pipeline
+        return try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                Task {
+                    do {
+                        let result = try await pipeline.scan(imageData: imageData)
+                        continuation.resume(returning: result)
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
+                }
+            }
+        }
     }
 
     func save() async {
@@ -115,7 +137,8 @@ final class ScannerViewModel: ObservableObject {
             didSave = true
             analytics.track(.itemSaved, parameters: [
                 "category": item.category.rawValue,
-                "item_id": item.id.uuidString
+                "item_id": item.id.uuidString,
+                "storage_path": item.originalImagePath
             ])
             resetForm()
         } catch {

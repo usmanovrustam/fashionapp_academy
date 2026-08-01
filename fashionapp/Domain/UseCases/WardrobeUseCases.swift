@@ -39,14 +39,16 @@ struct ScanAndSaveClothingUseCase {
     ) async throws -> WardrobeItem {
         let itemID = UUID()
 
+        // Original photo always goes to Firebase Storage when an outfit was detected & user saves.
         let originalPath = try await imageStorage.saveImageData(
             scan.originalImageData,
             preferredName: "\(itemID.uuidString)-original.jpg"
         )
 
+        // Transparent cutout is optional — never block wardrobe save if this upload fails.
         var transparentPath: String?
         if let transparent = scan.transparentImageData {
-            transparentPath = try await imageStorage.saveImageData(
+            transparentPath = try? await imageStorage.saveImageData(
                 transparent,
                 preferredName: "\(itemID.uuidString)-transparent.png"
             )

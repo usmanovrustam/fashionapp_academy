@@ -9,9 +9,11 @@ final class HeuristicClothingDetector: ClothingDetector {
 
     func detectCategory(in imageData: Data) async throws -> (ClothingCategory, Double) {
         let image = try ImageProcessing.uiImage(from: imageData)
-        guard let cgImage = image.cgImage else { throw DomainError.invalidImage }
+        // Downscale for Vision — full camera frames are unnecessary and heavy on the main thread.
+        let analysisImage = ImageProcessing.resized(image, maxDimension: 1280)
+        guard let cgImage = analysisImage.cgImage else { throw DomainError.invalidImage }
 
-        let observations = try await classify(cgImage)
+        let observations = try classify(cgImage)
         let apparelHits = observations.filter { isApparelRelated($0.identifier) }
         let bestPresence = apparelHits.map(\.confidence).max() ?? 0
 
@@ -30,27 +32,20 @@ final class HeuristicClothingDetector: ClothingDetector {
         }
 
         // Apparel present but label is generic — fall back to aspect heuristics.
-        return aspectCategory(for: image)
+        return aspectCategory(for: analysisImage)
     }
 
-    private func classify(_ cgImage: CGImage) async throws -> [VNClassificationObservation] {
-        try await withCheckedThrowingContinuation { continuation in
-            let request = VNClassifyImageRequest { request, error in
-                if let error {
-                    continuation.resume(throwing: DomainError.scanFailed(error.localizedDescription))
-                    return
-                }
-                let results = (request.results as? [VNClassificationObservation]) ?? []
-                continuation.resume(returning: results)
-            }
-
-            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-            do {
-                try handler.perform([request])
-            } catch {
-                continuation.resume(throwing: DomainError.scanFailed(error.localizedDescription))
-            }
+    /// Synchronous Vision classify — do NOT wrap `perform` in a checked continuation.
+    /// `perform` both throws and invokes the completion handler on failure (double-resume crash).
+    private func classify(_ cgImage: CGImage) throws -> [VNClassificationObservation] {
+        let request = VNClassifyImageRequest()
+        let handler = VNImageRequestHandler(cgImage: cgImage, orientation: .up, options: [:])
+        do {
+            try handler.perform([request])
+        } catch {
+            throw DomainError.scanFailed(error.localizedDescription)
         }
+        return request.results ?? []
     }
 
     private func isApparelRelated(_ identifier: String) -> Bool {
@@ -285,10 +280,11 @@ final class DefaultClothingScanPipeline: ClothingScanPipeline {
         guard !imageData.isEmpty else { throw DomainError.invalidImage }
 
         let (category, detectionConfidence) = try await detector.detectCategory(in: imageData)
-        let maskData = try await segmenter.segment(imageData: imageData)
 
-        let transparentData: Data?
+        // Segmentation / cutout is best-effort — never fail the whole scan after outfit detection.
+        var transparentData: Data?
         do {
+            let maskData = try await segmenter.segment(imageData: imageData)
             transparentData = try await backgroundRemover.removeBackground(
                 imageData: imageData,
                 maskData: maskData

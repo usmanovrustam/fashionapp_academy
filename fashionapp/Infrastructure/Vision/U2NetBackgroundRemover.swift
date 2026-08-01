@@ -27,31 +27,34 @@ final class U2NetClothingSegmenter: ClothingSegmenter {
         let resized = ImageProcessing.resized(image, maxDimension: CGFloat(inputSize))
         guard let cgImage = resized.cgImage else { throw ImageProcessingError.invalidImage }
 
-        let maskImage: UIImage = try await withCheckedThrowingContinuation { continuation in
-            let request = VNCoreMLRequest(model: model) { request, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                guard let results = request.results as? [VNCoreMLFeatureValueObservation],
-                      let multiArray = results.first?.featureValue.multiArrayValue,
-                      let mask = Self.maskImage(from: multiArray) else {
-                    continuation.resume(throwing: ImageProcessingError.maskFailed)
-                    return
-                }
-                continuation.resume(returning: mask)
-            }
-            request.imageCropAndScaleOption = .scaleFill
+        // Synchronous Vision perform — never wrap in a checked continuation (double-resume crash).
+        let request = VNCoreMLRequest(model: model)
+        request.imageCropAndScaleOption = .scaleFill
+        let handler = VNImageRequestHandler(cgImage: cgImage, orientation: .up, options: [:])
+        do {
+            try handler.perform([request])
+        } catch {
+            throw ImageProcessingError.maskFailed
+        }
 
-            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-            do {
-                try handler.perform([request])
-            } catch {
-                continuation.resume(throwing: error)
-            }
+        guard let results = request.results as? [VNCoreMLFeatureValueObservation],
+              let multiArray = Self.preferredMaskArray(from: results),
+              let maskImage = Self.maskImage(from: multiArray) else {
+            throw ImageProcessingError.maskFailed
         }
 
         return try ImageProcessing.pngData(from: maskImage)
+    }
+
+    /// Prefer the primary U²-Net saliency output when multiple tensors are present.
+    private static func preferredMaskArray(from results: [VNCoreMLFeatureValueObservation]) -> MLMultiArray? {
+        if let named = results.first(where: {
+            let name = $0.featureName.lowercased()
+            return name == "output_0" || name.contains("output_0") || name.contains("saliency") || name.hasSuffix("mask")
+        })?.featureValue.multiArrayValue {
+            return named
+        }
+        return results.last?.featureValue.multiArrayValue ?? results.first?.featureValue.multiArrayValue
     }
 
     private static func fullOpacityMaskPNG(from imageData: Data) async throws -> Data {
