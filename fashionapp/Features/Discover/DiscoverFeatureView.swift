@@ -97,6 +97,11 @@ struct DiscoverFeatureView: View {
                 Text(weather.conditionDescription)
                     .font(.subheadline)
                     .foregroundStyle(AppColors.textSecondary)
+
+                Label(viewModel.windSummary(weather.windSpeedKmh), systemImage: "wind")
+                    .font(.caption)
+                    .foregroundStyle(AppColors.textTertiary)
+                    .labelStyle(.titleAndIcon)
             }
 
             Spacer(minLength: 8)
@@ -108,6 +113,7 @@ struct DiscoverFeatureView: View {
                     "\(viewModel.formattedTemperatureValue(weather.temperatureCelsius)) degrees \(viewModel.temperatureUnitLabel())"
                 )
         }
+        .accessibilityElement(children: .combine)
     }
 
     private func weatherErrorContent(_ message: String) -> some View {

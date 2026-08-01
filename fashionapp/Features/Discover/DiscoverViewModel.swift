@@ -130,6 +130,23 @@ final class DiscoverViewModel: ObservableObject {
         usesCelsius ? "C" : "F"
     }
 
+    /// Compact wind line for the weather card (outfit-relevant without extra metrics).
+    func windSummary(_ kmh: Double) -> String {
+        let speed = usesCelsius ? kmh : kmh * 0.621371
+        let unit = usesCelsius ? "km/h" : "mph"
+        let value = Int(speed.rounded())
+        switch kmh {
+        case ..<12:
+            return "Light wind · \(value) \(unit)"
+        case 12..<25:
+            return "Breezy · \(value) \(unit)"
+        case 25..<40:
+            return "Windy · \(value) \(unit)"
+        default:
+            return "Strong wind · \(value) \(unit)"
+        }
+    }
+
     private func converted(_ celsius: Double) -> Double {
         usesCelsius ? celsius : celsius * 9 / 5 + 32
     }
