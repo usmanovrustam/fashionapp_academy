@@ -65,7 +65,8 @@ final class ScannerViewModel: ObservableObject {
         do {
             // Normalize on a cooperative yield so shimmer can paint first.
             await Task.yield()
-            let prepared = ImageProcessing.resized(image, maxDimension: 1600)
+            let upright = ImageProcessing.orientedUp(image)
+            let prepared = ImageProcessing.resized(upright, maxDimension: 1600)
             guard let data = try? ImageProcessing.jpegData(from: prepared, quality: 0.9) else {
                 throw DomainError.invalidImage
             }

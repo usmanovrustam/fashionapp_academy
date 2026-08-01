@@ -349,17 +349,35 @@ enum ImageProcessing {
 
     // MARK: - CG helpers (background-safe)
 
-    static func cgImage(from image: UIImage) -> CGImage? {
-        if let cg = image.cgImage { return cg }
-        if let ci = image.ciImage {
-            return CIContext(options: [.useSoftwareRenderer: false]).createCGImage(ci, from: ci.extent)
-        }
-        guard let data = image.jpegData(compressionQuality: 0.95),
-              let decoded = UIImage(data: data)?.cgImage else {
-            return nil
-        }
-        return decoded
+    /// Returns pixel-upright image (orientation baked to `.up`). Required before Core ML / Vision.
+    static func orientedUp(_ image: UIImage) -> UIImage {
+        guard let cg = cgImage(from: image) else { return image }
+        return UIImage(cgImage: cg, scale: 1, orientation: .up)
     }
+
+    /// Extracts a CGImage with EXIF / `UIImage.imageOrientation` already applied.
+    /// Camera JPEGs are often stored landscape with `.right` orientation — using raw
+    /// `image.cgImage` without this bake makes SegFormer / crop see a sideways photo.
+    static func cgImage(from image: UIImage) -> CGImage? {
+        if let cg = image.cgImage {
+            if image.imageOrientation == .up { return cg }
+            let oriented = CIImage(cgImage: cg)
+                .oriented(CGImagePropertyOrientation(image.imageOrientation))
+            return sharedCIContext.createCGImage(oriented, from: oriented.extent)
+        }
+        if let ci = image.ciImage {
+            let oriented: CIImage
+            if image.imageOrientation == .up {
+                oriented = ci
+            } else {
+                oriented = ci.oriented(CGImagePropertyOrientation(image.imageOrientation))
+            }
+            return sharedCIContext.createCGImage(oriented, from: oriented.extent)
+        }
+        return nil
+    }
+
+    private static let sharedCIContext = CIContext(options: [.useSoftwareRenderer: false])
 
     static func redraw(_ source: CGImage, width: Int, height: Int) -> CGImage? {
         let colorSpace = CGColorSpaceCreateDeviceRGB()

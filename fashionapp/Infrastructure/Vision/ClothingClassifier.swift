@@ -10,8 +10,13 @@ final class HeuristicClothingDetector: ClothingDetector {
     func detectCategory(in imageData: Data) async throws -> (ClothingCategory, Double) {
         let image = try ImageProcessing.uiImage(from: imageData)
         // Downscale for Vision — full camera frames are unnecessary and heavy on the main thread.
-        let analysisImage = ImageProcessing.resized(image, maxDimension: 1280)
-        guard let cgImage = analysisImage.cgImage else { throw DomainError.invalidImage }
+        let analysisImage = ImageProcessing.resized(
+            ImageProcessing.orientedUp(image),
+            maxDimension: 1280
+        )
+        guard let cgImage = ImageProcessing.cgImage(from: analysisImage) else {
+            throw DomainError.invalidImage
+        }
 
         let observations = try classify(cgImage)
         let apparelHits = observations.filter { isApparelRelated($0.identifier) }

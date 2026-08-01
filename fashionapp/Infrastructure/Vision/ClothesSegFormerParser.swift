@@ -57,7 +57,9 @@ final class ClothesSegFormerParser: @unchecked Sendable {
         }
 
         let image = try ImageProcessing.uiImage(from: imageData)
-        let prepared = ImageProcessing.resized(image, maxDimension: 1600)
+        // Bake camera EXIF so logits / mask align with an upright garment.
+        let upright = ImageProcessing.orientedUp(image)
+        let prepared = ImageProcessing.resized(upright, maxDimension: 1600)
 
         let pixelValues = try makePixelValues(from: prepared)
         let input = try MLDictionaryFeatureProvider(dictionary: [
@@ -216,6 +218,20 @@ final class ClothesSegFormerParser: @unchecked Sendable {
             var score = scores[id]
             if id == 9, scores.count > 10 { score += scores[10] }
             if id == 10 { continue }
+            // Flat-lay hoodies / jackets are often mislabeled "Dress" by ATR SegFormer.
+            // Prefer Upper-clothes when it is competitively present.
+            if id == 7, scores.count > 4 {
+                let upper = scores[4]
+                if upper >= 0.01, upper >= score * 0.45 {
+                    continue
+                }
+            }
+            if id == 4, scores.count > 7 {
+                let dress = scores[7]
+                if dress > score, score >= dress * 0.45 {
+                    score = dress + 0.001
+                }
+            }
             if score > bestScore {
                 bestScore = score
                 bestID = id
@@ -234,25 +250,18 @@ final class ClothesSegFormerParser: @unchecked Sendable {
         targetSize: CGSize
     ) -> UIImage? {
         var pixels = [UInt8](repeating: 0, count: width * height)
-        let shoePair: Set<UInt8> = [9, 10]
-        let target = UInt8(targetClass)
-        if shoePair.contains(target) {
-            for i in 0..<classMap.count where shoePair.contains(classMap[i]) {
-                pixels[i] = 255
-            }
-        } else {
-            for i in 0..<classMap.count where classMap[i] == target {
-                pixels[i] = 255
-            }
+        let keep = Self.maskClasses(for: targetClass)
+        for i in 0..<classMap.count where keep.contains(classMap[i]) {
+            pixels[i] = 255
         }
+        fillMaskHoles(&pixels, width: width, height: height)
+        dilateMask(&pixels, width: width, height: height, radius: 1)
 
         guard let small = ImageProcessing.grayImage(from: pixels, width: width, height: height),
               let smallCG = small.cgImage else { return nil }
 
         let outW = max(1, Int(targetSize.width.rounded()))
         let outH = max(1, Int(targetSize.height.rounded()))
-        guard let scaled = ImageProcessing.redraw(smallCG, width: outW, height: outH) else { return nil }
-        // Convert RGB redraw of gray back to gray UIImage via luminance approx — redraw gray properly:
         var gray = [UInt8](repeating: 0, count: outW * outH)
         guard let ctx = CGContext(
             data: &gray,
@@ -263,11 +272,88 @@ final class ClothesSegFormerParser: @unchecked Sendable {
             space: CGColorSpaceCreateDeviceGray(),
             bitmapInfo: CGImageAlphaInfo.none.rawValue
         ) else {
-            return UIImage(cgImage: scaled, scale: 1, orientation: .up)
+            return nil
         }
         ctx.interpolationQuality = .high
         ctx.draw(smallCG, in: CGRect(x: 0, y: 0, width: outW, height: outH))
+        // Harden soft upscale edges so cutouts are not blocky / holey.
+        for i in 0..<gray.count {
+            gray[i] = gray[i] >= 96 ? 255 : 0
+        }
+        fillMaskHoles(&gray, width: outW, height: outH)
         return ImageProcessing.grayImage(from: gray, width: outW, height: outH)
+    }
+
+    /// Related ATR classes to include so sleeves / torso are not Swiss-cheesed.
+    private static func maskClasses(for targetClass: Int) -> Set<UInt8> {
+        switch targetClass {
+        case 4: return [4, 8, 14, 15, 17] // Upper-clothes + belt/arms/scarf
+        case 7: return [7, 14, 15]         // Dress + arms
+        case 5: return [5]                // Skirt
+        case 6: return [6, 12, 13]         // Pants + legs
+        case 9, 10: return [9, 10]
+        default: return [UInt8(targetClass)]
+        }
+    }
+
+    /// Flood-fill background from the border; any enclosed zeros become foreground.
+    private func fillMaskHoles(_ pixels: inout [UInt8], width: Int, height: Int) {
+        let count = width * height
+        guard count == pixels.count, count > 0 else { return }
+        var exterior = [Bool](repeating: false, count: count)
+        var queue: [Int] = []
+        queue.reserveCapacity(width + height)
+
+        func enqueue(_ idx: Int) {
+            guard idx >= 0, idx < count, !exterior[idx], pixels[idx] < 128 else { return }
+            exterior[idx] = true
+            queue.append(idx)
+        }
+
+        for x in 0..<width {
+            enqueue(x)
+            enqueue((height - 1) * width + x)
+        }
+        for y in 0..<height {
+            enqueue(y * width)
+            enqueue(y * width + (width - 1))
+        }
+
+        var head = 0
+        while head < queue.count {
+            let i = queue[head]
+            head += 1
+            let x = i % width
+            let y = i / width
+            if x > 0 { enqueue(i - 1) }
+            if x + 1 < width { enqueue(i + 1) }
+            if y > 0 { enqueue(i - width) }
+            if y + 1 < height { enqueue(i + width) }
+        }
+
+        for i in 0..<count where pixels[i] < 128 && !exterior[i] {
+            pixels[i] = 255
+        }
+    }
+
+    private func dilateMask(_ pixels: inout [UInt8], width: Int, height: Int, radius: Int) {
+        guard radius > 0 else { return }
+        let src = pixels
+        for y in 0..<height {
+            for x in 0..<width {
+                if src[y * width + x] >= 128 { continue }
+                var hit = false
+                let y0 = max(0, y - radius), y1 = min(height - 1, y + radius)
+                let x0 = max(0, x - radius), x1 = min(width - 1, x + radius)
+                outer: for yy in y0...y1 {
+                    for xx in x0...x1 where src[yy * width + xx] >= 128 {
+                        hit = true
+                        break outer
+                    }
+                }
+                if hit { pixels[y * width + x] = 255 }
+            }
+        }
     }
 
     private static func mapLabel(_ classID: Int) -> (category: ClothingCategory, subcategory: String) {

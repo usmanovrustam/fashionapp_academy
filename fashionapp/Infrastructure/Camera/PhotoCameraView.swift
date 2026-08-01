@@ -107,6 +107,11 @@ private final class CameraSessionBox: @unchecked Sendable {
         }
         session.addOutput(photoOutput)
 
+        if let connection = photoOutput.connection(with: .video),
+           connection.isVideoOrientationSupported {
+            connection.videoOrientation = .portrait
+        }
+
         if photoOutput.isDepthDataDeliverySupported {
             photoOutput.isDepthDataDeliveryEnabled = false
         }
@@ -239,8 +244,10 @@ extension PhotoCaptureModel: AVCapturePhotoCaptureDelegate {
             return
         }
 
+        // Bake EXIF so downstream resize / Core ML never sees a sideways buffer.
+        let upright = ImageProcessing.orientedUp(image)
         Task { @MainActor in
-            self.finish(.success(image))
+            self.finish(.success(upright))
         }
     }
 }
