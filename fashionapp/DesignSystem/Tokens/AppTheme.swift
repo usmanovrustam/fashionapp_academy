@@ -1,15 +1,21 @@
 import SwiftUI
 
-/// Soft pastel sky-blue brand. App is light-mode only.
+/// Soft pastel sky atmosphere + solid blue CTAs. App is light-mode only.
 /// Text uses separate matte neutrals — never treat text colors as brand.
 enum AppColors {
     // MARK: Brand (atmosphere / accents only — not body text)
-    /// Pastel sky blue — primary brand.
+    /// Soft sky wash for backgrounds.
     static let brand = Color(red: 0.52, green: 0.74, blue: 0.94)
     /// Soft powder-blue accent.
     static let accent = Color(red: 0.72, green: 0.86, blue: 0.96)
     /// Airy cloud-blue highlight.
     static let blush = Color(red: 0.86, green: 0.93, blue: 0.99)
+
+    // MARK: Actions (solid blue — not pastel)
+    /// Primary button / interactive blue.
+    static let buttonBlue = Color(red: 0.13, green: 0.45, blue: 0.95)
+    /// Slightly deeper blue for pressed / secondary fills.
+    static let buttonBlueDark = Color(red: 0.08, green: 0.35, blue: 0.85)
 
     // MARK: Text (matte neutrals — not core brand)
     /// Matte pastel black for titles / primary copy.
@@ -18,6 +24,8 @@ enum AppColors {
     static let textSecondary = Color(red: 0.45, green: 0.47, blue: 0.50)
     /// Cool blue-grey for tertiary / muted labels.
     static let textTertiary = Color(red: 0.50, green: 0.56, blue: 0.64)
+    /// Light grey for field placeholders and hint text.
+    static let placeholder = Color(red: 0.72, green: 0.74, blue: 0.78)
 
     /// Legacy alias → matte primary text.
     static let ink = textPrimary
@@ -26,7 +34,7 @@ enum AppColors {
     static let backgroundBottom = Color(red: 0.92, green: 0.96, blue: 0.99)
 
     static let primaryGradient = LinearGradient(
-        colors: [brand, accent],
+        colors: [buttonBlue, buttonBlueDark],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
@@ -208,7 +216,7 @@ private struct LiquidGlassCapsuleModifier: ViewModifier {
     }
 }
 
-/// Solid pastel-sky CTA (not transparent). `tint` overrides fill (e.g. destructive red).
+/// Solid blue CTA (not pastel). `tint` overrides fill (e.g. destructive red).
 struct LiquidGlassButtonStyle: ButtonStyle {
     var prominent: Bool = true
     var tint: Color? = nil
@@ -236,13 +244,13 @@ struct LiquidGlassButtonStyle: ButtonStyle {
         } else if prominent {
             Capsule().fill(
                 LinearGradient(
-                    colors: [AppColors.brand, AppColors.accent],
+                    colors: [AppColors.buttonBlue, AppColors.buttonBlueDark],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
             )
         } else {
-            Capsule().fill(AppColors.brand.opacity(0.82))
+            Capsule().fill(AppColors.buttonBlue.opacity(0.90))
         }
     }
 }
