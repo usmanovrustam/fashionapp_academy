@@ -1,0 +1,45 @@
+# Xcode
+DerivedData/
+build/
+*.xcuserstate
+*.xccheckout
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+xcuserdata/
+*.xcscmblueprint
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Packages/
+Package.resolved
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+
+# IDE
+.idea/
+*.swp
+*~
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# Env / secrets
+.env
+.env.*
+*.pem
+
+# Firebase admin secrets (client GoogleService-Info.plist is committed for this app)
+*-firebase-adminsdk-*.json
+serviceAccount*.json
