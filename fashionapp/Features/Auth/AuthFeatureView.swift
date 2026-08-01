@@ -136,19 +136,6 @@ final class AuthViewModel: ObservableObject {
         }
     }
 
-    func continueAsGuest() async {
-        isLoading = true
-        errorMessage = nil
-        defer { isLoading = false }
-        do {
-            let user = try await auth.signInAnonymously()
-            analytics.setUserID(user.id)
-            analytics.track(.login, parameters: ["method": "anonymous"])
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
     func resetPassword() async {
         let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
@@ -197,7 +184,6 @@ struct AuthFeatureView: View {
                     statusMessages
                     emailActions
                     modeSwitchLink
-                    guestAction
                     privacyFootnote
                 }
                 .padding(.horizontal, 20)
@@ -217,7 +203,7 @@ struct AuthFeatureView: View {
                 }
             }
         }
-        .tint(AppColors.brand)
+        .tint(AppColors.buttonBlue)
         .preferredColorScheme(.light)
     }
 
@@ -235,9 +221,9 @@ struct AuthFeatureView: View {
                 .foregroundStyle(AppColors.textPrimary)
                 .animation(nil, value: viewModel.mode)
 
-            Text("Sync your wardrobe and get personalized outfits across devices. Sign in with Apple is fast and private — or continue as a guest.")
+            Text("Sync your wardrobe and get personalized outfits across devices. Sign in with Apple is fast and private.")
                 .font(.subheadline)
-                .foregroundStyle(AppColors.textSecondary)
+                .foregroundStyle(AppColors.placeholder)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -274,7 +260,7 @@ struct AuthFeatureView: View {
                 .frame(height: 1)
             Text(text)
                 .font(.footnote.weight(.medium))
-                .foregroundStyle(AppColors.textSecondary)
+                .foregroundStyle(AppColors.placeholder)
                 .layoutPriority(1)
             Rectangle()
                 .fill(AppColors.textTertiary.opacity(0.22))
@@ -289,7 +275,7 @@ struct AuthFeatureView: View {
         HStack(spacing: 4) {
             if viewModel.mode == .signIn {
                 Text("Don't have an account?")
-                    .foregroundStyle(AppColors.textSecondary)
+                    .foregroundStyle(AppColors.placeholder)
                 Button("Register") {
                     withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
                         viewModel.mode = .signUp
@@ -299,10 +285,10 @@ struct AuthFeatureView: View {
                     }
                 }
                 .fontWeight(.semibold)
-                .foregroundStyle(AppColors.brand)
+                .foregroundStyle(AppColors.buttonBlue)
             } else {
                 Text("Already have an account?")
-                    .foregroundStyle(AppColors.textSecondary)
+                    .foregroundStyle(AppColors.placeholder)
                 Button("Sign In") {
                     withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
                         viewModel.mode = .signIn
@@ -312,7 +298,7 @@ struct AuthFeatureView: View {
                     }
                 }
                 .fontWeight(.semibold)
-                .foregroundStyle(AppColors.brand)
+                .foregroundStyle(AppColors.buttonBlue)
             }
         }
         .font(.subheadline)
@@ -328,7 +314,11 @@ struct AuthFeatureView: View {
         VStack(spacing: 16) {
             if viewModel.mode == .signUp {
                 labeledField(title: "Name", field: .name) {
-                    TextField("Your name", text: $viewModel.displayName)
+                    TextField(
+                        "",
+                        text: $viewModel.displayName,
+                        prompt: Text("Your name").foregroundStyle(AppColors.placeholder)
+                    )
                         .textContentType(.name)
                         .textInputAutocapitalization(.words)
                         .autocorrectionDisabled()
@@ -340,7 +330,11 @@ struct AuthFeatureView: View {
             }
 
             labeledField(title: "Email", field: .email) {
-                TextField("name@example.com", text: $viewModel.email)
+                TextField(
+                    "",
+                    text: $viewModel.email,
+                    prompt: Text("name@example.com").foregroundStyle(AppColors.placeholder)
+                )
                     .textContentType(.emailAddress)
                     .keyboardType(.emailAddress)
                     .textInputAutocapitalization(.never)
@@ -361,7 +355,7 @@ struct AuthFeatureView: View {
                             Task { await viewModel.resetPassword() }
                         }
                         .font(.subheadline.weight(.medium))
-                        .foregroundStyle(AppColors.brand)
+                        .foregroundStyle(AppColors.buttonBlue)
                         .disabled(viewModel.isLoading)
                         .frame(minHeight: 44)
                     }
@@ -370,10 +364,18 @@ struct AuthFeatureView: View {
                 HStack(spacing: 10) {
                     Group {
                         if viewModel.isPasswordVisible {
-                            TextField("Required", text: $viewModel.password)
+                            TextField(
+                                "",
+                                text: $viewModel.password,
+                                prompt: Text("Password").foregroundStyle(AppColors.placeholder)
+                            )
                                 .textContentType(viewModel.mode == .signUp ? .newPassword : .password)
                         } else {
-                            SecureField("Required", text: $viewModel.password)
+                            SecureField(
+                                "",
+                                text: $viewModel.password,
+                                prompt: Text("Password").foregroundStyle(AppColors.placeholder)
+                            )
                                 .textContentType(viewModel.mode == .signUp ? .newPassword : .password)
                         }
                     }
@@ -392,7 +394,7 @@ struct AuthFeatureView: View {
                     } label: {
                         Image(systemName: viewModel.isPasswordVisible ? "eye.slash" : "eye")
                             .font(.body)
-                            .foregroundStyle(AppColors.textTertiary)
+                            .foregroundStyle(AppColors.placeholder)
                             .frame(width: 44, height: 44)
                             .contentShape(Rectangle())
                     }
@@ -431,7 +433,7 @@ struct AuthFeatureView: View {
             .overlay {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .stroke(
-                        focused ? AppColors.brand.opacity(0.85) : Color(.separator).opacity(0.55),
+                        focused ? AppColors.buttonBlue.opacity(0.90) : Color(.separator).opacity(0.45),
                         lineWidth: focused ? 1.5 : 1
                     )
             }
@@ -498,27 +500,10 @@ struct AuthFeatureView: View {
         )
     }
 
-    private var guestAction: some View {
-        Button {
-            focusedField = nil
-            Task { await viewModel.continueAsGuest() }
-        } label: {
-            Text("Continue as Guest")
-                .font(.body.weight(.semibold))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-        }
-        .buttonStyle(.bordered)
-        .controlSize(.large)
-        .tint(AppColors.brand)
-        .disabled(viewModel.isLoading)
-        .accessibilityHint("Explore Sylyo without creating an account")
-    }
-
     private var privacyFootnote: some View {
-        Text("Sign in with Apple shares only the name and email you choose. Guest mode keeps items on this device until you create an account.")
+        Text("Sign in with Apple shares only the name and email you choose.")
             .font(.footnote)
-            .foregroundStyle(AppColors.textTertiary)
+            .foregroundStyle(AppColors.placeholder)
             .multilineTextAlignment(.leading)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, 4)

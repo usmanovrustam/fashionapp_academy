@@ -67,7 +67,7 @@ struct OnboardingView: View {
                 .padding(.bottom, AppSpacing.xl)
         }
         .background(SoftBackground())
-        .tint(AppColors.brand)
+        .tint(AppColors.buttonBlue)
         .preferredColorScheme(.light)
     }
 

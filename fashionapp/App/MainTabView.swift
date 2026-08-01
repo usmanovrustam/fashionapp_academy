@@ -27,7 +27,7 @@ struct MainTabView: View {
                 ProfileFeatureView(container: container, didFinishOnboarding: $didFinishOnboarding)
             }
         }
-        .tint(AppColors.brand)
+        .tint(AppColors.buttonBlue)
         .preferredColorScheme(.light)
         // System tab bar adopts Liquid Glass on iOS 26/27 automatically.
     }
