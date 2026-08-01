@@ -70,12 +70,16 @@ enum AppSpacing {
 }
 
 enum AppTypography {
-    static let title = Font.title.bold()
+    /// Prefer semantic text styles so Dynamic Type scales (HIG Typography).
+    static let largeTitle = Font.largeTitle.weight(.semibold)
+    static let title = Font.title.weight(.bold)
     static let title2 = Font.title2.weight(.semibold)
     static let headline = Font.headline
     static let body = Font.body
+    static let callout = Font.callout
     static let caption = Font.caption
-    static let roundedMedium = Font.system(size: 18, weight: .medium, design: .rounded)
+    static let roundedMedium = Font.system(.body, design: .rounded).weight(.medium)
+    static let brandHero = Font.system(.largeTitle, design: .rounded).weight(.semibold)
 }
 
 struct SoftBackground: View {
@@ -236,6 +240,8 @@ struct LiquidGlassButtonStyle: ButtonStyle {
     var tint: Color? = nil
     var isDisabled: Bool = false
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(AppTypography.headline)
@@ -247,8 +253,8 @@ struct LiquidGlassButtonStyle: ButtonStyle {
                 capsuleFill
                     .opacity(isDisabled ? 0.45 : (configuration.isPressed ? 0.88 : 1))
             }
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
+            .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.97 : 1))
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: configuration.isPressed)
     }
 
     @ViewBuilder
@@ -296,10 +302,22 @@ extension View {
 }
 
 struct ScaleButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.96 : 1)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: configuration.isPressed)
+            .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.96 : 1))
+            .animation(
+                reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.7),
+                value: configuration.isPressed
+            )
+    }
+}
+
+extension View {
+    /// Hide decorative SF Symbols from VoiceOver (HIG Icons / SF Symbols).
+    func sylyoDecorativeSymbol() -> some View {
+        accessibilityHidden(true)
     }
 }
 

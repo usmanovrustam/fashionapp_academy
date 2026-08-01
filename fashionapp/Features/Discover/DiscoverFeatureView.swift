@@ -5,6 +5,7 @@ struct DiscoverFeatureView: View {
     @StateObject private var viewModel: DiscoverViewModel
     @State private var dragOffset: CGSize = .zero
     @State private var selectedRecommendation: OutfitRecommendation?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let cardStackOffset: CGFloat = 12
     private let cardStackScale: CGFloat = 0.04
@@ -211,6 +212,11 @@ struct DiscoverFeatureView: View {
 
     private func swipe(_ direction: Int, accepted: Bool) {
         viewModel.trackRecommendationView(at: viewModel.topIndex)
+        if reduceMotion {
+            viewModel.advance(accepted: accepted)
+            dragOffset = .zero
+            return
+        }
         withAnimation(.easeOut(duration: 0.2)) {
             dragOffset = CGSize(width: CGFloat(direction) * 500, height: 0)
         }

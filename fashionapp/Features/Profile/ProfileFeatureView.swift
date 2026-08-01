@@ -157,13 +157,13 @@ struct ProfileFeatureView: View {
             .sheet(isPresented: $viewModel.showPrivacy) {
                 infoSheet(
                     title: NSLocalizedString("Privacy Policy", comment: ""),
-                    bodyText: "Sylyo stores your account, wardrobe, and analytics in your Firebase project (Auth, Firestore, Storage). Photos are processed on-device for background removal and clothing metadata, then uploaded to Firebase Storage. Firebase Analytics events (and optional Firestore mirrors) can be exported to BigQuery for product analysis. Location is used only for weather-aware outfit recommendations."
+                    bodyText: "Sylyo stores your account and wardrobe securely in your cloud project. Photos you add are processed on this device to remove backgrounds and suggest clothing details, then saved to your account storage. Anonymous usage events help improve the app. Location is used only while Sylyo is open to show local weather for outfit ideas — never for ads."
                 )
             }
             .sheet(isPresented: $viewModel.showAbout) {
                 infoSheet(
                     title: NSLocalizedString("About Us", comment: ""),
-                    bodyText: "Sylyo is your personal AI fashion stylist. Scan your clothes, sync a digital wardrobe to Firebase, and get weather-aware outfit recommendations every day."
+                    bodyText: "Sylyo helps you decide what to wear. Add clothes from photos, keep a digital wardrobe, and get ideas that match the weather."
                 )
             }
             .alert(NSLocalizedString("Clear All Data?", comment: ""), isPresented: $viewModel.showClearAlert) {
@@ -265,7 +265,7 @@ struct ProfileFeatureView: View {
                         .onSubmit {
                             Task { await viewModel.saveProfile() }
                         }
-                    Text("Personal AI Stylist")
+                    Text("Your wardrobe companion")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }

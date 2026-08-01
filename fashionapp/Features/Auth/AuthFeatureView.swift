@@ -180,13 +180,13 @@ struct AuthFeatureView: View {
             ScrollView {
                 VStack(spacing: 20) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Authentication")
-                            .font(.title2.weight(.semibold))
+                        Text("Sylyo")
+                            .font(AppTypography.brandHero)
                             .foregroundStyle(AppColors.textPrimary)
                             .accessibilityAddTraits(.isHeader)
 
-                        Text("Sign in to access your wardrobe and personalized outfits.")
-                            .font(.subheadline)
+                        Text("Sign in to open your wardrobe and get outfit ideas for today.")
+                            .font(AppTypography.body)
                             .foregroundStyle(AppColors.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }

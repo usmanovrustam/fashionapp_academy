@@ -76,10 +76,12 @@ enum StyleTag: String, Codable, CaseIterable, Hashable {
 
     var displayName: String {
         switch self {
-        case .oldMoney: return "Old Money"
-        case .quietLuxury: return "Quiet Luxury"
-        case .nightOut: return "Night Out"
-        case .weddingGuest: return "Wedding Guest"
+        case .oldMoney: return "Classic tailored"
+        case .quietLuxury: return "Understated"
+        case .luxury: return "Refined"
+        case .preppy: return "Neat casual"
+        case .nightOut: return "Evening out"
+        case .weddingGuest: return "Formal event"
         default: return rawValue.prefix(1).uppercased() + rawValue.dropFirst()
         }
     }

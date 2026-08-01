@@ -121,13 +121,13 @@ final class LocalStylingAssistant: StylingAssisting {
         emptyFilter: Bool
     ) -> String {
         if recommendations.isEmpty {
-            return "Your wardrobe looks a little sparse for that request. Try scanning a few more pieces and ask me again."
+            return "You may need a few more items in your wardrobe for that request. Add some photos and try again."
         }
 
         var lines: [String] = []
 
         if emptyFilter {
-            lines.append("I couldn't find pieces matching every filter, so I broadened the search.")
+            lines.append("I couldn't match every filter, so I widened the search.")
         }
 
         if let weather = context.weather {
@@ -137,9 +137,9 @@ final class LocalStylingAssistant: StylingAssisting {
         }
 
         if intent.mentionsMeeting {
-            lines.append("For your meeting, I'd lean polished but comfortable.")
+            lines.append("For your meeting, here are neat, comfortable options.")
         } else if intent.mentionsDinner {
-            lines.append("For dinner, here are elevated options from your closet.")
+            lines.append("For dinner, here are options from your wardrobe.")
         } else if intent.wantsWarm {
             lines.append("I prioritized warmer layers.")
         } else {

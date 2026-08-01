@@ -60,3 +60,11 @@ Optional (to use Apple WeatherKit as primary): for team `T76V4FRBSW` / bundle `a
 ## Firebase launch warnings
 
 A one-shot `I-COR000003` / Analytics “started” line can appear while the SDK loads; Sylyo configures Firebase in `AppDelegate.init` and again in `didFinishLaunching`. After a clean pull + rebuild you should see `✅ Firebase configured for project: sylyo-fashion`. The IDFA / `GoogleAppMeasurementIdentitySupport` line is expected unless you link AdSupport for ads.
+
+## Camera Portrait / BackDual console noise
+
+Sylyo forces still **photo** capture on the rear camera and presents the camera in a `fullScreenCover` (not a sheet). Remaining `BackDual` / `FigCapture` lines from the system camera stack are usually harmless. If capture fails, use **Library** instead.
+
+## Privacy
+
+`fashionapp/PrivacyInfo.xcprivacy` declares collected data types and UserDefaults API use. Permission prompts explain camera, photos, and location for wardrobe/weather only.

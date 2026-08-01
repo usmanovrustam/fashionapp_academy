@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import AVFoundation
+import PhotosUI
 
 enum CameraCaptureError: LocalizedError, Equatable {
     case denied
@@ -10,15 +11,22 @@ enum CameraCaptureError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .denied:
-            return NSLocalizedString("Camera access denied. Please enable it in Settings.", comment: "")
+            return NSLocalizedString(
+                "Camera access is turned off. You can enable it in Settings to photograph clothing.",
+                comment: "Camera permission denied"
+            )
         case .cancelled:
-            return NSLocalizedString("No image found.", comment: "")
+            return NSLocalizedString("No photo selected.", comment: "Picker cancelled")
         case .unavailable:
-            return NSLocalizedString("Unknown camera permission error.", comment: "")
+            return NSLocalizedString(
+                "Camera isn’t available on this device. Choose a photo from your library instead.",
+                comment: "Camera unavailable"
+            )
         }
     }
 }
 
+/// Camera capture using photo mode only (avoids Portrait / dual-camera session errors).
 struct SystemImagePicker: UIViewControllerRepresentable {
     enum Source {
         case camera
@@ -31,13 +39,30 @@ struct SystemImagePicker: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
         picker.delegate = context.coordinator
+        picker.allowsEditing = false
+        picker.modalPresentationStyle = .fullScreen
+
         switch source {
         case .camera:
-            picker.sourceType = UIImagePickerController.isSourceTypeAvailable(.camera) ? .camera : .photoLibrary
+            guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
+                // Don’t silently fall back — caller should surface `.unavailable`.
+                picker.sourceType = .photoLibrary
+                DispatchQueue.main.async {
+                    context.coordinator.onComplete(.failure(CameraCaptureError.unavailable))
+                }
+                break
+            }
+            picker.sourceType = .camera
+            // HIG / AVFoundation: stick to still photo capture; avoid Portrait & multi-cam modes.
+            if UIImagePickerController.isCameraDeviceAvailable(.rear) {
+                picker.cameraDevice = .rear
+            }
+            picker.cameraCaptureMode = .photo
+            picker.showsCameraControls = true
         case .photoLibrary:
             picker.sourceType = .photoLibrary
         }
-        picker.allowsEditing = false
+
         return picker
     }
 
@@ -49,15 +74,14 @@ struct SystemImagePicker: UIViewControllerRepresentable {
 
     final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
         let onComplete: (Result<UIImage, Error>) -> Void
+        private var didFinish = false
 
         init(onComplete: @escaping (Result<UIImage, Error>) -> Void) {
             self.onComplete = onComplete
         }
 
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            picker.dismiss(animated: true) {
-                self.onComplete(.failure(CameraCaptureError.cancelled))
-            }
+            finish(result: .failure(CameraCaptureError.cancelled))
         }
 
         func imagePickerController(
@@ -65,19 +89,27 @@ struct SystemImagePicker: UIViewControllerRepresentable {
             didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
         ) {
             let image = (info[.editedImage] ?? info[.originalImage]) as? UIImage
-            picker.dismiss(animated: true) {
-                if let image {
-                    self.onComplete(.success(image))
-                } else {
-                    self.onComplete(.failure(CameraCaptureError.cancelled))
-                }
+            if let image {
+                finish(result: .success(image))
+            } else {
+                finish(result: .failure(CameraCaptureError.cancelled))
             }
+        }
+
+        /// Parent SwiftUI presentation (`fullScreenCover` / `sheet`) owns dismiss.
+        private func finish(result: Result<UIImage, Error>) {
+            guard !didFinish else { return }
+            didFinish = true
+            onComplete(result)
         }
     }
 }
 
 enum CameraAuthorization {
     static func ensureAuthorized() async -> Result<Void, Error> {
+        guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
+            return .failure(CameraCaptureError.unavailable)
+        }
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
             return .success(())

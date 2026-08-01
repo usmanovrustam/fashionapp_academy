@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ScannerFeatureView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @StateObject private var viewModel: ScannerViewModel
     private let isPresentedModally: Bool
 
@@ -12,33 +13,21 @@ struct ScannerFeatureView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                LinearGradient(
-                    colors: [
-                        Color(.systemBackground),
-                        AppColors.brand.opacity(0.05),
-                        AppColors.accent.opacity(0.05)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
-
-                ScrollView {
-                    VStack(spacing: AppSpacing.xl) {
-                        header
-                        photoSection
-                        if let result = viewModel.scanResult {
-                            metadataSection(result)
-                        }
-                        detailsSection
-                        saveButton
-                        Spacer(minLength: AppSpacing.xl)
+            ScrollView {
+                VStack(spacing: AppSpacing.xl) {
+                    header
+                    photoSection
+                    if let result = viewModel.scanResult {
+                        metadataSection(result)
                     }
-                    .padding(.horizontal, AppSpacing.lg)
+                    detailsSection
+                    saveButton
+                    Spacer(minLength: AppSpacing.xl)
                 }
-                .sylyoSafeScreenInsets()
+                .padding(.horizontal, AppSpacing.lg)
             }
+            .sylyoSafeScreenInsets()
+            .sylyoScreenBackground()
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -48,12 +37,16 @@ struct ScannerFeatureView: View {
                     }
                 }
             }
-            .sheet(isPresented: $viewModel.showCamera) {
+            // Camera as fullScreenCover avoids dual-camera Portrait session glitches in sheets.
+            .fullScreenCover(isPresented: $viewModel.showCamera) {
                 SystemImagePicker(source: .camera) { result in
+                    viewModel.showCamera = false
                     Task {
                         if case .success(let image) = result {
                             await viewModel.handlePickedImage(image)
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            if !reduceMotion {
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            }
                         } else if case .failure(let error) = result,
                                   !(error is CameraCaptureError && (error as? CameraCaptureError) == .cancelled) {
                             viewModel.errorMessage = error.localizedDescription
@@ -64,6 +57,7 @@ struct ScannerFeatureView: View {
             }
             .sheet(isPresented: $viewModel.showLibrary) {
                 SystemImagePicker(source: .photoLibrary) { result in
+                    viewModel.showLibrary = false
                     Task {
                         if case .success(let image) = result {
                             await viewModel.handlePickedImage(image)
@@ -72,7 +66,7 @@ struct ScannerFeatureView: View {
                 }
                 .ignoresSafeArea()
             }
-            .alert("Camera Error", isPresented: Binding(
+            .alert("Camera", isPresented: Binding(
                 get: { viewModel.errorMessage != nil },
                 set: { if !$0 { viewModel.errorMessage = nil } }
             )) {
@@ -80,24 +74,25 @@ struct ScannerFeatureView: View {
             } message: {
                 Text(viewModel.errorMessage ?? "")
             }
-            .alert(NSLocalizedString("Outfit Saved!", comment: ""), isPresented: $viewModel.didSave) {
+            .alert(NSLocalizedString("Saved", comment: ""), isPresented: $viewModel.didSave) {
                 Button("OK") {
                     if isPresentedModally { dismiss() }
                 }
             } message: {
-                Text("Your clothing item was scanned and saved to your wardrobe.")
+                Text("Your item was added to your wardrobe.")
             }
         }
     }
 
     private var header: some View {
         VStack(spacing: 8) {
-            Text("AI Clothing Scanner")
+            Text("Add clothing")
                 .font(AppTypography.title)
-                .foregroundStyle(AppColors.primaryGradient)
-            Text("Capture a piece — we isolate it and detect type, color, material, season, and style.")
+                .foregroundStyle(AppColors.textPrimary)
+                .accessibilityAddTraits(.isHeader)
+            Text("Take a photo or choose one from your library. Sylyo suggests type, color, material, and season.")
                 .font(AppTypography.body)
-                .foregroundColor(.secondary)
+                .foregroundStyle(AppColors.textSecondary)
                 .multilineTextAlignment(.center)
         }
         .padding(.top, 20)
@@ -116,6 +111,7 @@ struct ScannerFeatureView: View {
                             RoundedRectangle(cornerRadius: AppRadius.photo, style: .continuous)
                                 .stroke(AppColors.primaryGradient, lineWidth: 2)
                         )
+                        .accessibilityLabel("Selected clothing photo")
                         .overlay(alignment: .topTrailing) {
                             Button {
                                 viewModel.resetForm()
@@ -126,6 +122,7 @@ struct ScannerFeatureView: View {
                                     .foregroundStyle(.white, AppColors.brand)
                                     .padding(12)
                             }
+                            .accessibilityLabel("Retake or choose another photo")
                         }
                         .overlay {
                             if viewModel.isProcessing {
@@ -152,12 +149,16 @@ struct ScannerFeatureView: View {
                         .overlay {
                             VStack(spacing: 12) {
                                 Image(systemName: "camera.viewfinder")
-                                    .font(.system(size: 48))
+                                    .font(.largeTitle)
                                     .foregroundStyle(AppColors.primaryGradient)
+                                    .sylyoDecorativeSymbol()
                                 Text(NSLocalizedString("Tap to take photo", comment: ""))
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(AppColors.textSecondary)
                             }
                         }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Add a clothing photo")
+                        .accessibilityAddTraits(.isButton)
                         .onTapGesture {
                             Task { await viewModel.openCamera() }
                         }
@@ -189,16 +190,16 @@ struct ScannerFeatureView: View {
     private func metadataSection(_ result: ClothingScanResult) -> some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 10) {
-                Text("AI Detected")
+                Text("Suggested details")
                     .font(AppTypography.headline)
-                    .foregroundStyle(AppColors.primaryGradient)
+                    .foregroundStyle(AppColors.textPrimary)
                 labeled("Category", result.detectedCategory.displayName)
                 if let sub = result.subcategory { labeled("Type", sub) }
                 labeled("Material", result.material.displayName)
                 labeled("Color", result.dominantColor ?? "—")
                 labeled("Season", result.seasons.map(\.displayName).joined(separator: ", "))
                 labeled("Style", result.styleTags.prefix(3).map(\.displayName).joined(separator: ", "))
-                labeled("Confidence", "\(Int(result.confidence * 100))%")
+                labeled("Match score", "\(Int(result.confidence * 100))%")
             }
         }
     }
@@ -214,15 +215,15 @@ struct ScannerFeatureView: View {
 
     private var detailsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Name")
+            Text("Item name")
                 .font(AppTypography.headline)
-            TextField(NSLocalizedString("Outfit Name", comment: ""), text: $viewModel.editableName)
+            TextField(NSLocalizedString("Item name", comment: ""), text: $viewModel.editableName)
                 .padding()
                 .liquidGlass(cornerRadius: AppRadius.medium)
                 .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
-            Text("Leave blank to keep the AI suggestion.")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            Text("Leave blank to keep the suggested name.")
+                .font(AppTypography.caption)
+                .foregroundStyle(AppColors.textSecondary)
         }
     }
 
@@ -232,7 +233,7 @@ struct ScannerFeatureView: View {
         } label: {
             HStack {
                 if viewModel.isSaving { ProgressView().controlSize(.small) }
-                Text(NSLocalizedString("Save Outfit", comment: ""))
+                Text(NSLocalizedString("Save to wardrobe", comment: ""))
             }
             .frame(maxWidth: .infinity)
         }

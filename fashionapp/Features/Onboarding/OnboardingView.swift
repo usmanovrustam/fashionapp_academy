@@ -4,12 +4,13 @@ struct OnboardingView: View {
     @Binding var didFinishOnboarding: Bool
     @State private var page = 0
     @Namespace private var glassNamespace
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let pages: [(icon: String, title: String, subtitle: String)] = [
-        ("sparkles", "Sylyo", "Your personal AI fashion stylist."),
-        ("camera.viewfinder", "Scan Your Clothes", "Photograph each piece — we remove the background and tag fabric, color, season, and style."),
-        ("tshirt.fill", "Digital Wardrobe", "Every item lives in one smart closet with favorites, wear history, and confidence scores."),
-        ("cloud.sun.fill", "Daily Outfits", "Weather-aware recommendations and an AI stylist that understands your plans.")
+        ("sparkles", "Sylyo", "Help choosing what to wear, based on your clothes and the weather."),
+        ("camera.viewfinder", "Add Your Clothes", "Take a photo or pick one from your library. Sylyo tags type, color, and season for you."),
+        ("tshirt.fill", "Your Wardrobe", "Keep everything in one place — favorites, wear history, and simple style notes."),
+        ("cloud.sun.fill", "Daily Ideas", "See outfit ideas that match today’s weather and what you already own.")
     ]
 
     private var isLastPage: Bool { page == pages.count - 1 }
@@ -24,7 +25,6 @@ struct OnboardingView: View {
                 ForEach(pages.indices, id: \.self) { idx in
                     VStack(spacing: AppSpacing.xl) {
                         Spacer()
-                        // No app logo yet — feature icons only after the welcome page.
                         if idx > 0 {
                             Image(systemName: pages[idx].icon)
                                 .resizable()
@@ -33,28 +33,36 @@ struct OnboardingView: View {
                                 .foregroundStyle(AppColors.primaryGradient)
                                 .padding(28)
                                 .liquidGlass(cornerRadius: 40)
-                                .scaleEffect(page == idx ? 1.0 : 0.92)
-                                .animation(.spring(response: 0.5, dampingFraction: 0.75), value: page)
+                                .sylyoDecorativeSymbol()
+                                .scaleEffect(reduceMotion ? 1 : (page == idx ? 1.0 : 0.92))
+                                .animation(
+                                    reduceMotion ? nil : .spring(response: 0.5, dampingFraction: 0.75),
+                                    value: page
+                                )
                         }
 
                         if idx == 0 {
                             Text(pages[idx].title)
-                                .font(.system(size: 44, weight: .semibold, design: .rounded))
+                                .font(AppTypography.brandHero)
                                 .foregroundStyle(AppColors.textPrimary)
+                                .accessibilityAddTraits(.isHeader)
                         } else {
                             Text(pages[idx].title)
                                 .font(AppTypography.title)
                                 .foregroundStyle(AppColors.textPrimary)
+                                .accessibilityAddTraits(.isHeader)
                         }
 
                         Text(pages[idx].subtitle)
                             .font(AppTypography.body)
                             .foregroundStyle(AppColors.textSecondary)
                             .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
                         Spacer()
                     }
                     .padding(.horizontal, AppSpacing.xl)
                     .tag(idx)
+                    .accessibilityElement(children: .combine)
                 }
             }
             .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
@@ -77,18 +85,16 @@ struct OnboardingView: View {
             Spacer()
             if !isLastPage {
                 Button {
-                    withAnimation {
-                        didFinishOnboarding = true
-                    }
+                    finishOnboarding()
                 } label: {
                     Text(NSLocalizedString("Skip", comment: "Onboarding skip"))
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .font(AppTypography.roundedMedium)
                         .foregroundStyle(AppColors.textTertiary)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 8)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(NSLocalizedString("Skip", comment: "Onboarding skip"))
+                .accessibilityLabel(NSLocalizedString("Skip introduction", comment: ""))
             }
         }
         .frame(height: 44)
@@ -101,12 +107,17 @@ struct OnboardingView: View {
                     Capsule()
                         .fill(page == idx ? AppColors.textTertiary.opacity(0.85) : AppColors.textTertiary.opacity(0.22))
                         .frame(width: page == idx ? 22 : 8, height: 8)
-                        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: page)
+                        .animation(
+                            reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.8),
+                            value: page
+                        )
                 }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
             .liquidGlassCapsule(interactive: false)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Page \(page + 1) of \(pages.count)")
         }
     }
 
@@ -114,9 +125,9 @@ struct OnboardingView: View {
         SylyoGlassContainer(spacing: 12) {
             Button {
                 if isLastPage {
-                    withAnimation {
-                        didFinishOnboarding = true
-                    }
+                    finishOnboarding()
+                } else if reduceMotion {
+                    page += 1
                 } else {
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
                         page += 1
@@ -130,6 +141,16 @@ struct OnboardingView: View {
             }
             .buttonStyle(LiquidGlassButtonStyle(prominent: true))
             .sylyoGlassEffectID("splash-primary", in: glassNamespace)
+        }
+    }
+
+    private func finishOnboarding() {
+        if reduceMotion {
+            didFinishOnboarding = true
+        } else {
+            withAnimation {
+                didFinishOnboarding = true
+            }
         }
     }
 }

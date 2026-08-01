@@ -7,7 +7,7 @@ struct MainTabView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            Tab(NSLocalizedString("Discover", comment: ""), systemImage: "safari", value: 0) {
+            Tab(NSLocalizedString("Discover", comment: ""), systemImage: "sparkles", value: 0) {
                 DiscoverFeatureView(container: container)
             }
 
