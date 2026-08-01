@@ -335,7 +335,7 @@ struct AuthFeatureView: View {
             }
             .buttonStyle(LiquidGlassButtonStyle(
                 prominent: false,
-                tint: AppColors.accent,
+                tint: AppColors.brand,
                 isDisabled: viewModel.isLoading
             ))
             .disabled(viewModel.isLoading)
