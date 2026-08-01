@@ -215,7 +215,7 @@ struct AuthFeatureView: View {
                 .sylyoSafeScreenInsets()
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(SoftBackground())
+            .sylyoScreenBackground()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {

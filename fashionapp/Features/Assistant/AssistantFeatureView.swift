@@ -57,56 +57,53 @@ struct AssistantFeatureView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                SoftBackground()
-
-                VStack(spacing: 0) {
-                    ScrollViewReader { proxy in
-                        ScrollView {
-                            LazyVStack(spacing: 12) {
-                                ForEach(viewModel.messages) { message in
-                                    ChatBubble(message: message)
-                                        .id(message.id)
-                                }
-
-                                if viewModel.isThinking {
-                                    HStack {
-                                        ProgressView()
-                                        Text("Styling…")
-                                            .foregroundColor(.secondary)
-                                        Spacer()
-                                    }
-                                    .padding(.horizontal)
-                                }
-
-                                if !viewModel.latestRecommendations.isEmpty {
-                                    VStack(alignment: .leading, spacing: 10) {
-                                        Text("Suggested looks")
-                                            .font(.headline)
-                                            .padding(.horizontal)
-                                        ForEach(viewModel.latestRecommendations) { rec in
-                                            RecommendationMiniCard(recommendation: rec, storage: viewModel.imageStorage)
-                                                .padding(.horizontal)
-                                        }
-                                    }
-                                    .padding(.top, 8)
-                                }
+            VStack(spacing: 0) {
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(spacing: 12) {
+                            ForEach(viewModel.messages) { message in
+                                ChatBubble(message: message)
+                                    .id(message.id)
                             }
-                            .padding(.vertical)
-                        }
-                        .onChange(of: viewModel.messages.count) { _, _ in
-                            if let last = viewModel.messages.last {
-                                withAnimation {
-                                    proxy.scrollTo(last.id, anchor: .bottom)
+
+                            if viewModel.isThinking {
+                                HStack {
+                                    ProgressView()
+                                    Text("Styling…")
+                                        .foregroundColor(.secondary)
+                                    Spacer()
                                 }
+                                .padding(.horizontal)
+                            }
+
+                            if !viewModel.latestRecommendations.isEmpty {
+                                VStack(alignment: .leading, spacing: 10) {
+                                    Text("Suggested looks")
+                                        .font(.headline)
+                                        .padding(.horizontal)
+                                    ForEach(viewModel.latestRecommendations) { rec in
+                                        RecommendationMiniCard(recommendation: rec, storage: viewModel.imageStorage)
+                                            .padding(.horizontal)
+                                    }
+                                }
+                                .padding(.top, 8)
+                            }
+                        }
+                        .padding(.vertical)
+                    }
+                    .onChange(of: viewModel.messages.count) { _, _ in
+                        if let last = viewModel.messages.last {
+                            withAnimation {
+                                proxy.scrollTo(last.id, anchor: .bottom)
                             }
                         }
                     }
-
-                    composer
                 }
-                .sylyoSafeScreenInsets()
+
+                composer
             }
+            .sylyoSafeScreenInsets()
+            .sylyoScreenBackground()
             .navigationTitle("AI Stylist")
             .navigationBarTitleDisplayMode(.inline)
         }

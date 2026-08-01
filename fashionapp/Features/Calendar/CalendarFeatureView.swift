@@ -111,19 +111,17 @@ struct CalendarFeatureView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                SoftBackground()
-
-                ScrollView {
-                    VStack(spacing: AppSpacing.lg) {
-                        monthHeader
-                        calendarGrid
-                        plannedSection
-                    }
-                    .padding()
+            ScrollView {
+                VStack(spacing: AppSpacing.lg) {
+                    monthHeader
+                    calendarGrid
+                    plannedSection
                 }
-                .sylyoSafeScreenInsets()
+                .padding()
+                .padding(.bottom, AppSpacing.lg)
             }
+            .sylyoSafeScreenInsets()
+            .sylyoScreenBackground()
             .navigationTitle(NSLocalizedString("Calendar", comment: ""))
             .sheet(isPresented: $showScanner) {
                 ScannerFeatureView(container: container, plannedDate: viewModel.selectedDate)

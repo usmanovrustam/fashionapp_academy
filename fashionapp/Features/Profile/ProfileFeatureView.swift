@@ -126,22 +126,20 @@ struct ProfileFeatureView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                SoftBackground()
-
-                ScrollView {
-                    VStack(spacing: AppSpacing.lg) {
-                        avatarHeader
-                        accountCard
-                        statsRow
-                        preferencesCard
-                        infoCard
-                        dangerCard
-                    }
-                    .padding()
+            ScrollView {
+                VStack(spacing: AppSpacing.lg) {
+                    avatarHeader
+                    accountCard
+                    statsRow
+                    preferencesCard
+                    infoCard
+                    dangerCard
                 }
-                .sylyoSafeScreenInsets()
+                .padding()
+                .padding(.bottom, AppSpacing.lg)
             }
+            .sylyoSafeScreenInsets()
+            .sylyoScreenBackground()
             .navigationTitle(NSLocalizedString("Profile", comment: ""))
             .task { await viewModel.load() }
             .onChange(of: selectedPhoto) { _, item in

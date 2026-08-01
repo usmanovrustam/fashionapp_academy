@@ -106,12 +106,16 @@ struct SoftBackground: View {
 }
 
 extension View {
-    /// Keeps interactive content clear of the status/nav bar and bottom tab bar.
-    /// Use on foreground content only — backgrounds should still use `SoftBackground`.
+    /// Extra breathing room above the floating tab bar / home indicator.
+    /// Prefer `.background { SoftBackground() }` over a ZStack sibling so the
+    /// system safe area (nav + tab bar) still insets content correctly.
     func sylyoSafeScreenInsets() -> some View {
-        self
-            .safeAreaPadding(.top, AppSpacing.sm)
-            .safeAreaPadding(.bottom, AppSpacing.md)
+        self.safeAreaPadding(.bottom, AppSpacing.sm)
+    }
+
+    /// Full-bleed atmosphere without pulling foreground content under chrome.
+    func sylyoScreenBackground() -> some View {
+        background { SoftBackground() }
     }
 }
 

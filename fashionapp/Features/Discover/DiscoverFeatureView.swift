@@ -17,26 +17,11 @@ struct DiscoverFeatureView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                SoftBackground()
-
+            ScrollView {
                 VStack(spacing: AppSpacing.lg) {
                     weatherCard
-                        .padding(.horizontal)
 
-                    ZStack {
-                        if viewModel.isLoading {
-                            LoadingRingsView(message: NSLocalizedString("Loading Outfits...", comment: ""))
-                        } else if viewModel.recommendations.isEmpty {
-                            emptyState
-                        } else if viewModel.topIndex < viewModel.recommendations.count {
-                            cardStack
-                        } else {
-                            refreshState
-                        }
-                    }
-                    .frame(height: 520)
-                    .padding(.horizontal)
+                    mainContent
 
                     Button {
                         viewModel.showAssistant = true
@@ -45,11 +30,13 @@ struct DiscoverFeatureView: View {
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(LiquidGlassButtonStyle(prominent: true))
-                    .padding(.horizontal)
                 }
-                .padding(.vertical)
-                .sylyoSafeScreenInsets()
+                .padding(.horizontal)
+                .padding(.top, AppSpacing.sm)
+                .padding(.bottom, AppSpacing.lg)
             }
+            .sylyoSafeScreenInsets()
+            .sylyoScreenBackground()
             .navigationTitle(NSLocalizedString("Discover", comment: ""))
             .sheet(item: $selectedRecommendation) { rec in
                 RecommendationDetailView(recommendation: rec, storage: viewModel.imageStorage)
@@ -58,6 +45,28 @@ struct DiscoverFeatureView: View {
                 AssistantFeatureView(container: container)
             }
             .task { await viewModel.load() }
+        }
+    }
+
+    @ViewBuilder
+    private var mainContent: some View {
+        if viewModel.isLoading {
+            LoadingRingsView(message: NSLocalizedString("Loading Outfits...", comment: ""))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, AppSpacing.xl)
+        } else if viewModel.recommendations.isEmpty {
+            emptyState
+                .frame(maxWidth: .infinity)
+        } else if viewModel.topIndex < viewModel.recommendations.count {
+            ZStack {
+                cardStack
+            }
+            .frame(height: 520)
+            .frame(maxWidth: .infinity)
+        } else {
+            refreshState
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, AppSpacing.xl)
         }
     }
 
@@ -297,7 +306,7 @@ struct RecommendationDetailView: View {
                 .padding()
             }
             .sylyoSafeScreenInsets()
-            .background(SoftBackground())
+            .sylyoScreenBackground()
             .navigationTitle(NSLocalizedString("Outfit Details", comment: ""))
             .navigationBarTitleDisplayMode(.inline)
         }

@@ -12,52 +12,50 @@ struct WardrobeFeatureView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                SoftBackground()
+            ScrollView {
+                VStack(spacing: AppSpacing.lg) {
+                    filterBar
 
-                ScrollView {
-                    VStack(spacing: AppSpacing.lg) {
-                        filterBar
-
-                        if viewModel.isLoading && viewModel.items.isEmpty {
-                            LoadingRingsView(message: "Loading your wardrobe...")
-                                .padding(.top, 80)
-                        } else if let error = viewModel.errorMessage, viewModel.items.isEmpty {
-                            errorCard(error)
-                        } else if viewModel.filteredItems.isEmpty {
-                            EmptyWardrobeState(
-                                title: NSLocalizedString("Your wardrobe is empty!", comment: ""),
-                                subtitle: NSLocalizedString("Start building your wardrobe by adding your first outfit.", comment: ""),
-                                actionTitle: NSLocalizedString("Add Outfit", comment: "")
-                            ) {
-                                showScanner = true
-                            }
-                            .padding(.top, 40)
-                        } else {
-                            LazyVGrid(
-                                columns: [GridItem(.adaptive(minimum: 160), spacing: 16)],
-                                spacing: 16
-                            ) {
-                                ForEach(viewModel.filteredItems) { item in
-                                    NavigationLink {
-                                        WardrobeItemDetailView(item: item, viewModel: viewModel)
-                                    } label: {
-                                        StoredWardrobeCard(
-                                            item: item,
-                                            storage: viewModel.imageStorageRef()
-                                        )
-                                    }
-                                    .buttonStyle(.plain)
+                    if viewModel.isLoading && viewModel.items.isEmpty {
+                        LoadingRingsView(message: "Loading your wardrobe...")
+                            .padding(.top, 80)
+                    } else if let error = viewModel.errorMessage, viewModel.items.isEmpty {
+                        errorCard(error)
+                    } else if viewModel.filteredItems.isEmpty {
+                        EmptyWardrobeState(
+                            title: NSLocalizedString("Your wardrobe is empty!", comment: ""),
+                            subtitle: NSLocalizedString("Start building your wardrobe by adding your first outfit.", comment: ""),
+                            actionTitle: NSLocalizedString("Add Outfit", comment: "")
+                        ) {
+                            showScanner = true
+                        }
+                        .padding(.top, 40)
+                    } else {
+                        LazyVGrid(
+                            columns: [GridItem(.adaptive(minimum: 160), spacing: 16)],
+                            spacing: 16
+                        ) {
+                            ForEach(viewModel.filteredItems) { item in
+                                NavigationLink {
+                                    WardrobeItemDetailView(item: item, viewModel: viewModel)
+                                } label: {
+                                    StoredWardrobeCard(
+                                        item: item,
+                                        storage: viewModel.imageStorageRef()
+                                    )
                                 }
+                                .buttonStyle(.plain)
                             }
                         }
                     }
-                    .padding(.horizontal, AppSpacing.md)
-                    .padding(.top, AppSpacing.md)
                 }
-                .refreshable { await viewModel.load(force: true) }
-                .sylyoSafeScreenInsets()
+                .padding(.horizontal, AppSpacing.md)
+                .padding(.top, AppSpacing.md)
+                .padding(.bottom, AppSpacing.lg)
             }
+            .refreshable { await viewModel.load(force: true) }
+            .sylyoSafeScreenInsets()
+            .sylyoScreenBackground()
             .navigationTitle(NSLocalizedString("Wardrobe", comment: ""))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -222,7 +220,7 @@ struct WardrobeItemDetailView: View {
             .padding()
         }
         .sylyoSafeScreenInsets()
-        .background(SoftBackground())
+        .sylyoScreenBackground()
         .navigationTitle(item.category.displayName)
         .navigationBarTitleDisplayMode(.inline)
     }
