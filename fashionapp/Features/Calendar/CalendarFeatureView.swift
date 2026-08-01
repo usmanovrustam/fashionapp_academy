@@ -45,6 +45,7 @@ final class CalendarViewModel: ObservableObject {
     @Published var selectedDate: Date = Date()
     @Published var items: [WardrobeItem] = []
     @Published var events: [CalendarEvent] = []
+    @Published var packingListsByID: [UUID: PackingList] = [:]
     @Published var isLoading = false
     @Published var isSaving = false
     @Published var errorMessage: String?
@@ -104,6 +105,8 @@ final class CalendarViewModel: ObservableObject {
     func load() async {
         isLoading = true
         items = (try? await wardrobeRepository.fetchAll()) ?? []
+        let lists = (try? await packingListRepository.fetchAll()) ?? []
+        packingListsByID = Dictionary(uniqueKeysWithValues: lists.map { ($0.id, $0) })
         await loadEventsForVisibleMonth()
         isLoading = false
     }
@@ -128,13 +131,31 @@ final class CalendarViewModel: ObservableObject {
 
         do {
             try await eventRepository.save(event)
-            if let packingList {
+            if var packingList {
+                if let existing = packingListsByID[packingList.id] {
+                    packingList.packedItemIDs = existing.packedItemIDs.filter { packingList.itemIDs.contains($0) }
+                }
                 try await packingListRepository.save(packingList)
             }
             for item in wardrobeUpdates {
                 try await wardrobeRepository.save(item)
             }
             await load()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func togglePacked(event: CalendarEvent, itemID: UUID) async {
+        guard let listID = event.packingListID, var list = packingListsByID[listID] else { return }
+        if list.packedItemIDs.contains(itemID) {
+            list.packedItemIDs.removeAll { $0 == itemID }
+        } else {
+            list.packedItemIDs.append(itemID)
+        }
+        do {
+            try await packingListRepository.save(list)
+            packingListsByID[listID] = list
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -229,6 +250,7 @@ struct CalendarFeatureView: View {
     private let container: AppContainer
     @StateObject private var viewModel: CalendarViewModel
     @State private var activeSheet: CalendarSheet?
+    @State private var showScanner = false
 
     private let columns = Array(repeating: GridItem(.flexible()), count: 7)
 
@@ -251,6 +273,14 @@ struct CalendarFeatureView: View {
             .nookSafeScreenInsets()
             .nookScreenBackground()
             .navigationTitle(NSLocalizedString("Calendar", comment: ""))
+            .sheet(isPresented: $showScanner) {
+                ScannerFeatureView(container: container)
+            }
+            .onChange(of: showScanner) { _, isShowing in
+                if !isShowing {
+                    Task { await viewModel.load() }
+                }
+            }
             .sheet(item: $activeSheet) { sheet in
                 switch sheet {
                 case .daySummary:
@@ -258,6 +288,7 @@ struct CalendarFeatureView: View {
                         date: viewModel.selectedDate,
                         events: viewModel.events(on: viewModel.selectedDate),
                         wardrobeItems: viewModel.items,
+                        packingListsByID: $viewModel.packingListsByID,
                         imageStorage: viewModel.imageStorage,
                         onAdd: {
                             activeSheet = .addPlan
@@ -272,6 +303,9 @@ struct CalendarFeatureView: View {
                         onMarkWashed: { event in
                             activeSheet = nil
                             Task { await viewModel.markLaundryWashed(event) }
+                        },
+                        onTogglePacked: { event, itemID in
+                            Task { await viewModel.togglePacked(event: event, itemID: itemID) }
                         },
                         onClose: { activeSheet = nil }
                     )
@@ -293,8 +327,11 @@ struct CalendarFeatureView: View {
                             }
                         },
                         onCancel: {
-                            // Return to day summary instead of closing everything.
                             activeSheet = .daySummary
+                        },
+                        onScanWardrobe: {
+                            activeSheet = nil
+                            showScanner = true
                         }
                     )
                     .presentationDetents([.medium, .large])
@@ -315,7 +352,11 @@ struct CalendarFeatureView: View {
                                 )
                             }
                         },
-                        onCancel: { activeSheet = .daySummary }
+                        onCancel: { activeSheet = .daySummary },
+                        onScanWardrobe: {
+                            activeSheet = nil
+                            showScanner = true
+                        }
                     )
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)

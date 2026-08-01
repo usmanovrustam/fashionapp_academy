@@ -9,6 +9,7 @@ final class WardrobeViewModel: ObservableObject {
     @Published var selectedItem: WardrobeItem?
     @Published var filterCategory: ClothingCategory?
     @Published var showFavoritesOnly = false
+    @Published var showLaundryOnly = false
 
     private let wardrobeRepository: WardrobeRepository
     private let imageStorage: ImageStorage
@@ -22,8 +23,13 @@ final class WardrobeViewModel: ObservableObject {
         self.statisticsUseCase = container.statisticsUseCase
     }
 
+    var laundryCount: Int {
+        items.filter(\.isInLaundry).count
+    }
+
     var filteredItems: [WardrobeItem] {
         items.filter { item in
+            if showLaundryOnly { return item.isInLaundry }
             if showFavoritesOnly && !item.isFavorite { return false }
             if let filterCategory, item.category != filterCategory { return false }
             return true
@@ -53,7 +59,6 @@ final class WardrobeViewModel: ObservableObject {
         var updated = item
         updated.isFavorite.toggle()
         updated.updatedAt = Date()
-        // Optimistic local update — avoid full list refetch.
         if let idx = items.firstIndex(where: { $0.id == item.id }) {
             items[idx] = updated
         }
@@ -66,6 +71,24 @@ final class WardrobeViewModel: ObservableObject {
                 "item_id": item.id.uuidString,
                 "is_favorite": updated.isFavorite ? "true" : "false"
             ])
+        } catch {
+            errorMessage = error.localizedDescription
+            await load(force: true)
+        }
+    }
+
+    func markWashed(_ item: WardrobeItem) async {
+        var updated = item
+        updated.isInLaundry = false
+        updated.updatedAt = Date()
+        if let idx = items.firstIndex(where: { $0.id == item.id }) {
+            items[idx] = updated
+        }
+        if selectedItem?.id == item.id {
+            selectedItem = updated
+        }
+        do {
+            try await wardrobeRepository.save(updated)
         } catch {
             errorMessage = error.localizedDescription
             await load(force: true)

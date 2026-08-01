@@ -6,11 +6,13 @@ struct DaySummarySheetView: View {
     let date: Date
     let events: [CalendarEvent]
     let wardrobeItems: [WardrobeItem]
+    @Binding var packingListsByID: [UUID: PackingList]
     let imageStorage: ImageStorage
     let onAdd: () -> Void
     let onEdit: (CalendarEvent) -> Void
     let onDelete: (CalendarEvent) -> Void
     let onMarkWashed: (CalendarEvent) -> Void
+    let onTogglePacked: (CalendarEvent, UUID) -> Void
     let onClose: () -> Void
 
     private var title: String {
@@ -38,10 +40,14 @@ struct DaySummarySheetView: View {
                             DaySummaryPlanCard(
                                 event: event,
                                 linkedItems: linkedItems(for: event),
+                                packingList: event.packingListID.flatMap { packingListsByID[$0] },
                                 storage: imageStorage,
                                 onEdit: { onEdit(event) },
                                 onDelete: { onDelete(event) },
-                                onMarkWashed: event.kind == .laundry ? { onMarkWashed(event) } : nil
+                                onMarkWashed: event.kind == .laundry ? { onMarkWashed(event) } : nil,
+                                onTogglePacked: event.kind == .travel
+                                    ? { itemID in onTogglePacked(event, itemID) }
+                                    : nil
                             )
                         }
                     }
@@ -79,10 +85,12 @@ struct DaySummarySheetView: View {
 private struct DaySummaryPlanCard: View {
     let event: CalendarEvent
     let linkedItems: [WardrobeItem]
+    let packingList: PackingList?
     let storage: ImageStorage
     let onEdit: () -> Void
     let onDelete: () -> Void
     let onMarkWashed: (() -> Void)?
+    let onTogglePacked: ((UUID) -> Void)?
 
     @State private var confirmDelete = false
 
@@ -115,7 +123,30 @@ private struct DaySummaryPlanCard: View {
             }
             .buttonStyle(.plain)
 
-            if !linkedItems.isEmpty {
+            if let onTogglePacked, !linkedItems.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Packing checklist")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(AppColors.textSecondary)
+                    ForEach(linkedItems) { item in
+                        let packed = packingList?.packedItemIDs.contains(item.id) == true
+                        Button {
+                            onTogglePacked(item.id)
+                        } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: packed ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(packed ? AppColors.olive : AppColors.textTertiary)
+                                Text(item.name)
+                                    .font(.subheadline)
+                                    .foregroundStyle(AppColors.textPrimary)
+                                    .strikethrough(packed, color: AppColors.textSecondary)
+                                Spacer()
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            } else if !linkedItems.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
                         ForEach(linkedItems) { item in

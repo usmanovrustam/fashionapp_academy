@@ -26,6 +26,7 @@ final class ProfileViewModel: ObservableObject {
     private let wardrobeRepository: WardrobeRepository
     private let statisticsUseCase: ComputeWardrobeStatisticsUseCase
     private let settings: AppSettingsProviding
+    private let notifications: NotificationScheduling
     private let imageStorage: ImageStorage
     private let analytics: AnalyticsTracking
     private let signOutAction: () -> Void
@@ -35,6 +36,7 @@ final class ProfileViewModel: ObservableObject {
         self.wardrobeRepository = container.wardrobeRepository
         self.statisticsUseCase = container.statisticsUseCase
         self.settings = container.settings
+        self.notifications = container.notificationScheduler
         self.imageStorage = container.imageStorage
         self.analytics = container.analytics
         self.signOutAction = { container.signOut() }
@@ -49,11 +51,55 @@ final class ProfileViewModel: ObservableObject {
         }
     }
 
+    var dailyOutfitReminderEnabled: Bool {
+        get { settings.dailyOutfitReminderEnabled }
+        set {
+            objectWillChange.send()
+            settings.dailyOutfitReminderEnabled = newValue
+            Task { await applyReminderSetting(enabled: newValue) }
+        }
+    }
+
+    var dailyOutfitReminderHour: Int {
+        get { settings.dailyOutfitReminderHour }
+        set {
+            objectWillChange.send()
+            settings.dailyOutfitReminderHour = newValue
+            if settings.dailyOutfitReminderEnabled {
+                Task { await applyReminderSetting(enabled: true) }
+            }
+        }
+    }
+
+    var reminderTimeLabel: String {
+        let hour = dailyOutfitReminderHour
+        let period = hour >= 12 ? "PM" : "AM"
+        let display = hour % 12 == 0 ? 12 : hour % 12
+        return "\(display):00 \(period)"
+    }
+
     var selectedLanguage: String {
         get { settings.selectedLanguage }
         set {
             objectWillChange.send()
             settings.selectedLanguage = newValue
+        }
+    }
+
+    private func applyReminderSetting(enabled: Bool) async {
+        if enabled {
+            let allowed = await notifications.requestAuthorization()
+            guard allowed else {
+                settings.dailyOutfitReminderEnabled = false
+                objectWillChange.send()
+                return
+            }
+            var components = DateComponents()
+            components.hour = settings.dailyOutfitReminderHour
+            components.minute = 0
+            try? await notifications.scheduleDailyOutfitReminder(at: components)
+        } else {
+            await notifications.cancelDailyOutfitReminder()
         }
     }
 
@@ -338,12 +384,35 @@ struct ProfileFeatureView: View {
             )) {
                 Label(NSLocalizedString("Use Celsius", comment: ""), systemImage: "thermometer.medium")
             }
+
+            Toggle(isOn: Binding(
+                get: { viewModel.dailyOutfitReminderEnabled },
+                set: { viewModel.dailyOutfitReminderEnabled = $0 }
+            )) {
+                Label(NSLocalizedString("Daily reminder", comment: ""), systemImage: "bell")
+            }
+
+            if viewModel.dailyOutfitReminderEnabled {
+                Picker(
+                    NSLocalizedString("Reminder time", comment: ""),
+                    selection: Binding(
+                        get: { viewModel.dailyOutfitReminderHour },
+                        set: { viewModel.dailyOutfitReminderHour = $0 }
+                    )
+                ) {
+                    ForEach([7, 8, 9, 10, 12, 18], id: \.self) { hour in
+                        let period = hour >= 12 ? "PM" : "AM"
+                        let display = hour % 12 == 0 ? 12 : hour % 12
+                        Text("\(display):00 \(period)").tag(hour)
+                    }
+                }
+            }
         } header: {
             Text(NSLocalizedString("Preferences", comment: ""))
         } footer: {
             Text(NSLocalizedString(
-                "Nook is a private closet tool. Outfit ideas stay on your device and account — not a public social feed.",
-                comment: "Preferences footer explaining private-first product stance"
+                "Daily reminder nudges you to check today’s outfit, events, or laundry. Nook stays private — no public social feed.",
+                comment: "Preferences footer"
             ))
         }
     }

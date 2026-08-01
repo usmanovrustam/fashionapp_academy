@@ -27,6 +27,19 @@ final class UserDefaultsAppSettings: AppSettingsProviding {
         set { defaults.set(newValue, forKey: "usesCelsius") }
     }
 
+    var dailyOutfitReminderEnabled: Bool {
+        get { defaults.bool(forKey: "dailyOutfitReminderEnabled") }
+        set { defaults.set(newValue, forKey: "dailyOutfitReminderEnabled") }
+    }
+
+    var dailyOutfitReminderHour: Int {
+        get {
+            if defaults.object(forKey: "dailyOutfitReminderHour") == nil { return 8 }
+            return defaults.integer(forKey: "dailyOutfitReminderHour")
+        }
+        set { defaults.set(min(23, max(0, newValue)), forKey: "dailyOutfitReminderHour") }
+    }
+
     func clearLocalPreferences() {
         guard let domain = Bundle.main.bundleIdentifier else { return }
         defaults.removePersistentDomain(forName: domain)

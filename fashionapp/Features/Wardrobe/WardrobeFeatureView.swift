@@ -22,14 +22,25 @@ struct WardrobeFeatureView: View {
                     } else if let error = viewModel.errorMessage, viewModel.items.isEmpty {
                         errorCard(error)
                     } else if viewModel.filteredItems.isEmpty {
-                        EmptyWardrobeState(
-                            title: NSLocalizedString("Your wardrobe is empty!", comment: ""),
-                            subtitle: NSLocalizedString("Start building your wardrobe by adding your first outfit.", comment: ""),
-                            actionTitle: NSLocalizedString("Add Outfit", comment: "")
-                        ) {
-                            showScanner = true
+                        if viewModel.showLaundryOnly {
+                            EmptyWardrobeState(
+                                title: NSLocalizedString("Nothing needs a wash", comment: ""),
+                                subtitle: NSLocalizedString("When you mark laundry on the calendar, those pieces show up here.", comment: ""),
+                                actionTitle: NSLocalizedString("Show all", comment: "")
+                            ) {
+                                viewModel.showLaundryOnly = false
+                            }
+                            .padding(.top, 40)
+                        } else {
+                            EmptyWardrobeState(
+                                title: NSLocalizedString("Your wardrobe is empty!", comment: ""),
+                                subtitle: NSLocalizedString("Start building your wardrobe by adding your first outfit.", comment: ""),
+                                actionTitle: NSLocalizedString("Add Outfit", comment: "")
+                            ) {
+                                showScanner = true
+                            }
+                            .padding(.top, 40)
                         }
-                        .padding(.top, 40)
                     } else {
                         LazyVGrid(
                             columns: [GridItem(.adaptive(minimum: 160), spacing: 16)],
@@ -84,18 +95,34 @@ struct WardrobeFeatureView: View {
     private var filterBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 10) {
-                FilterChip(title: "All", selected: viewModel.filterCategory == nil && !viewModel.showFavoritesOnly) {
+                FilterChip(
+                    title: "All",
+                    selected: viewModel.filterCategory == nil && !viewModel.showFavoritesOnly && !viewModel.showLaundryOnly
+                ) {
                     viewModel.filterCategory = nil
                     viewModel.showFavoritesOnly = false
+                    viewModel.showLaundryOnly = false
                 }
                 FilterChip(title: "Favorites", selected: viewModel.showFavoritesOnly) {
                     viewModel.showFavoritesOnly = true
+                    viewModel.showLaundryOnly = false
+                    viewModel.filterCategory = nil
+                }
+                FilterChip(
+                    title: viewModel.laundryCount > 0
+                        ? "Needs wash (\(viewModel.laundryCount))"
+                        : "Needs wash",
+                    selected: viewModel.showLaundryOnly
+                ) {
+                    viewModel.showLaundryOnly = true
+                    viewModel.showFavoritesOnly = false
                     viewModel.filterCategory = nil
                 }
                 ForEach([ClothingCategory.top, .bottom, .dress, .shoes, .jacket, .coat, .accessories], id: \.self) { category in
                     FilterChip(title: category.displayName, selected: viewModel.filterCategory == category) {
                         viewModel.filterCategory = category
                         viewModel.showFavoritesOnly = false
+                        viewModel.showLaundryOnly = false
                     }
                 }
             }
@@ -150,10 +177,18 @@ private struct StoredWardrobeCard: View {
     var body: some View {
         WardrobeItemCard(name: item.name, image: image)
             .overlay(alignment: .topTrailing) {
-                if item.isFavorite {
-                    Image(systemName: "heart.fill")
-                        .foregroundColor(AppColors.accent)
-                        .padding(10)
+                HStack(spacing: 6) {
+                    if item.isInLaundry {
+                        Image(systemName: "washer.fill")
+                            .foregroundColor(AppColors.olive)
+                            .padding(8)
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                    if item.isFavorite {
+                        Image(systemName: "heart.fill")
+                            .foregroundColor(AppColors.accent)
+                            .padding(10)
+                    }
                 }
             }
             .task(id: item.id) {
@@ -178,11 +213,15 @@ struct WardrobeItemDetailView: View {
     let item: WardrobeItem
     @ObservedObject var viewModel: WardrobeViewModel
 
+    private var liveItem: WardrobeItem {
+        viewModel.items.first(where: { $0.id == item.id }) ?? item
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: AppSpacing.lg) {
                 StoredImageView(
-                    path: item.transparentImagePath ?? item.originalImagePath,
+                    path: liveItem.transparentImagePath ?? liveItem.originalImagePath,
                     storage: viewModel.imageStorageRef(),
                     height: 320,
                     contentMode: .fit
@@ -190,25 +229,35 @@ struct WardrobeItemDetailView: View {
                 .frame(maxWidth: .infinity)
                 .liquidGlass(cornerRadius: AppRadius.xLarge)
 
-                Text(item.name)
+                Text(liveItem.name)
                     .font(AppTypography.title)
 
                 metadataGrid
 
+                if liveItem.isInLaundry {
+                    Button {
+                        Task { await viewModel.markWashed(liveItem) }
+                    } label: {
+                        Label("Mark washed", systemImage: "checkmark.circle.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .nookGlassProminent()
+                }
+
                 HStack {
                     Button {
-                        Task { await viewModel.toggleFavorite(item) }
+                        Task { await viewModel.toggleFavorite(liveItem) }
                     } label: {
                         Label(
-                            item.isFavorite ? "Unfavorite" : "Favorite",
-                            systemImage: item.isFavorite ? "heart.fill" : "heart"
+                            liveItem.isFavorite ? "Unfavorite" : "Favorite",
+                            systemImage: liveItem.isFavorite ? "heart.fill" : "heart"
                         )
                         .frame(maxWidth: .infinity)
                     }
                     .nookGlassProminent()
 
                     Button(role: .destructive) {
-                        Task { await viewModel.delete(item) }
+                        Task { await viewModel.delete(liveItem) }
                     } label: {
                         Image(systemName: "trash")
                     }
@@ -221,22 +270,28 @@ struct WardrobeItemDetailView: View {
         }
         .nookSafeScreenInsets()
         .nookScreenBackground()
-        .navigationTitle(item.category.displayName)
+        .navigationTitle(liveItem.category.displayName)
         .navigationBarTitleDisplayMode(.inline)
     }
 
     private var metadataGrid: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 10) {
-                metaRow("Category", item.category.displayName)
-                if let sub = item.subcategory { metaRow("Type", sub) }
-                metaRow("Material", item.material.displayName)
-                metaRow("Colors", ([item.dominantColor].compactMap { $0 } + item.colorPalette).prefix(4).joined(separator: ", "))
-                metaRow("Season", item.seasons.map(\.displayName).joined(separator: ", "))
-                metaRow("Style", item.styleTags.prefix(4).map(\.displayName).joined(separator: ", "))
-                metaRow("Formality", "\(Int(item.formalityScore * 100))%")
-                metaRow("AI Confidence", "\(Int(item.aiConfidence * 100))%")
-                metaRow("Worn", "\(item.wornCount)×")
+                metaRow("Category", liveItem.category.displayName)
+                if let sub = liveItem.subcategory { metaRow("Type", sub) }
+                metaRow("Material", liveItem.material.displayName)
+                metaRow("Colors", ([liveItem.dominantColor].compactMap { $0 } + liveItem.colorPalette).prefix(4).joined(separator: ", "))
+                metaRow("Season", liveItem.seasons.map(\.displayName).joined(separator: ", "))
+                metaRow("Style", liveItem.styleTags.prefix(4).map(\.displayName).joined(separator: ", "))
+                metaRow("Formality", "\(Int(liveItem.formalityScore * 100))%")
+                metaRow("AI Confidence", "\(Int(liveItem.aiConfidence * 100))%")
+                metaRow("Worn", "\(liveItem.wornCount)×")
+                if liveItem.isInLaundry {
+                    metaRow("Status", "Needs wash")
+                }
+                if liveItem.isListedForDonate {
+                    metaRow("Status", "Marked for donate")
+                }
             }
         }
     }

@@ -18,6 +18,8 @@ struct DayPlanSheetView: View {
     let existingEvent: CalendarEvent?
     let onSave: (CalendarEvent, PackingList?, [WardrobeItem]) -> Void
     let onCancel: () -> Void
+    /// Opens wardrobe Scan when the closet is empty.
+    let onScanWardrobe: (() -> Void)?
 
     @State private var step: Step
     @State private var planID: UUID
@@ -45,7 +47,8 @@ struct DayPlanSheetView: View {
         imageStorage: ImageStorage,
         existingEvent: CalendarEvent? = nil,
         onSave: @escaping (CalendarEvent, PackingList?, [WardrobeItem]) -> Void,
-        onCancel: @escaping () -> Void
+        onCancel: @escaping () -> Void,
+        onScanWardrobe: (() -> Void)? = nil
     ) {
         self.date = date
         self.wardrobeItems = wardrobeItems
@@ -53,6 +56,7 @@ struct DayPlanSheetView: View {
         self.existingEvent = existingEvent
         self.onSave = onSave
         self.onCancel = onCancel
+        self.onScanWardrobe = onScanWardrobe
 
         let calendar = Calendar.current
         let defaultEnd = calendar.date(byAdding: .day, value: 3, to: date) ?? date
@@ -103,6 +107,7 @@ struct DayPlanSheetView: View {
                         emptyMessage: "Your wardrobe is empty. Scan a piece first, then come back.",
                         items: wardrobeItems.filter { $0.isAvailableToWear || selectedItemIDs.contains($0.id) },
                         saveTitle: "Save to calendar",
+                        showScanCTA: wardrobeItems.filter(\.isAvailableToWear).isEmpty,
                         onSave: saveKnownOutfit
                     )
                 case .eventDetails:
@@ -244,6 +249,7 @@ struct DayPlanSheetView: View {
         emptyMessage: String,
         items: [WardrobeItem],
         saveTitle: String,
+        showScanCTA: Bool = false,
         onSave: @escaping () -> Void
     ) -> some View {
         VStack(spacing: 0) {
@@ -253,9 +259,22 @@ struct DayPlanSheetView: View {
                 .padding()
 
             if items.isEmpty {
-                Text(emptyMessage)
-                    .foregroundStyle(.secondary)
-                    .padding()
+                VStack(alignment: .leading, spacing: 16) {
+                    Text(emptyMessage)
+                        .foregroundStyle(.secondary)
+                    if showScanCTA, let onScanWardrobe {
+                        Button(action: onScanWardrobe) {
+                            Label("Scan a piece", systemImage: "camera.fill")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(AppColors.brand)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(AppColors.olive)
+                                .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
+                        }
+                    }
+                }
+                .padding()
                 Spacer()
             } else {
                 ScrollView {
@@ -401,6 +420,40 @@ struct DayPlanSheetView: View {
                         .padding()
                         .liquidGlass(cornerRadius: AppRadius.medium)
                         .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
+
+                    let suggestions = EventOutfitAdvisor.suggest(from: wardrobeItems, eventType: eventType)
+                    if suggestions.isEmpty {
+                        if wardrobeItems.filter(\.isAvailableToWear).isEmpty, let onScanWardrobe {
+                            Button(action: onScanWardrobe) {
+                                Label("Scan pieces for this event", systemImage: "camera.fill")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(AppColors.olive)
+                            }
+                        }
+                    } else {
+                        Text("Suggested from your wardrobe")
+                            .font(AppTypography.headline)
+                            .padding(.top, 8)
+                        Text("Optional — tap to include with this event.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                            ForEach(suggestions) { item in
+                                SelectableWardrobeCell(
+                                    item: item,
+                                    storage: imageStorage,
+                                    isSelected: selectedItemIDs.contains(item.id)
+                                ) {
+                                    if selectedItemIDs.contains(item.id) {
+                                        selectedItemIDs.remove(item.id)
+                                    } else {
+                                        selectedItemIDs.insert(item.id)
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
                 .padding()
                 .padding(.bottom, 100)
@@ -415,6 +468,7 @@ struct DayPlanSheetView: View {
     private func saveEvent() {
         let dress = customEventNote.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
             ?? eventType.suggestedDressCode
+        let ids = Array(selectedItemIDs)
         let event = CalendarEvent(
             id: planID,
             title: eventType.displayName,
@@ -424,6 +478,7 @@ struct DayPlanSheetView: View {
             isAllDay: true,
             kind: .event,
             eventType: eventType.rawValue,
+            wardrobeItemIDs: ids,
             notes: customEventNote.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
         )
         onSave(event, nil, [])

@@ -62,5 +62,39 @@ struct PackingList: Identifiable, Codable, Equatable, Hashable {
     var startDate: Date?
     var endDate: Date?
     var itemIDs: [UUID]
+    /// Items the user has already packed (subset of `itemIDs`).
+    var packedItemIDs: [UUID]
     var createdAt: Date
+
+    init(
+        id: UUID,
+        title: String,
+        destination: String? = nil,
+        startDate: Date? = nil,
+        endDate: Date? = nil,
+        itemIDs: [UUID] = [],
+        packedItemIDs: [UUID] = [],
+        createdAt: Date = Date()
+    ) {
+        self.id = id
+        self.title = title
+        self.destination = destination
+        self.startDate = startDate
+        self.endDate = endDate
+        self.itemIDs = itemIDs
+        self.packedItemIDs = packedItemIDs
+        self.createdAt = createdAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        destination = try container.decodeIfPresent(String.self, forKey: .destination)
+        startDate = try container.decodeIfPresent(Date.self, forKey: .startDate)
+        endDate = try container.decodeIfPresent(Date.self, forKey: .endDate)
+        itemIDs = try container.decodeIfPresent([UUID].self, forKey: .itemIDs) ?? []
+        packedItemIDs = try container.decodeIfPresent([UUID].self, forKey: .packedItemIDs) ?? []
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+    }
 }

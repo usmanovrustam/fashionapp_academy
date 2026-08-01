@@ -21,6 +21,7 @@ final class AppContainer: ObservableObject {
 
     let locationProvider: LocationProviding
     let weatherProvider: WeatherProviding
+    let notificationScheduler: NotificationScheduling
     let scanPipeline: ClothingScanPipeline
     let recommender: OutfitRecommending
     let stylingAssistant: StylingAssisting
@@ -70,6 +71,7 @@ final class AppContainer: ObservableObject {
             locationProvider: locationProvider,
             cache: weatherCacheRepository
         )
+        let notificationScheduler: NotificationScheduling = LocalNotificationService()
 
         // Do not touch ClothesSegFormerParser.shared here — default provider is lazy on first scan.
         let pipeline = DefaultClothingScanPipeline(
@@ -95,6 +97,7 @@ final class AppContainer: ObservableObject {
         self.packingListRepository = packingListRepository
         self.locationProvider = locationProvider
         self.weatherProvider = weatherProvider
+        self.notificationScheduler = notificationScheduler
         self.scanPipeline = pipeline
         self.recommender = recommender
         self.stylingAssistant = assistant

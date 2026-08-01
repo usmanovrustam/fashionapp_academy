@@ -85,6 +85,7 @@ protocol StylingAssisting: AnyObject {
 protocol NotificationScheduling: AnyObject {
     func requestAuthorization() async -> Bool
     func scheduleDailyOutfitReminder(at dateComponents: DateComponents) async throws
+    func cancelDailyOutfitReminder() async
 }
 
 @MainActor
@@ -92,5 +93,8 @@ protocol AppSettingsProviding: AnyObject {
     var didFinishOnboarding: Bool { get set }
     var selectedLanguage: String { get set }
     var usesCelsius: Bool { get set }
+    var dailyOutfitReminderEnabled: Bool { get set }
+    /// Hour of day (0–23) for the daily outfit reminder. Default 8.
+    var dailyOutfitReminderHour: Int { get set }
     func clearLocalPreferences()
 }
