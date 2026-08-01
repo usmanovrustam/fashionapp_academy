@@ -44,16 +44,8 @@ struct SystemImagePicker: UIViewControllerRepresentable {
 
         switch source {
         case .camera:
-            guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
-                // Don’t silently fall back — caller should surface `.unavailable`.
-                picker.sourceType = .photoLibrary
-                DispatchQueue.main.async {
-                    context.coordinator.onComplete(.failure(CameraCaptureError.unavailable))
-                }
-                break
-            }
+            // Caller should gate with `CameraAuthorization`; still photo only (no Portrait / dual-cam).
             picker.sourceType = .camera
-            // HIG / AVFoundation: stick to still photo capture; avoid Portrait & multi-cam modes.
             if UIImagePickerController.isCameraDeviceAvailable(.rear) {
                 picker.cameraDevice = .rear
             }
