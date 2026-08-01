@@ -101,7 +101,7 @@ struct DayPlanSheetView: View {
                     itemPickerForm(
                         title: "Select what you’re wearing",
                         emptyMessage: "Your wardrobe is empty. Scan a piece first, then come back.",
-                        items: selectableItems(includingSelected: true) { $0.isAvailableToWear || selectedItemIDs.contains($0.id) },
+                        items: wardrobeItems.filter { $0.isAvailableToWear || selectedItemIDs.contains($0.id) },
                         saveTitle: "Save to calendar",
                         onSave: saveKnownOutfit
                     )
@@ -113,7 +113,7 @@ struct DayPlanSheetView: View {
                     itemPickerForm(
                         title: "Mark what needs a wash",
                         emptyMessage: "Nothing left to mark — everything is already in laundry.",
-                        items: selectableItems(includingSelected: true) { !$0.isInLaundry || selectedItemIDs.contains($0.id) },
+                        items: wardrobeItems.filter { !$0.isInLaundry || selectedItemIDs.contains($0.id) },
                         saveTitle: "Mark as need to wash",
                         onSave: saveLaundry
                     )
@@ -121,7 +121,7 @@ struct DayPlanSheetView: View {
                     itemPickerForm(
                         title: "Choose pieces to donate",
                         emptyMessage: "No pieces available to mark for donate right now.",
-                        items: selectableItems(includingSelected: true) { !$0.isListedForDonate || selectedItemIDs.contains($0.id) },
+                        items: wardrobeItems.filter { !$0.isListedForDonate || selectedItemIDs.contains($0.id) },
                         saveTitle: "Mark for donate",
                         onSave: saveDonate
                     )
@@ -178,10 +178,6 @@ struct DayPlanSheetView: View {
         case .donate: return .donate
         case .mood, .shopping, .note: return .chooseKind
         }
-    }
-
-    private func selectableItems(includingSelected: Bool, filter: (WardrobeItem) -> Bool) -> [WardrobeItem] {
-        wardrobeItems.filter(filter)
     }
 
     // MARK: - Kind picker
