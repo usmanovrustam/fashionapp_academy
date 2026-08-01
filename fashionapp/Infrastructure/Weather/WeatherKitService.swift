@@ -8,7 +8,7 @@ enum LocationError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .denied: return "Location permission was denied."
+        case .denied: return "Location permission was denied. Enable it in Settings to see local weather."
         case .unavailable: return "Unable to determine your location."
         }
     }
@@ -17,7 +17,8 @@ enum LocationError: LocalizedError {
 @MainActor
 final class CoreLocationProvider: NSObject, LocationProviding, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
-    private var continuation: CheckedContinuation<CLLocation, Error>?
+    private var locationContinuation: CheckedContinuation<CLLocation, Error>?
+    private var authorizationContinuation: CheckedContinuation<CLAuthorizationStatus, Never>?
 
     override init() {
         super.init()
@@ -34,6 +35,9 @@ final class CoreLocationProvider: NSObject, LocationProviding, CLLocationManager
         let location = CLLocation(latitude: latitude, longitude: longitude)
         let placemarks = try await CLGeocoder().reverseGeocodeLocation(location)
         if let locality = placemarks.first?.locality {
+            if let admin = placemarks.first?.administrativeArea {
+                return "\(locality), \(admin)"
+            }
             return locality
         }
         if let name = placemarks.first?.name {
@@ -43,39 +47,70 @@ final class CoreLocationProvider: NSObject, LocationProviding, CLLocationManager
     }
 
     private func requestLocation() async throws -> CLLocation {
-        if manager.authorizationStatus == .notDetermined {
-            manager.requestWhenInUseAuthorization()
+        var status = manager.authorizationStatus
+        if status == .notDetermined {
+            status = await waitForAuthorizationDecision()
         }
 
-        switch manager.authorizationStatus {
+        switch status {
+        case .authorizedAlways, .authorizedWhenInUse:
+            break
         case .denied, .restricted:
             throw LocationError.denied
-        default:
-            break
+        case .notDetermined:
+            throw LocationError.unavailable
+        @unknown default:
+            throw LocationError.unavailable
+        }
+
+        if let cached = manager.location,
+           Date().timeIntervalSince(cached.timestamp) < 120 {
+            return cached
         }
 
         return try await withCheckedThrowingContinuation { continuation in
-            self.continuation = continuation
+            // Cancel any prior in-flight request.
+            if let existing = self.locationContinuation {
+                existing.resume(throwing: CancellationError())
+            }
+            self.locationContinuation = continuation
             manager.requestLocation()
+        }
+    }
+
+    private func waitForAuthorizationDecision() async -> CLAuthorizationStatus {
+        await withCheckedContinuation { continuation in
+            self.authorizationContinuation = continuation
+            manager.requestWhenInUseAuthorization()
+        }
+    }
+
+    nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        let status = manager.authorizationStatus
+        Task { @MainActor in
+            guard status != .notDetermined else { return }
+            authorizationContinuation?.resume(returning: status)
+            authorizationContinuation = nil
         }
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         Task { @MainActor in
+            guard let continuation = locationContinuation else { return }
+            locationContinuation = nil
             guard let location = locations.first else {
-                continuation?.resume(throwing: LocationError.unavailable)
-                continuation = nil
+                continuation.resume(throwing: LocationError.unavailable)
                 return
             }
-            continuation?.resume(returning: location)
-            continuation = nil
+            continuation.resume(returning: location)
         }
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         Task { @MainActor in
-            continuation?.resume(throwing: error)
-            continuation = nil
+            guard let continuation = locationContinuation else { return }
+            locationContinuation = nil
+            continuation.resume(throwing: error)
         }
     }
 }
@@ -121,8 +156,13 @@ final class WeatherKitService: WeatherProviding {
                 locationName: locationName,
                 fetchedAt: Date()
             )
-            try await cache.save(snapshot)
+            try? await cache.save(snapshot)
             return snapshot
+        } catch let locationError as LocationError {
+            if let cached = await cache.cachedSnapshot() {
+                return cached
+            }
+            throw locationError
         } catch {
             if let cached = await cache.cachedSnapshot() {
                 return cached
@@ -135,7 +175,7 @@ final class WeatherKitService: WeatherProviding {
         let coordinate = try await locationProvider.currentCoordinate()
         let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
         let weather = try await weatherService.weather(for: location)
-        return weather.dailyForecast.prefix(days).map { day in
+        return weather.dailyForecast.prefix(max(days, 1)).map { day in
             DailyWeatherForecast(
                 date: day.date,
                 highCelsius: day.highTemperature.converted(to: .celsius).value,

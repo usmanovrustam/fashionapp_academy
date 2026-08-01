@@ -5,6 +5,9 @@ import SwiftUI
 final class DiscoverViewModel: ObservableObject {
     @Published var recommendations: [OutfitRecommendation] = []
     @Published var weather: WeatherSnapshot?
+    @Published var forecast: [DailyWeatherForecast] = []
+    @Published var isWeatherLoading = false
+    @Published var weatherError: String?
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var topIndex = 0
@@ -42,17 +45,7 @@ final class DiscoverViewModel: ObservableObject {
         topIndex = 0
         analytics.track(.screenView, parameters: ["screen_name": "discover"])
 
-        do {
-            weather = try await weatherProvider.currentWeather()
-            if let weather {
-                analytics.track(.weatherLoaded, parameters: [
-                    "condition": weather.conditionDescription,
-                    "temp_c": String(Int(weather.temperatureCelsius))
-                ])
-            }
-        } catch {
-            weather = nil
-        }
+        await refreshWeather()
 
         do {
             let result = try await recommendationsUseCase.execute(
@@ -106,12 +99,71 @@ final class DiscoverViewModel: ObservableObject {
         )
     }
 
-    func formattedTemperature(_ celsius: Double) -> String {
-        if usesCelsius {
-            return "\(Int(celsius.rounded()))°"
+    func refreshWeather() async {
+        isWeatherLoading = weather == nil
+        weatherError = nil
+
+        do {
+            let snapshot = try await weatherProvider.currentWeather()
+            weather = snapshot
+            analytics.track(.weatherLoaded, parameters: [
+                "condition": snapshot.conditionDescription,
+                "temp_c": String(Int(snapshot.temperatureCelsius)),
+                "location": String(snapshot.locationName.prefix(40))
+            ])
+            forecast = (try? await weatherProvider.dailyForecast(days: 3)) ?? []
+        } catch {
+            if weather == nil {
+                weatherError = error.localizedDescription
+            }
+            if forecast.isEmpty {
+                forecast = []
+            }
         }
-        let f = celsius * 9 / 5 + 32
-        return "\(Int(f.rounded()))°"
+
+        isWeatherLoading = false
+    }
+
+    func formattedTemperature(_ celsius: Double) -> String {
+        "\(Int(converted(celsius).rounded()))°"
+    }
+
+    func formattedTemperatureValue(_ celsius: Double) -> String {
+        "\(Int(converted(celsius).rounded()))"
+    }
+
+    func temperatureUnitLabel() -> String {
+        usesCelsius ? "C" : "F"
+    }
+
+    func formattedWind(_ kmh: Double) -> String {
+        if usesCelsius {
+            return "\(Int(kmh.rounded())) km/h"
+        }
+        let mph = kmh * 0.621371
+        return "\(Int(mph.rounded())) mph"
+    }
+
+    func formattedHumidity(_ humidity: Double) -> String {
+        "\(Int((humidity * 100).rounded()))%"
+    }
+
+    func formattedRain(_ probability: Double) -> String {
+        "\(Int((probability * 100).rounded()))%"
+    }
+
+    func formattedUV(_ uvIndex: Double) -> String {
+        "\(Int(uvIndex.rounded()))"
+    }
+
+    func weekdayLabel(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE"
+        return formatter.string(from: date)
+    }
+
+    private func converted(_ celsius: Double) -> Double {
+        usesCelsius ? celsius : celsius * 9 / 5 + 32
     }
 
     func advance(accepted: Bool) {
