@@ -295,115 +295,161 @@ struct AuthFeatureView: View {
         .accessibilityElement(children: .combine)
     }
 
-    // MARK: - Fields
+    // MARK: - Fields (HIG Text Fields)
 
     private var formFields: some View {
-        VStack(spacing: 14) {
+        // Even vertical spacing + consistent full widths (HIG: stack fields, same width).
+        VStack(alignment: .leading, spacing: 16) {
             if viewModel.mode == .signUp {
-                glassField {
-                    TextField(
-                        "",
-                        text: $viewModel.displayName,
-                        prompt: Text("Name").foregroundStyle(AppColors.placeholder)
-                    )
-                    .font(.body)
-                    .multilineTextAlignment(.leading)
-                    .textContentType(.name)
-                    .textInputAutocapitalization(.words)
-                    .autocorrectionDisabled()
-                    .submitLabel(.next)
-                    .focused($focusedField, equals: .name)
-                    .onSubmit { focusedField = .email }
+                labeledField(title: "Name") {
+                    HStack(spacing: 8) {
+                        TextField(
+                            "",
+                            text: $viewModel.displayName,
+                            prompt: Text("Name").foregroundStyle(AppColors.placeholder)
+                        )
+                        .font(.body)
+                        .multilineTextAlignment(.leading)
+                        .textContentType(.name)
+                        .textInputAutocapitalization(.words)
+                        .autocorrectionDisabled()
+                        .submitLabel(.next)
+                        .focused($focusedField, equals: .name)
+                        .onSubmit { focusedField = .email }
+
+                        clearButton(text: $viewModel.displayName)
+                    }
                 }
                 .transition(.opacity)
             }
 
-            glassField {
-                TextField(
-                    "",
-                    text: $viewModel.email,
-                    prompt: Text("Email").foregroundStyle(AppColors.placeholder)
-                )
-                .font(.body)
-                .multilineTextAlignment(.leading)
-                .textContentType(.emailAddress)
-                .keyboardType(.emailAddress)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .submitLabel(.next)
-                .focused($focusedField, equals: .email)
-                .onSubmit { focusedField = .password }
-            }
-
-            glassField {
+            labeledField(title: "Email") {
                 HStack(spacing: 8) {
-                    Group {
-                        if viewModel.isPasswordVisible {
-                            TextField(
-                                "",
-                                text: $viewModel.password,
-                                prompt: Text("Password").foregroundStyle(AppColors.placeholder)
-                            )
-                            .textContentType(viewModel.mode == .signUp ? .newPassword : .password)
-                        } else {
-                            SecureField(
-                                "",
-                                text: $viewModel.password,
-                                prompt: Text("Password").foregroundStyle(AppColors.placeholder)
-                            )
-                            .textContentType(viewModel.mode == .signUp ? .newPassword : .password)
-                        }
-                    }
+                    TextField(
+                        "",
+                        text: $viewModel.email,
+                        prompt: Text("Email").foregroundStyle(AppColors.placeholder)
+                    )
                     .font(.body)
                     .multilineTextAlignment(.leading)
+                    .textContentType(.emailAddress)
+                    .keyboardType(.emailAddress)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
-                    .submitLabel(.go)
-                    .focused($focusedField, equals: .password)
-                    .onSubmit {
-                        guard viewModel.canSubmit else { return }
-                        focusedField = nil
-                        Task { await viewModel.submit() }
-                    }
+                    .submitLabel(.next)
+                    .focused($focusedField, equals: .email)
+                    .onSubmit { focusedField = .password }
 
-                    Button {
-                        viewModel.isPasswordVisible.toggle()
-                    } label: {
-                        Image(systemName: viewModel.isPasswordVisible ? "eye.slash" : "eye")
-                            .font(.body)
-                            .foregroundStyle(AppColors.placeholder)
-                            .frame(width: 36, height: 36)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(viewModel.isPasswordVisible ? "Hide password" : "Show password")
+                    clearButton(text: $viewModel.email)
                 }
             }
 
-            if viewModel.mode == .signIn {
-                HStack {
-                    Spacer(minLength: 0)
-                    Button("Forgot Password?") {
-                        Task { await viewModel.resetPassword() }
+            VStack(alignment: .leading, spacing: 10) {
+                labeledField(title: "Password") {
+                    HStack(spacing: 8) {
+                        Group {
+                            if viewModel.isPasswordVisible {
+                                TextField(
+                                    "",
+                                    text: $viewModel.password,
+                                    prompt: Text("Password").foregroundStyle(AppColors.placeholder)
+                                )
+                                .textContentType(viewModel.mode == .signUp ? .newPassword : .password)
+                            } else {
+                                // HIG: use a secure text field for sensitive data.
+                                SecureField(
+                                    "",
+                                    text: $viewModel.password,
+                                    prompt: Text("Password").foregroundStyle(AppColors.placeholder)
+                                )
+                                .textContentType(viewModel.mode == .signUp ? .newPassword : .password)
+                            }
+                        }
+                        .font(.body)
+                        .multilineTextAlignment(.leading)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .submitLabel(.go)
+                        .focused($focusedField, equals: .password)
+                        .onSubmit {
+                            guard viewModel.canSubmit else { return }
+                            focusedField = nil
+                            Task { await viewModel.submit() }
+                        }
+
+                        // Trailing controls for extra features (HIG).
+                        if !viewModel.password.isEmpty {
+                            clearButton(text: $viewModel.password)
+                        }
+
+                        Button {
+                            viewModel.isPasswordVisible.toggle()
+                        } label: {
+                            Image(systemName: viewModel.isPasswordVisible ? "eye.slash" : "eye")
+                                .font(.body)
+                                .foregroundStyle(AppColors.placeholder)
+                                .frame(width: 36, height: 36)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(viewModel.isPasswordVisible ? "Hide password" : "Show password")
                     }
-                    .font(.footnote.weight(.medium))
-                    .foregroundStyle(AppColors.buttonBlue)
-                    .disabled(viewModel.isLoading)
+                }
+
+                if viewModel.mode == .signIn {
+                    HStack {
+                        Spacer(minLength: 0)
+                        Button("Forgot Password?") {
+                            Task { await viewModel.resetPassword() }
+                        }
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(AppColors.buttonBlue)
+                        .disabled(viewModel.isLoading)
+                    }
                 }
             }
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: viewModel.mode)
     }
 
-    private func glassField<Content: View>(
+    /// Persistent label + placeholder (HIG: placeholder disappears while typing).
+    private func labeledField<Content: View>(
+        title: String,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        content()
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
-            .liquidGlass(cornerRadius: AppRadius.medium, interactive: true)
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(AppColors.textSecondary)
+                .accessibilityHidden(true)
+
+            content()
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+                .liquidGlass(cornerRadius: AppRadius.medium, interactive: true)
+                .accessibilityLabel(title)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Trailing Clear control (HIG iOS/iPadOS text fields).
+    @ViewBuilder
+    private func clearButton(text: Binding<String>) -> some View {
+        if !text.wrappedValue.isEmpty {
+            Button {
+                text.wrappedValue = ""
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.body)
+                    .foregroundStyle(AppColors.placeholder)
+                    .frame(width: 36, height: 36)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Clear text")
+        }
     }
 
     // MARK: - Status
