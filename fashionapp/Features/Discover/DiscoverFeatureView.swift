@@ -20,16 +20,7 @@ struct DiscoverFeatureView: View {
             ScrollView {
                 VStack(spacing: AppSpacing.lg) {
                     weatherCard
-
                     mainContent
-
-                    Button {
-                        viewModel.showAssistant = true
-                    } label: {
-                        Label("Ask AI Stylist", systemImage: "bubble.left.and.bubble.right.fill")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(LiquidGlassButtonStyle(prominent: true))
                 }
                 .padding(.horizontal)
                 .padding(.top, AppSpacing.sm)
@@ -40,9 +31,6 @@ struct DiscoverFeatureView: View {
             .navigationTitle(NSLocalizedString("Discover", comment: ""))
             .sheet(item: $selectedRecommendation) { rec in
                 RecommendationDetailView(recommendation: rec, storage: viewModel.imageStorage)
-            }
-            .sheet(isPresented: $viewModel.showAssistant) {
-                AssistantFeatureView(container: container)
             }
             .task { await viewModel.load() }
         }
@@ -93,145 +81,56 @@ struct DiscoverFeatureView: View {
     }
 
     private func weatherContent(_ weather: WeatherSnapshot) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 14) {
-                Image(systemName: weather.conditionSymbol)
-                    .font(.system(size: 40, weight: .semibold))
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(AppColors.primaryGradient)
-                    .frame(width: 48, height: 48)
+        HStack(spacing: 14) {
+            Image(systemName: weather.conditionSymbol)
+                .font(.system(size: 36, weight: .semibold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(AppColors.primaryGradient)
+                .frame(width: 44, height: 44)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Label(weather.locationName, systemImage: "location.fill")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(AppColors.textPrimary)
-                        .lineLimit(1)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(weather.locationName)
+                    .font(.headline)
+                    .foregroundStyle(AppColors.textPrimary)
+                    .lineLimit(1)
 
-                    Text(weather.conditionDescription)
-                        .font(.subheadline)
-                        .foregroundStyle(AppColors.textSecondary)
-
-                    Text("Feels like \(viewModel.formattedTemperature(weather.apparentTemperatureCelsius))")
-                        .font(.caption)
-                        .foregroundStyle(AppColors.textTertiary)
-                }
-
-                Spacer(minLength: 8)
-
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(viewModel.formattedTemperature(weather.temperatureCelsius))
-                        .font(.system(size: 40, weight: .bold, design: .rounded))
-                        .foregroundStyle(AppColors.primaryGradient)
-                        .accessibilityLabel(
-                            "\(viewModel.formattedTemperatureValue(weather.temperatureCelsius)) degrees \(viewModel.temperatureUnitLabel())"
-                        )
-
-                    Button {
-                        Task { await viewModel.refreshWeather() }
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(AppColors.buttonBlue)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(viewModel.isWeatherLoading)
-                    .accessibilityLabel("Refresh weather")
-                }
+                Text(weather.conditionDescription)
+                    .font(.subheadline)
+                    .foregroundStyle(AppColors.textSecondary)
             }
 
-            HStack(spacing: 0) {
-                weatherMetric(
-                    title: "Humidity",
-                    value: viewModel.formattedHumidity(weather.humidity),
-                    symbol: "humidity.fill"
-                )
-                weatherMetric(
-                    title: "Wind",
-                    value: viewModel.formattedWind(weather.windSpeedKmh),
-                    symbol: "wind"
-                )
-                weatherMetric(
-                    title: "Rain",
-                    value: viewModel.formattedRain(weather.rainProbability),
-                    symbol: "cloud.rain.fill"
-                )
-                weatherMetric(
-                    title: "UV",
-                    value: viewModel.formattedUV(weather.uvIndex),
-                    symbol: "sun.max.fill"
-                )
-            }
+            Spacer(minLength: 8)
 
-            if !viewModel.forecast.isEmpty {
-                Divider().opacity(0.35)
-
-                HStack(spacing: 0) {
-                    ForEach(viewModel.forecast.prefix(3)) { day in
-                        VStack(spacing: 6) {
-                            Text(viewModel.weekdayLabel(for: day.date))
-                                .font(.caption.weight(.medium))
-                                .foregroundStyle(AppColors.textSecondary)
-                            Image(systemName: day.symbolName)
-                                .font(.body)
-                                .symbolRenderingMode(.hierarchical)
-                                .foregroundStyle(AppColors.buttonBlue)
-                            Text("\(viewModel.formattedTemperatureValue(day.highCelsius))° / \(viewModel.formattedTemperatureValue(day.lowCelsius))°")
-                                .font(.caption2.weight(.semibold))
-                                .foregroundStyle(AppColors.textPrimary)
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                }
-                .accessibilityElement(children: .contain)
-            }
+            Text(viewModel.formattedTemperature(weather.temperatureCelsius))
+                .font(.system(size: 36, weight: .bold, design: .rounded))
+                .foregroundStyle(AppColors.primaryGradient)
+                .accessibilityLabel(
+                    "\(viewModel.formattedTemperatureValue(weather.temperatureCelsius)) degrees \(viewModel.temperatureUnitLabel())"
+                )
         }
     }
 
     private func weatherErrorContent(_ message: String) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.title2)
-                    .foregroundStyle(AppColors.textTertiary)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Weather unavailable")
-                        .font(.headline)
-                    Text(message)
-                        .font(.caption)
-                        .foregroundStyle(AppColors.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 0)
-            }
-
-            Button {
-                Task { await viewModel.refreshWeather() }
-            } label: {
-                Text("Try Again")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(LiquidGlassButtonStyle(prominent: true))
-            .controlSize(.small)
-        }
-    }
-
-    private func weatherMetric(title: String, value: String, symbol: String) -> some View {
-        VStack(spacing: 6) {
-            Image(systemName: symbol)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(AppColors.buttonBlue)
-            Text(value)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(AppColors.textPrimary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-            Text(title)
-                .font(.caption2)
+        HStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.title2)
                 .foregroundStyle(AppColors.textTertiary)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Weather unavailable")
+                    .font(.headline)
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(AppColors.textSecondary)
+                    .lineLimit(3)
+            }
+            Spacer(minLength: 0)
+            Button("Retry") {
+                Task { await viewModel.refreshWeather() }
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(AppColors.buttonBlue)
+            .disabled(viewModel.isWeatherLoading)
         }
-        .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(title), \(value)")
     }
 
     private var cardStack: some View {
