@@ -300,12 +300,13 @@ struct AuthFeatureView: View {
     private var formFields: some View {
         VStack(spacing: 14) {
             if viewModel.mode == .signUp {
-                glassField(field: .name) {
+                glassField {
                     TextField(
                         "",
                         text: $viewModel.displayName,
                         prompt: Text("Name").foregroundStyle(AppColors.placeholder)
                     )
+                    .font(.body)
                     .multilineTextAlignment(.leading)
                     .textContentType(.name)
                     .textInputAutocapitalization(.words)
@@ -317,12 +318,13 @@ struct AuthFeatureView: View {
                 .transition(.opacity)
             }
 
-            glassField(field: .email) {
+            glassField {
                 TextField(
                     "",
                     text: $viewModel.email,
                     prompt: Text("Email").foregroundStyle(AppColors.placeholder)
                 )
+                .font(.body)
                 .multilineTextAlignment(.leading)
                 .textContentType(.emailAddress)
                 .keyboardType(.emailAddress)
@@ -333,86 +335,75 @@ struct AuthFeatureView: View {
                 .onSubmit { focusedField = .password }
             }
 
-            VStack(spacing: 10) {
-                glassField(field: .password) {
-                    HStack(spacing: 8) {
-                        Group {
-                            if viewModel.isPasswordVisible {
-                                TextField(
-                                    "",
-                                    text: $viewModel.password,
-                                    prompt: Text("Password").foregroundStyle(AppColors.placeholder)
-                                )
-                                .textContentType(viewModel.mode == .signUp ? .newPassword : .password)
-                            } else {
-                                SecureField(
-                                    "",
-                                    text: $viewModel.password,
-                                    prompt: Text("Password").foregroundStyle(AppColors.placeholder)
-                                )
-                                .textContentType(viewModel.mode == .signUp ? .newPassword : .password)
-                            }
+            glassField {
+                HStack(spacing: 8) {
+                    Group {
+                        if viewModel.isPasswordVisible {
+                            TextField(
+                                "",
+                                text: $viewModel.password,
+                                prompt: Text("Password").foregroundStyle(AppColors.placeholder)
+                            )
+                            .textContentType(viewModel.mode == .signUp ? .newPassword : .password)
+                        } else {
+                            SecureField(
+                                "",
+                                text: $viewModel.password,
+                                prompt: Text("Password").foregroundStyle(AppColors.placeholder)
+                            )
+                            .textContentType(viewModel.mode == .signUp ? .newPassword : .password)
                         }
-                        .multilineTextAlignment(.leading)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .submitLabel(.go)
-                        .focused($focusedField, equals: .password)
-                        .onSubmit {
-                            guard viewModel.canSubmit else { return }
-                            focusedField = nil
-                            Task { await viewModel.submit() }
-                        }
-
-                        Button {
-                            viewModel.isPasswordVisible.toggle()
-                        } label: {
-                            Image(systemName: viewModel.isPasswordVisible ? "eye.slash" : "eye")
-                                .font(.body)
-                                .foregroundStyle(AppColors.placeholder)
-                                .frame(width: 36, height: 36)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(viewModel.isPasswordVisible ? "Hide password" : "Show password")
                     }
+                    .font(.body)
+                    .multilineTextAlignment(.leading)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .submitLabel(.go)
+                    .focused($focusedField, equals: .password)
+                    .onSubmit {
+                        guard viewModel.canSubmit else { return }
+                        focusedField = nil
+                        Task { await viewModel.submit() }
+                    }
+
+                    Button {
+                        viewModel.isPasswordVisible.toggle()
+                    } label: {
+                        Image(systemName: viewModel.isPasswordVisible ? "eye.slash" : "eye")
+                            .font(.body)
+                            .foregroundStyle(AppColors.placeholder)
+                            .frame(width: 36, height: 36)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(viewModel.isPasswordVisible ? "Hide password" : "Show password")
                 }
+            }
 
-                if viewModel.mode == .signIn {
-                    HStack {
-                        Spacer(minLength: 0)
-                        Button("Forgot Password?") {
-                            Task { await viewModel.resetPassword() }
-                        }
-                        .font(.footnote.weight(.medium))
-                        .foregroundStyle(AppColors.buttonBlue)
-                        .disabled(viewModel.isLoading)
+            if viewModel.mode == .signIn {
+                HStack {
+                    Spacer(minLength: 0)
+                    Button("Forgot Password?") {
+                        Task { await viewModel.resetPassword() }
                     }
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(AppColors.buttonBlue)
+                    .disabled(viewModel.isLoading)
                 }
             }
         }
+        .frame(maxWidth: .infinity)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: viewModel.mode)
     }
 
     private func glassField<Content: View>(
-        field: Field,
         @ViewBuilder content: () -> Content
     ) -> some View {
         content()
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
-            .frame(minHeight: 52)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
             .liquidGlass(cornerRadius: AppRadius.medium, interactive: true)
-            .overlay {
-                RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
-                    .stroke(
-                        focusedField == field
-                            ? AppColors.buttonBlue.opacity(0.55)
-                            : Color.white.opacity(0.35),
-                        lineWidth: focusedField == field ? 1.5 : 1
-                    )
-            }
     }
 
     // MARK: - Status
