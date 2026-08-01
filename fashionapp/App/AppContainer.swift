@@ -1,6 +1,7 @@
 import Combine
 import Foundation
 import SwiftUI
+import FirebaseCrashlytics
 
 /// Composition root — Firebase Auth / Firestore / Storage / Analytics.
 @MainActor
@@ -52,6 +53,7 @@ final class AppContainer: ObservableObject {
         AuthSession.shared.userID = authService.currentUser?.id
         if let uid = authService.currentUser?.id {
             analytics.setUserID(uid)
+            Crashlytics.crashlytics().setUserID(uid)
         }
 
         let imageStorage: ImageStorage = FirebaseImageStorage()
@@ -122,6 +124,11 @@ final class AppContainer: ObservableObject {
         authObserver = authService.$currentUser.sink { [weak self] user in
             AuthSession.shared.userID = user?.id
             self?.analytics.setUserID(user?.id)
+            if let uid = user?.id {
+                Crashlytics.crashlytics().setUserID(uid)
+            } else {
+                Crashlytics.crashlytics().setUserID("")
+            }
             self?.objectWillChange.send()
         }
 
@@ -136,6 +143,7 @@ final class AppContainer: ObservableObject {
         analytics.track(.logout)
         try? authService.signOut()
         analytics.setUserID(nil)
+        Crashlytics.crashlytics().setUserID("")
         AuthSession.shared.userID = nil
         objectWillChange.send()
     }

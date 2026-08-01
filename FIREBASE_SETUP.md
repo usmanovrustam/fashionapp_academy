@@ -12,6 +12,7 @@ Nook does **not** use mock auth or mock databases. Auth is **Firebase Authentica
 | Firestore | Database + rules deployed |
 | Storage | Bucket `sylyo-fashion.firebasestorage.app` + rules |
 | Google Analytics | Property `548069136` linked |
+| Crashlytics | Enabled in app (`FirebaseCrashlytics` SPM + dSYM upload build phase) |
 | BigQuery | Linked — dataset `analytics_548069136` (may take up to 24h to appear) |
 
 ## Active project
@@ -48,6 +49,7 @@ In Firebase Console enable:
 | Cloud Firestore | Production or test mode, then deploy rules below |
 | Storage | Default bucket, deploy rules below |
 | Analytics | Enabled (default) |
+| Crashlytics | Enable in Console → Crashlytics (one-time); Xcode already links the SDK |
 | BigQuery | Project Settings → Integrations → BigQuery → Link |
 
 ## 4. Deploy rules & indexes

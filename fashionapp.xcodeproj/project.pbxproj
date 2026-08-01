@@ -12,6 +12,7 @@
 		A10000012E3A000000000003 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = A20000012E3A000000000003 /* FirebaseFirestore */; };
 		A10000012E3A000000000004 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = A20000012E3A000000000004 /* FirebaseStorage */; };
 		A10000012E3A000000000005 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = A20000012E3A000000000005 /* FirebaseAnalytics */; };
+		A10000012E3A000000000006 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = A20000012E3A000000000006 /* FirebaseCrashlytics */; };
 		4355D68147DB4B32B8CC3C38 /* NookWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1BC920C6668041EF96C1148A /* NookWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -91,6 +92,7 @@
 				A10000012E3A000000000003 /* FirebaseFirestore in Frameworks */,
 				A10000012E3A000000000004 /* FirebaseStorage in Frameworks */,
 				A10000012E3A000000000005 /* FirebaseAnalytics in Frameworks */,
+				A10000012E3A000000000006 /* FirebaseCrashlytics in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -133,6 +135,7 @@
 				B1F22C312DDF4B7600B1186F /* Frameworks */,
 				B1F22C322DDF4B7600B1186F /* Resources */,
 				B13858BF823F4D2DB845E3DB /* Embed Foundation Extensions */,
+				A40000012E3A000000000001 /* Upload Crashlytics dSYM */,
 			);
 			buildRules = (
 			);
@@ -149,6 +152,7 @@
 				A20000012E3A000000000003 /* FirebaseFirestore */,
 				A20000012E3A000000000004 /* FirebaseStorage */,
 				A20000012E3A000000000005 /* FirebaseAnalytics */,
+				A20000012E3A000000000006 /* FirebaseCrashlytics */,
 			);
 			productName = fashionapp;
 			productReference = B1F22C342DDF4B7600B1186F /* fashionapp.app */;
@@ -251,6 +255,33 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		A40000012E3A000000000001 /* Upload Crashlytics dSYM */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${PRODUCT_NAME}",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Info.plist",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/GoogleService-Info.plist",
+				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)",
+			);
+			name = "Upload Crashlytics dSYM";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXTargetDependency section */
 		1301883F532243EEB8F55009 /* PBXTargetDependency */ = {
@@ -596,6 +627,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A30000012E3A000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAnalytics;
+		};
+		A20000012E3A000000000006 /* FirebaseCrashlytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A30000012E3A000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCrashlytics;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

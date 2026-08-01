@@ -1,6 +1,7 @@
 import UIKit
 import FirebaseCore
 import FirebaseAnalytics
+import FirebaseCrashlytics
 
 /// Owns app composition after Firebase is configured.
 ///
@@ -34,7 +35,17 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         // Collection starts disabled in Info.plist; enable only after configure.
         if FirebaseBootstrap.isConfigured {
             Analytics.setAnalyticsCollectionEnabled(true)
+            Self.configureCrashlytics()
         }
         return true
+    }
+
+    private static func configureCrashlytics() {
+        #if DEBUG
+        // Keep local debug runs quieter; TestFlight / Release still report.
+        Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(false)
+        #else
+        Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(true)
+        #endif
     }
 }
