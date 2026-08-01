@@ -112,10 +112,11 @@ final class FirebaseAuthService: ObservableObject, AuthServicing {
     func signInWithApple(idToken: String, rawNonce: String, fullName: PersonNameComponents?) async throws -> AuthUser {
         try ensureConfigured()
         do {
-            let credential = OAuthProvider.appleCredential(
-                withIDToken: idToken,
+            let credential = OAuthProvider.credential(
+                providerID: "apple.com",
+                idToken: idToken,
                 rawNonce: rawNonce,
-                fullName: fullName
+                accessToken: nil
             )
             let result = try await Auth.auth().signIn(with: credential)
             // Full name is only provided on first Apple authorization — persist when present.
