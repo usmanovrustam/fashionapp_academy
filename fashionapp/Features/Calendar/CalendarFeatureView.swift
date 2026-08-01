@@ -75,13 +75,6 @@ final class CalendarViewModel: ObservableObject {
         return leading + days
     }
 
-    func items(on date: Date) -> [WardrobeItem] {
-        items.filter { item in
-            guard let planned = item.plannedDate else { return false }
-            return calendar.isDate(planned, inSameDayAs: date)
-        }
-    }
-
     func events(on date: Date) -> [CalendarEvent] {
         events.filter { event in
             let start = calendar.startOfDay(for: event.startDate)
@@ -91,8 +84,14 @@ final class CalendarViewModel: ObservableObject {
         }
     }
 
+    func wardrobeItems(for event: CalendarEvent) -> [WardrobeItem] {
+        let ids = Set(event.wardrobeItemIDs + event.suggestedItemIDs)
+        guard !ids.isEmpty else { return [] }
+        return items.filter { ids.contains($0.id) }
+    }
+
     func hasPlan(on date: Date) -> Bool {
-        !items(on: date).isEmpty || !events(on: date).isEmpty
+        !events(on: date).isEmpty
     }
 
     func shiftMonth(_ value: Int) {
@@ -117,7 +116,6 @@ final class CalendarViewModel: ObservableObject {
             events = []
             return
         }
-        // Widen slightly so multi-day trips that spill across months still show.
         let from = calendar.date(byAdding: .day, value: -7, to: monthStart) ?? monthStart
         let to = calendar.date(byAdding: .day, value: 7, to: monthEnd) ?? monthEnd
         events = (try? await eventRepository.fetchEvents(from: from, to: to)) ?? []
@@ -152,7 +150,6 @@ final class CalendarViewModel: ObservableObject {
 struct CalendarFeatureView: View {
     private let container: AppContainer
     @StateObject private var viewModel: CalendarViewModel
-    @State private var showScanner = false
     @State private var showDayPlanSheet = false
 
     private let columns = Array(repeating: GridItem(.flexible()), count: 7)
@@ -169,7 +166,6 @@ struct CalendarFeatureView: View {
                     monthHeader
                     calendarGrid
                     dayPlansSection
-                    plannedLooksSection
                 }
                 .padding()
                 .padding(.bottom, AppSpacing.lg)
@@ -177,9 +173,6 @@ struct CalendarFeatureView: View {
             .nookSafeScreenInsets()
             .nookScreenBackground()
             .navigationTitle(NSLocalizedString("Calendar", comment: ""))
-            .sheet(isPresented: $showScanner) {
-                ScannerFeatureView(container: container, plannedDate: viewModel.selectedDate)
-            }
             .sheet(isPresented: $showDayPlanSheet) {
                 DayPlanSheetView(
                     date: viewModel.selectedDate,
@@ -201,11 +194,6 @@ struct CalendarFeatureView: View {
                 .presentationDragIndicator(.visible)
             }
             .task { await viewModel.load() }
-            .onChange(of: showScanner) { _, isShowing in
-                if !isShowing {
-                    Task { await viewModel.load() }
-                }
-            }
             .alert("Couldn’t save", isPresented: Binding(
                 get: { viewModel.errorMessage != nil },
                 set: { if !$0 { viewModel.errorMessage = nil } }
@@ -296,7 +284,7 @@ struct CalendarFeatureView: View {
 
             let dayEvents = viewModel.events(on: viewModel.selectedDate)
             if dayEvents.isEmpty {
-                Text("Tap a date to plan what you’ll wear, an event, or a trip.")
+                Text("Tap a date to plan an outfit, event, trip, laundry, or donate.")
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding()
@@ -305,46 +293,11 @@ struct CalendarFeatureView: View {
             } else {
                 VStack(spacing: 10) {
                     ForEach(dayEvents) { event in
-                        DayPlanRow(event: event)
-                    }
-                }
-            }
-        }
-    }
-
-    private var plannedLooksSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("Planned Looks")
-                    .font(AppTypography.headline)
-                Spacer()
-                Button {
-                    showScanner = true
-                } label: {
-                    Label("Scan", systemImage: "camera.fill")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(AppColors.primaryGradient)
-                        .clipShape(Capsule())
-                }
-            }
-
-            let planned = viewModel.items(on: viewModel.selectedDate)
-            if planned.isEmpty {
-                Text("No looks planned for this day.")
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
-                    .liquidGlass(cornerRadius: AppRadius.medium)
-                    .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 16) {
-                        ForEach(planned) { item in
-                            StoredWardrobeCardCompact(item: item, storage: viewModel.imageStorage)
-                        }
+                        DayPlanRow(
+                            event: event,
+                            linkedItems: viewModel.wardrobeItems(for: event),
+                            storage: viewModel.imageStorage
+                        )
                     }
                 }
             }
@@ -354,37 +307,52 @@ struct CalendarFeatureView: View {
 
 private struct DayPlanRow: View {
     let event: CalendarEvent
+    let linkedItems: [WardrobeItem]
+    let storage: ImageStorage
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: event.kind.systemImage)
-                .font(.title3)
-                .foregroundStyle(AppColors.olive)
-                .frame(width: 28)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: event.kind.systemImage)
+                    .font(.title3)
+                    .foregroundStyle(AppColors.olive)
+                    .frame(width: 28)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(event.title)
-                    .font(.subheadline.weight(.semibold))
-                if let summary = event.weatherSummary, !summary.isEmpty {
-                    Text(summary)
-                        .font(.caption)
-                        .foregroundStyle(AppColors.textSecondary)
-                } else if let dress = event.dressCode, !dress.isEmpty {
-                    Text(dress)
-                        .font(.caption)
-                        .foregroundStyle(AppColors.textSecondary)
-                } else if let notes = event.notes, !notes.isEmpty {
-                    Text(notes)
-                        .font(.caption)
-                        .foregroundStyle(AppColors.textSecondary)
-                        .lineLimit(2)
-                } else {
-                    Text(event.kind.title)
-                        .font(.caption)
-                        .foregroundStyle(AppColors.textSecondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(event.title)
+                        .font(.subheadline.weight(.semibold))
+                    if let summary = event.weatherSummary, !summary.isEmpty {
+                        Text(summary)
+                            .font(.caption)
+                            .foregroundStyle(AppColors.textSecondary)
+                    } else if let dress = event.dressCode, !dress.isEmpty {
+                        Text(dress)
+                            .font(.caption)
+                            .foregroundStyle(AppColors.textSecondary)
+                    } else if let notes = event.notes, !notes.isEmpty {
+                        Text(notes)
+                            .font(.caption)
+                            .foregroundStyle(AppColors.textSecondary)
+                            .lineLimit(2)
+                    } else {
+                        Text(event.kind.title)
+                            .font(.caption)
+                            .foregroundStyle(AppColors.textSecondary)
+                    }
+                }
+                Spacer()
+            }
+
+            // Existing wardrobe thumbnails only — never create/scan images here.
+            if !linkedItems.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(linkedItems) { item in
+                            StoredWardrobeThumb(item: item, storage: storage)
+                        }
+                    }
                 }
             }
-            Spacer()
         }
         .padding()
         .liquidGlass(cornerRadius: AppRadius.medium)
@@ -392,16 +360,36 @@ private struct DayPlanRow: View {
     }
 }
 
-private struct StoredWardrobeCardCompact: View {
+private struct StoredWardrobeThumb: View {
     let item: WardrobeItem
     let storage: ImageStorage
     @State private var image: UIImage?
 
     var body: some View {
-        WardrobeItemCard(name: item.name, image: image, width: 140, height: 180)
-            .task {
-                let path = item.transparentImagePath ?? item.originalImagePath
-                image = UIImage(data: (try? await storage.loadImageData(at: path)) ?? Data())
+        VStack(spacing: 6) {
+            Group {
+                if let image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    AppColors.brand.opacity(0.35)
+                        .overlay(ProgressView().tint(AppColors.olive))
+                }
             }
+            .frame(width: 72, height: 90)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            Text(item.name)
+                .font(.caption2)
+                .foregroundStyle(AppColors.textSecondary)
+                .lineLimit(1)
+                .frame(width: 72)
+        }
+        .task {
+            let path = item.transparentImagePath ?? item.originalImagePath
+            guard !path.isEmpty else { return }
+            image = UIImage(data: (try? await storage.loadImageData(at: path)) ?? Data())
+        }
     }
 }

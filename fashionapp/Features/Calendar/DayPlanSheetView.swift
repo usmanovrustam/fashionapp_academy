@@ -288,7 +288,7 @@ struct DayPlanSheetView: View {
             isAllDay: true,
             kind: .donate,
             wardrobeItemIDs: ids,
-            notes: "\(ids.count) piece(s) listed in the giveaway store"
+            notes: "\(ids.count) piece(s) marked for donate"
         )
         onSave(event, nil, updatedItems)
     }

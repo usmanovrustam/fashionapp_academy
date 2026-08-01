@@ -299,7 +299,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = fashionapp/fashionapp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_ASSET_PATHS = "\"fashionapp/Preview Content\"";
 				DEVELOPMENT_TEAM = T76V4FRBSW;
 				ENABLE_PREVIEWS = YES;
@@ -339,7 +339,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = fashionapp/fashionapp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_ASSET_PATHS = "\"fashionapp/Preview Content\"";
 				DEVELOPMENT_TEAM = T76V4FRBSW;
 				ENABLE_PREVIEWS = YES;
@@ -502,7 +502,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = NookWidgets/NookWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = T76V4FRBSW;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NookWidgets/Info.plist;
@@ -533,7 +533,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = NookWidgets/NookWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = T76V4FRBSW;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NookWidgets/Info.plist;
