@@ -23,7 +23,7 @@ struct UserProfile: Identifiable, Codable, Equatable, Hashable {
             stylePreferences: [.casual, .minimalist],
             favoriteColors: [],
             avoidCategories: [],
-            genderNeutralPreferred: true,
+            genderNeutralPreferred: false,
             avatarImagePath: nil,
             createdAt: now,
             updatedAt: now

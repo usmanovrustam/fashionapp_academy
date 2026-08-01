@@ -57,10 +57,19 @@ final class ProfileViewModel: ObservableObject {
         }
     }
 
+    var languageDisplayName: String {
+        switch selectedLanguage {
+        case "it": return "Italiano"
+        default: return "English"
+        }
+    }
+
     func load() async {
         analytics.track(.screenView, parameters: ["screen_name": "profile"])
         do {
             profile = try await profileRepository.load()
+            // Gender-preference flags are not used — keep wardrobe styling modest and practical.
+            profile.genderNeutralPreferred = false
             if let authName = authUser?.displayName, profile.displayName == UserProfile.default.displayName {
                 profile.displayName = authName
             }
@@ -76,6 +85,7 @@ final class ProfileViewModel: ObservableObject {
 
     func saveProfile() async {
         do {
+            profile.genderNeutralPreferred = false
             try await profileRepository.save(profile)
             analytics.track(.profileUpdated, parameters: [
                 "language": profile.preferredLanguage
@@ -126,21 +136,18 @@ struct ProfileFeatureView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: AppSpacing.lg) {
-                    avatarHeader
-                    accountCard
-                    statsRow
-                    preferencesCard
-                    infoCard
-                    dangerCard
-                }
-                .padding()
-                .padding(.bottom, AppSpacing.lg)
+            // Apple HIG: Settings-style inset grouped list — sections, succinct rows, clear hierarchy.
+            List {
+                profileSection
+                wardrobeSection
+                accountSection
+                preferencesSection
+                aboutSection
+                dataSection
             }
-            .sylyoSafeScreenInsets()
-            .sylyoScreenBackground()
+            .listStyle(.insetGrouped)
             .navigationTitle(NSLocalizedString("Profile", comment: ""))
+            .navigationBarTitleDisplayMode(.large)
             .task { await viewModel.load() }
             .onChange(of: selectedPhoto) { _, item in
                 guard let item else { return }
@@ -163,7 +170,7 @@ struct ProfileFeatureView: View {
             .sheet(isPresented: $viewModel.showAbout) {
                 infoSheet(
                     title: NSLocalizedString("About Us", comment: ""),
-                    bodyText: "Sylyo helps you decide what to wear. Add clothes from photos, keep a digital wardrobe, and get ideas that match the weather."
+                    bodyText: "Sylyo helps you manage a private wardrobe and choose modest, practical outfits. Add clothes from photos, organize your closet, and get ideas that match the weather — without a public social feed."
                 )
             }
             .alert(NSLocalizedString("Clear All Data?", comment: ""), isPresented: $viewModel.showClearAlert) {
@@ -194,161 +201,257 @@ struct ProfileFeatureView: View {
         }
     }
 
-    private var accountCard: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(NSLocalizedString("Account", comment: ""))
-                    .font(AppTypography.headline)
-                if viewModel.authUser?.usesSignInWithApple == true {
-                    // HIG Sign in with Apple — indicate current sign-in method.
-                    Text("Using Sign in with Apple")
-                        .foregroundStyle(.secondary)
-                    if let email = viewModel.authUser?.email {
-                        Text(email).foregroundStyle(.secondary)
-                    }
-                } else if let email = viewModel.authUser?.email {
-                    Text(email).foregroundStyle(.secondary)
-                } else if viewModel.authUser?.isAnonymous == true {
-                    Text("Signed in anonymously").foregroundStyle(.secondary)
-                } else {
-                    Text("Not signed in").foregroundStyle(.secondary)
-                }
-                Text("UID: \(viewModel.authUser?.id ?? "—")")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+    // MARK: - Sections (HIG grouped list)
 
-                Button(role: .destructive) {
-                    viewModel.showSignOutAlert = true
-                } label: {
-                    Label(NSLocalizedString("Log Out", comment: ""), systemImage: "rectangle.portrait.and.arrow.right")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(LiquidGlassButtonStyle(prominent: false, tint: .red))
-                .controlSize(.large)
-            }
-        }
-    }
-
-    private var avatarHeader: some View {
-        GlassCard {
+    private var profileSection: some View {
+        Section {
             HStack(spacing: 16) {
                 ZStack(alignment: .bottomTrailing) {
-                    Circle()
-                        .stroke(AppColors.primaryGradient, lineWidth: 3)
-                        .frame(width: 86, height: 86)
-                        .overlay {
-                            if let avatarImage = viewModel.avatarImage {
-                                Image(uiImage: avatarImage)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 78, height: 78)
-                                    .clipShape(Circle())
-                            } else {
-                                Image(systemName: "person.fill")
-                                    .font(.system(size: 34))
-                                    .foregroundStyle(AppColors.primaryGradient)
-                            }
+                    Group {
+                        if let avatarImage = viewModel.avatarImage {
+                            Image(uiImage: avatarImage)
+                                .resizable()
+                                .scaledToFill()
+                        } else {
+                            Image(systemName: "person.crop.circle.fill")
+                                .resizable()
+                                .scaledToFit()
+                                .foregroundStyle(.secondary)
+                                .padding(10)
                         }
+                    }
+                    .frame(width: 64, height: 64)
+                    .background(Color(.secondarySystemFill))
+                    .clipShape(Circle())
 
                     PhotosPicker(selection: $selectedPhoto, matching: .images) {
                         Image(systemName: "camera.circle.fill")
-                            .font(.title2)
                             .symbolRenderingMode(.palette)
-                            .foregroundStyle(.white, AppColors.brand)
+                            .foregroundStyle(.white, Color.accentColor)
+                            .font(.title3)
+                            .accessibilityLabel(NSLocalizedString("Change photo", comment: ""))
                     }
                     .offset(x: 4, y: 4)
                 }
+                .accessibilityHidden(true)
 
-                VStack(alignment: .leading, spacing: 6) {
-                    TextField("Name", text: $viewModel.profile.displayName)
-                        .font(.title3.bold())
-                        .onSubmit {
-                            Task { await viewModel.saveProfile() }
-                        }
-                    Text("Your wardrobe companion")
+                VStack(alignment: .leading, spacing: 4) {
+                    TextField(
+                        NSLocalizedString("Name", comment: ""),
+                        text: $viewModel.profile.displayName
+                    )
+                    .font(.headline)
+                    .textInputAutocapitalization(.words)
+                    .submitLabel(.done)
+                    .onSubmit {
+                        Task { await viewModel.saveProfile() }
+                    }
+
+                    Text(NSLocalizedString("Private wardrobe", comment: ""))
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
+            }
+            .padding(.vertical, 4)
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    private var wardrobeSection: some View {
+        Section {
+            labeledValueRow(
+                title: NSLocalizedString("Items", comment: ""),
+                value: "\(viewModel.statistics.totalItems)",
+                systemImage: "tshirt"
+            )
+            labeledValueRow(
+                title: NSLocalizedString("Favorites", comment: ""),
+                value: "\(viewModel.statistics.favoritesCount)",
+                systemImage: "heart"
+            )
+            labeledValueRow(
+                title: NSLocalizedString("Worn this week", comment: ""),
+                value: "\(viewModel.statistics.wornThisWeek)",
+                systemImage: "calendar"
+            )
+        } header: {
+            Text(NSLocalizedString("Wardrobe", comment: ""))
+        }
+    }
+
+    private var accountSection: some View {
+        Section {
+            LabeledContent(NSLocalizedString("Sign-in", comment: "")) {
+                Text(accountStatusText)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.trailing)
+            }
+
+            if let email = viewModel.authUser?.email, !email.isEmpty {
+                LabeledContent(NSLocalizedString("Email", comment: "")) {
+                    Text(email)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+            }
+
+            Button(role: .destructive) {
+                viewModel.showSignOutAlert = true
+            } label: {
+                Text(NSLocalizedString("Log Out", comment: ""))
+            }
+        } header: {
+            Text(NSLocalizedString("Account", comment: ""))
+        } footer: {
+            if let id = viewModel.authUser?.id, !id.isEmpty {
+                Text("UID \(id)")
+                    .font(.caption2)
+                    .textSelection(.enabled)
+            }
+        }
+    }
+
+    private var preferencesSection: some View {
+        Section {
+            Button {
+                viewModel.showLanguage = true
+            } label: {
+                // HIG: succinct primary label + secondary value + disclosure cue.
+                HStack {
+                    Label(NSLocalizedString("Language", comment: ""), systemImage: "globe")
+                    Spacer()
+                    Text(viewModel.languageDisplayName)
+                        .foregroundStyle(.secondary)
+                    Image(systemName: "chevron.right")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .foregroundStyle(.primary)
+
+            Toggle(isOn: Binding(
+                get: { viewModel.usesCelsius },
+                set: { viewModel.usesCelsius = $0 }
+            )) {
+                Label(NSLocalizedString("Use Celsius", comment: ""), systemImage: "thermometer.medium")
+            }
+        } header: {
+            Text(NSLocalizedString("Preferences", comment: ""))
+        } footer: {
+            Text(NSLocalizedString(
+                "Sylyo is a private closet tool. Outfit ideas stay on your device and account — not a public social feed.",
+                comment: "Preferences footer explaining private-first product stance"
+            ))
+        }
+    }
+
+    private var aboutSection: some View {
+        Section {
+            disclosureButton(
+                title: NSLocalizedString("Privacy Policy", comment: ""),
+                systemImage: "lock.shield"
+            ) {
+                viewModel.showPrivacy = true
+            }
+            disclosureButton(
+                title: NSLocalizedString("About Us", comment: ""),
+                systemImage: "info.circle"
+            ) {
+                viewModel.showAbout = true
+            }
+        } header: {
+            Text(NSLocalizedString("About", comment: ""))
+        }
+    }
+
+    private var dataSection: some View {
+        Section {
+            Button(role: .destructive) {
+                viewModel.showResetAlert = true
+            } label: {
+                Label(NSLocalizedString("Reset Onboarding", comment: ""), systemImage: "arrow.counterclockwise")
+            }
+
+            Button(role: .destructive) {
+                viewModel.showClearAlert = true
+            } label: {
+                Label(NSLocalizedString("Clear All Data", comment: ""), systemImage: "trash")
+            }
+        } header: {
+            Text(NSLocalizedString("Data", comment: ""))
+        } footer: {
+            Text(NSLocalizedString(
+                "Clearing data permanently removes wardrobe items stored for this account on this device.",
+                comment: "Data section footer"
+            ))
+        }
+    }
+
+    // MARK: - Rows
+
+    private var accountStatusText: String {
+        if viewModel.authUser?.usesSignInWithApple == true {
+            return NSLocalizedString("Sign in with Apple", comment: "")
+        }
+        if viewModel.authUser?.isAnonymous == true {
+            return NSLocalizedString("Anonymous", comment: "")
+        }
+        if viewModel.authUser != nil {
+            return NSLocalizedString("Signed in", comment: "")
+        }
+        return NSLocalizedString("Not signed in", comment: "")
+    }
+
+    private func labeledValueRow(title: String, value: String, systemImage: String) -> some View {
+        LabeledContent {
+            Text(value)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+        } label: {
+            Label(title, systemImage: systemImage)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func disclosureButton(
+        title: String,
+        systemImage: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack {
+                Label(title, systemImage: systemImage)
                 Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
             }
         }
+        .foregroundStyle(.primary)
     }
 
-    private var statsRow: some View {
-        HStack(spacing: 12) {
-            StatCard(title: "Items", value: "\(viewModel.statistics.totalItems)", icon: "tshirt.fill")
-            StatCard(title: "Favorites", value: "\(viewModel.statistics.favoritesCount)", icon: "heart.fill")
-            StatCard(title: "Worn / wk", value: "\(viewModel.statistics.wornThisWeek)", icon: "calendar")
-        }
-    }
-
-    private var preferencesCard: some View {
-        GlassCard {
-            VStack(spacing: 12) {
-                Button { viewModel.showLanguage = true } label: {
-                    SettingsRow(icon: "globe", title: NSLocalizedString("Language", comment: ""))
-                }
-                Toggle(isOn: Binding(
-                    get: { viewModel.usesCelsius },
-                    set: { viewModel.usesCelsius = $0 }
-                )) {
-                    Label("Use Celsius", systemImage: "thermometer")
-                }
-                .tint(AppColors.brand)
-
-                Toggle(isOn: $viewModel.profile.genderNeutralPreferred) {
-                    Label("Gender-neutral looks", systemImage: "person.2")
-                }
-                .tint(AppColors.brand)
-                .onChange(of: viewModel.profile.genderNeutralPreferred) { _, _ in
-                    Task { await viewModel.saveProfile() }
-                }
-            }
-        }
-    }
-
-    private var infoCard: some View {
-        GlassCard {
-            VStack(spacing: 4) {
-                Button { viewModel.showPrivacy = true } label: {
-                    SettingsRow(icon: "lock.shield", title: NSLocalizedString("Privacy Policy", comment: ""))
-                }
-                Button { viewModel.showAbout = true } label: {
-                    SettingsRow(icon: "info.circle", title: NSLocalizedString("About Us", comment: ""))
-                }
-            }
-        }
-    }
-
-    private var dangerCard: some View {
-        GlassCard {
-            VStack(spacing: 4) {
-                Button { viewModel.showResetAlert = true } label: {
-                    SettingsRow(icon: "arrow.counterclockwise", title: "Reset Onboarding", tint: .orange)
-                }
-                Button { viewModel.showClearAlert = true } label: {
-                    SettingsRow(icon: "trash", title: "Clear All Data", tint: .red)
-                }
-            }
-        }
-    }
+    // MARK: - Sheets
 
     private var languageSheet: some View {
         NavigationStack {
             List {
-                languageTile("English", code: "en")
-                languageTile("Italiano", code: "it")
+                languageRow("English", code: "en")
+                languageRow("Italiano", code: "it")
             }
+            .listStyle(.insetGrouped)
             .navigationTitle(NSLocalizedString("Select Language", comment: ""))
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(NSLocalizedString("Close", comment: "")) { viewModel.showLanguage = false }
+                    Button(NSLocalizedString("Close", comment: "")) {
+                        viewModel.showLanguage = false
+                    }
                 }
             }
         }
     }
 
-    private func languageTile(_ title: String, code: String) -> some View {
+    private func languageRow(_ title: String, code: String) -> some View {
         Button {
             viewModel.selectedLanguage = code
             viewModel.profile.preferredLanguage = code
@@ -357,10 +460,13 @@ struct ProfileFeatureView: View {
         } label: {
             HStack {
                 Text(title)
+                    .foregroundStyle(.primary)
                 Spacer()
                 if viewModel.selectedLanguage == code {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(AppColors.primaryGradient)
+                    Image(systemName: "checkmark")
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Color.accentColor)
+                        .accessibilityLabel(NSLocalizedString("Selected", comment: ""))
                 }
             }
         }
@@ -368,11 +474,17 @@ struct ProfileFeatureView: View {
 
     private func infoSheet(title: String, bodyText: String) -> some View {
         NavigationStack {
-            ScrollView {
-                Text(bodyText)
-                    .padding()
+            List {
+                Section {
+                    Text(bodyText)
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                        .listRowBackground(Color.clear)
+                }
             }
+            .listStyle(.insetGrouped)
             .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(NSLocalizedString("Close", comment: "")) {

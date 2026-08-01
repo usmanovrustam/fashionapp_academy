@@ -50,7 +50,7 @@ struct WardrobeItem: Identifiable, Codable, Equatable, Hashable {
             formalityScore: 0.3,
             styleTags: [.casual],
             occasions: [.everyday],
-            genderNeutral: true,
+            genderNeutral: false,
             aiConfidence: 0,
             purchaseDate: nil,
             isFavorite: false,

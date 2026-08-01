@@ -153,7 +153,7 @@ final class ColorAwareMetadataExtractor: ClothingMetadataExtractor {
             formalityScore: formality,
             styleTags: styles,
             occasions: occasions,
-            genderNeutral: true,
+            genderNeutral: false,
             suggestedName: name.isEmpty ? category.displayName : name,
             confidence: 0.62
         )
