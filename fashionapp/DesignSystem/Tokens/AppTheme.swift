@@ -197,28 +197,25 @@ private struct LiquidGlassCapsuleModifier: ViewModifier {
     }
 }
 
-/// Pastel brown CTA with white label text.
+/// Transparent Liquid Glass CTA with white label text.
 struct LiquidGlassButtonStyle: ButtonStyle {
     var prominent: Bool = true
     var tint: Color? = AppColors.brand
     var isDisabled: Bool = false
 
     func makeBody(configuration: Configuration) -> some View {
-        let fill = tint ?? AppColors.brand
+        let glassTint = tint ?? AppColors.brand
         return configuration.label
             .font(AppTypography.headline)
             .foregroundStyle(Color.white)
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 22)
             .padding(.vertical, 16)
-            .background {
-                Capsule()
-                    .fill(fill.opacity(isDisabled ? 0.45 : (configuration.isPressed ? 0.82 : (prominent ? 0.95 : 0.78))))
-            }
             .liquidGlassCapsule(
                 interactive: !isDisabled,
-                tint: fill
+                tint: glassTint.opacity(prominent ? 0.72 : 0.48)
             )
+            .opacity(isDisabled ? 0.45 : (configuration.isPressed ? 0.86 : 1))
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
     }

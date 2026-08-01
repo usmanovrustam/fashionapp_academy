@@ -15,7 +15,11 @@ struct OnboardingView: View {
     private var isLastPage: Bool { page == pages.count - 1 }
 
     var body: some View {
-        VStack {
+        VStack(spacing: 0) {
+            topBar
+                .padding(.horizontal, AppSpacing.lg)
+                .padding(.top, AppSpacing.sm)
+
             TabView(selection: $page) {
                 ForEach(pages.indices, id: \.self) { idx in
                     VStack(spacing: AppSpacing.xl) {
@@ -57,13 +61,35 @@ struct OnboardingView: View {
             pageIndicators
                 .padding(.vertical, 20)
 
-            splashButtons
+            nextButton
                 .padding(.horizontal, AppSpacing.xl)
                 .padding(.bottom, AppSpacing.xl)
         }
         .background(SoftBackground())
         // Prevent any system accent/blue from leaking into welcome controls.
         .tint(AppColors.brand)
+    }
+
+    private var topBar: some View {
+        HStack {
+            Spacer()
+            if !isLastPage {
+                Button {
+                    withAnimation {
+                        didFinishOnboarding = true
+                    }
+                } label: {
+                    Text(NSLocalizedString("Skip", comment: "Onboarding skip"))
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .foregroundStyle(AppColors.brand)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 8)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(NSLocalizedString("Skip", comment: "Onboarding skip"))
+            }
+        }
+        .frame(height: 44)
     }
 
     private var pageIndicators: some View {
@@ -82,54 +108,26 @@ struct OnboardingView: View {
         }
     }
 
-    private var splashButtons: some View {
+    private var nextButton: some View {
         SylyoGlassContainer(spacing: 12) {
-            HStack(spacing: 12) {
-                if page > 0 {
-                    Button {
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                            page -= 1
-                        }
-                    } label: {
-                        Text(NSLocalizedString("Back", comment: "Onboarding back"))
-                            .frame(minWidth: 72)
+            Button {
+                if isLastPage {
+                    withAnimation {
+                        didFinishOnboarding = true
                     }
-                    .buttonStyle(LiquidGlassButtonStyle(prominent: false, tint: AppColors.brand))
-                    .sylyoGlassEffectID("splash-back", in: glassNamespace)
-                }
-
-                if !isLastPage {
-                    Button {
-                        withAnimation {
-                            didFinishOnboarding = true
-                        }
-                    } label: {
-                        Text(NSLocalizedString("Skip", comment: "Onboarding skip"))
-                            .frame(minWidth: 64)
+                } else {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                        page += 1
                     }
-                    .buttonStyle(LiquidGlassButtonStyle(prominent: false, tint: AppColors.brand))
-                    .sylyoGlassEffectID("splash-skip", in: glassNamespace)
                 }
-
-                Button {
-                    if isLastPage {
-                        withAnimation {
-                            didFinishOnboarding = true
-                        }
-                    } else {
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                            page += 1
-                        }
-                    }
-                } label: {
-                    Text(isLastPage
-                           ? NSLocalizedString("Get Started", comment: "")
-                           : NSLocalizedString("Next", comment: ""))
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(LiquidGlassButtonStyle(prominent: true, tint: AppColors.brand))
-                .sylyoGlassEffectID("splash-primary", in: glassNamespace)
+            } label: {
+                Text(isLastPage
+                       ? NSLocalizedString("Get Started", comment: "")
+                       : NSLocalizedString("Next", comment: ""))
+                    .frame(maxWidth: .infinity)
             }
+            .buttonStyle(LiquidGlassButtonStyle(prominent: true, tint: AppColors.brand))
+            .sylyoGlassEffectID("splash-primary", in: glassNamespace)
         }
     }
 }
