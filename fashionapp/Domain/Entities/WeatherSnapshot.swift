@@ -36,8 +36,8 @@ enum DayPlanKind: String, Codable, CaseIterable, Identifiable, Hashable {
     case event
     case travel
     case laundry
+    /// Legacy values kept for decoding older saved plans (not shown in UI).
     case donate
-    /// Legacy values kept for decoding older saved plans.
     case mood
     case shopping
     case note
@@ -68,7 +68,7 @@ enum DayPlanKind: String, Codable, CaseIterable, Identifiable, Hashable {
         case .event: return NSLocalizedString("Tell us the occasion so Nook can dress for it.", comment: "")
         case .travel: return NSLocalizedString("Destination, season, and packing suggestions.", comment: "")
         case .laundry: return NSLocalizedString("Mark pieces that need a wash.", comment: "")
-        case .donate: return NSLocalizedString("List pieces in the giveaway store for nearby people.", comment: "")
+        case .donate: return NSLocalizedString("Choose pieces you’re ready to give away.", comment: "")
         case .mood, .shopping, .note: return ""
         }
     }

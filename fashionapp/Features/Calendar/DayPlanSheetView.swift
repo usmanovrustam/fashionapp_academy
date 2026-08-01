@@ -71,17 +71,17 @@ struct DayPlanSheetView: View {
                 case .laundry:
                     itemPickerForm(
                         title: "Mark what needs a wash",
-                        emptyMessage: "Nothing left to mark — everything is already in laundry or listed to donate.",
-                        items: wardrobeItems.filter { !$0.isInLaundry && !$0.isListedForDonate },
+                        emptyMessage: "Nothing left to mark — everything is already in laundry.",
+                        items: wardrobeItems.filter { !$0.isInLaundry },
                         saveTitle: "Mark as need to wash",
                         onSave: saveLaundry
                     )
                 case .donate:
                     itemPickerForm(
-                        title: "Add to the giveaway store",
-                        emptyMessage: "No pieces available to list right now.",
+                        title: "Choose pieces to donate",
+                        emptyMessage: "No pieces available to mark for donate right now.",
                         items: wardrobeItems.filter { !$0.isListedForDonate },
-                        saveTitle: "List in store",
+                        saveTitle: "Mark for donate",
                         onSave: saveDonate
                     )
                 }
