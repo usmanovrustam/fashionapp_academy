@@ -69,7 +69,6 @@ final class CoreLocationProvider: NSObject, LocationProviding, CLLocationManager
         }
 
         return try await withCheckedThrowingContinuation { continuation in
-            // Cancel any prior in-flight request.
             if let existing = self.locationContinuation {
                 existing.resume(throwing: CancellationError())
             }
@@ -115,11 +114,16 @@ final class CoreLocationProvider: NSObject, LocationProviding, CLLocationManager
     }
 }
 
+/// Prefers WeatherKit; falls back to Open-Meteo when JWT/App Services aren’t configured.
 @MainActor
 final class WeatherKitService: WeatherProviding {
     private let locationProvider: LocationProviding
     private let cache: WeatherCacheRepository
     private let weatherService = WeatherService.shared
+    private let openMeteo = OpenMeteoWeatherClient()
+
+    /// Last Open-Meteo forecast kept so Discover can show the 3-day strip after fallback.
+    private(set) var lastFallbackForecast: [DailyWeatherForecast] = []
 
     init(locationProvider: LocationProviding, cache: WeatherCacheRepository) {
         self.locationProvider = locationProvider
@@ -132,63 +136,116 @@ final class WeatherKitService: WeatherProviding {
             return cached
         }
 
+        let coordinate: (latitude: Double, longitude: Double)
         do {
-            let coordinate = try await locationProvider.currentCoordinate()
-            let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
-            let weather = try await weatherService.weather(for: location)
-            let current = weather.currentWeather
-            let day = weather.dailyForecast.first
-            let locationName = (try? await locationProvider.reverseGeocode(
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude
-            )) ?? "Current Location"
-
-            let snapshot = WeatherSnapshot(
-                temperatureCelsius: current.temperature.converted(to: .celsius).value,
-                apparentTemperatureCelsius: current.apparentTemperature.converted(to: .celsius).value,
-                humidity: current.humidity,
-                windSpeedKmh: current.wind.speed.converted(to: .kilometersPerHour).value,
-                rainProbability: day?.precipitationChance ?? 0,
-                uvIndex: Double(current.uvIndex.value),
-                airQualityIndex: nil,
-                conditionSymbol: current.symbolName,
-                conditionDescription: Self.displayName(for: current.condition),
-                locationName: locationName,
-                fetchedAt: Date()
-            )
-            try? await cache.save(snapshot)
-            return snapshot
+            coordinate = try await locationProvider.currentCoordinate()
         } catch let locationError as LocationError {
-            if let cached = await cache.cachedSnapshot() {
-                return cached
-            }
+            if let cached = await cache.cachedSnapshot() { return cached }
             throw locationError
         } catch {
-            if let cached = await cache.cachedSnapshot() {
-                return cached
+            if let cached = await cache.cachedSnapshot() { return cached }
+            throw LocationError.unavailable
+        }
+
+        let locationName = (try? await locationProvider.reverseGeocode(
+            latitude: coordinate.latitude,
+            longitude: coordinate.longitude
+        )) ?? "Current Location"
+
+        do {
+            let snapshot = try await fetchWeatherKitSnapshot(
+                latitude: coordinate.latitude,
+                longitude: coordinate.longitude,
+                locationName: locationName
+            )
+            lastFallbackForecast = []
+            try? await cache.save(snapshot)
+            return snapshot
+        } catch {
+            #if DEBUG
+            print("WeatherKit failed (\(error.localizedDescription)); falling back to Open-Meteo.")
+            #endif
+            do {
+                let (snapshot, forecast) = try await openMeteo.fetchCurrent(
+                    latitude: coordinate.latitude,
+                    longitude: coordinate.longitude,
+                    locationName: locationName
+                )
+                lastFallbackForecast = forecast
+                try? await cache.save(snapshot)
+                return snapshot
+            } catch {
+                if let cached = await cache.cachedSnapshot() {
+                    return cached
+                }
+                throw DomainError.weatherUnavailable(
+                    "Couldn't load local weather. Check your network connection and try again."
+                )
             }
-            throw Self.mapWeatherError(error)
         }
     }
 
     func dailyForecast(days: Int) async throws -> [DailyWeatherForecast] {
+        if !lastFallbackForecast.isEmpty {
+            return Array(lastFallbackForecast.prefix(max(days, 1)))
+        }
+
         let coordinate = try await locationProvider.currentCoordinate()
         let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
-        let weather = try await weatherService.weather(for: location)
-        return weather.dailyForecast.prefix(max(days, 1)).map { day in
-            DailyWeatherForecast(
-                date: day.date,
-                highCelsius: day.highTemperature.converted(to: .celsius).value,
-                lowCelsius: day.lowTemperature.converted(to: .celsius).value,
-                symbolName: day.symbolName,
-                conditionDescription: Self.displayName(for: day.condition)
+
+        do {
+            let weather = try await weatherService.weather(for: location)
+            return weather.dailyForecast.prefix(max(days, 1)).map { day in
+                DailyWeatherForecast(
+                    date: day.date,
+                    highCelsius: day.highTemperature.converted(to: .celsius).value,
+                    lowCelsius: day.lowTemperature.converted(to: .celsius).value,
+                    symbolName: day.symbolName,
+                    conditionDescription: Self.displayName(for: day.condition)
+                )
+            }
+        } catch {
+            let locationName = (try? await locationProvider.reverseGeocode(
+                latitude: coordinate.latitude,
+                longitude: coordinate.longitude
+            )) ?? "Current Location"
+            let (_, forecast) = try await openMeteo.fetchCurrent(
+                latitude: coordinate.latitude,
+                longitude: coordinate.longitude,
+                locationName: locationName
             )
+            lastFallbackForecast = forecast
+            return Array(forecast.prefix(max(days, 1)))
         }
+    }
+
+    private func fetchWeatherKitSnapshot(
+        latitude: Double,
+        longitude: Double,
+        locationName: String
+    ) async throws -> WeatherSnapshot {
+        let location = CLLocation(latitude: latitude, longitude: longitude)
+        let weather = try await weatherService.weather(for: location)
+        let current = weather.currentWeather
+        let day = weather.dailyForecast.first
+
+        return WeatherSnapshot(
+            temperatureCelsius: current.temperature.converted(to: .celsius).value,
+            apparentTemperatureCelsius: current.apparentTemperature.converted(to: .celsius).value,
+            humidity: current.humidity,
+            windSpeedKmh: current.wind.speed.converted(to: .kilometersPerHour).value,
+            rainProbability: day?.precipitationChance ?? 0,
+            uvIndex: Double(current.uvIndex.value),
+            airQualityIndex: nil,
+            conditionSymbol: current.symbolName,
+            conditionDescription: Self.displayName(for: current.condition),
+            locationName: locationName,
+            fetchedAt: Date()
+        )
     }
 
     private static func displayName(for condition: WeatherCondition) -> String {
         let raw = String(describing: condition)
-        // Convert camelCase enum name to words: "partlyCloudy" → "Partly Cloudy"
         let spaced = raw.unicodeScalars.reduce(into: "") { result, scalar in
             if CharacterSet.uppercaseLetters.contains(scalar), !result.isEmpty {
                 result += " "
@@ -196,23 +253,5 @@ final class WeatherKitService: WeatherProviding {
             result += String(scalar)
         }
         return spaced.prefix(1).uppercased() + spaced.dropFirst()
-    }
-
-    /// JWT Code=2 almost always means WeatherKit App Services isn’t enabled on the App ID.
-    private static func mapWeatherError(_ error: Error) -> Error {
-        let nsError = error as NSError
-        let domain = nsError.domain.lowercased()
-        let isJWTAuthFailure =
-            domain.contains("weatherdaemon")
-            || domain.contains("wdsjwtauthenticator")
-            || domain.contains("weatherkit")
-            || (nsError.code == 2 && domain.contains("weather"))
-
-        if isJWTAuthFailure {
-            return DomainError.weatherUnavailable(
-                "WeatherKit isn’t authorized for this App ID. In Apple Developer → Identifiers → apple.academy.stylo, enable WeatherKit under both Capabilities and App Services, then refresh the provisioning profile in Xcode and reinstall the app."
-            )
-        }
-        return DomainError.weatherUnavailable(error.localizedDescription)
     }
 }

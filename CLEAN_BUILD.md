@@ -46,17 +46,16 @@ You should see Firebase bootstrap logs instead of `CloudKit Manager`.
 
 ## WeatherKit JWT errors (`Code=2`)
 
-`WeatherDaemon.WDSJWTAuthenticatorServiceListener.Errors Code=2` is **not a code bug**. Location works; Apple refuses to mint a WeatherKit JWT.
+`WeatherDaemon.WDSJWTAuthenticatorServiceListener.Errors Code=2` means Apple refused a WeatherKit JWT (usually App Services not enabled).
 
-For team `T76V4FRBSW` / bundle `apple.academy.stylo` you must enable WeatherKit in **two** places on the App ID:
+Sylyo still shows local weather: it falls back to **Open-Meteo** using the same GPS coordinates when WeatherKit fails.
 
-1. [Apple Developer → Identifiers](https://developer.apple.com/account/resources/identifiers/list) → `apple.academy.stylo`
-2. **Capabilities** tab → enable **WeatherKit** → Save
-3. **App Services** tab → enable **WeatherKit** → Save *(often missed)*
-4. In Xcode: Signing & Capabilities → confirm WeatherKit is present
-5. Product → Clean Build Folder, delete the app from the device, Run again (forces a fresh provisioning profile)
+Optional (to use Apple WeatherKit as primary): for team `T76V4FRBSW` / bundle `apple.academy.stylo` enable WeatherKit in **both** places on the App ID:
 
-Until that is done, Discover shows a weather error with retry; the rest of the app still works.
+1. [Identifiers](https://developer.apple.com/account/resources/identifiers/list) → `apple.academy.stylo`
+2. **Capabilities** → WeatherKit → Save
+3. **App Services** → WeatherKit → Save *(often missed)*
+4. Xcode → refresh signing, clean build, delete app, reinstall
 
 ## Firebase launch warnings
 
