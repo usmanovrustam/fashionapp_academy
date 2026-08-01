@@ -35,6 +35,7 @@ protocol WeatherCacheRepository: AnyObject {
 protocol EventRepository: AnyObject {
     func fetchEvents(from: Date, to: Date) async throws -> [CalendarEvent]
     func save(_ event: CalendarEvent) async throws
+    func delete(id: UUID) async throws
 }
 
 protocol PackingListRepository: AnyObject {

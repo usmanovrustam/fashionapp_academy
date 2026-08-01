@@ -179,6 +179,11 @@ actor FirebaseEventRepository: EventRepository {
             .document(event.id.uuidString)
             .setData(try FirestoreCoding.encode(event), merge: true)
     }
+
+    func delete(id: UUID) async throws {
+        let uid = try await MainActor.run { try FirebaseUserContext.requireUID() }
+        try await db.collection(FirestorePaths.events(uid: uid)).document(id.uuidString).delete()
+    }
 }
 
 actor FirebasePackingListRepository: PackingListRepository {

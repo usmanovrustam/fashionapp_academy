@@ -140,6 +140,70 @@ final class CalendarViewModel: ObservableObject {
         }
     }
 
+    /// Deletes a plan and undoes linked wardrobe side effects where appropriate.
+    func deleteDayPlan(_ event: CalendarEvent) async {
+        isSaving = true
+        errorMessage = nil
+        defer { isSaving = false }
+
+        do {
+            var wardrobeUpdates = wardrobeItems(for: event)
+            let now = Date()
+            for index in wardrobeUpdates.indices {
+                switch event.kind {
+                case .knownOutfit:
+                    if let planned = wardrobeUpdates[index].plannedDate,
+                       calendar.isDate(planned, inSameDayAs: event.startDate) {
+                        wardrobeUpdates[index].plannedDate = nil
+                    }
+                case .laundry:
+                    wardrobeUpdates[index].isInLaundry = false
+                case .donate:
+                    wardrobeUpdates[index].isListedForDonate = false
+                    wardrobeUpdates[index].listedForDonateAt = nil
+                default:
+                    break
+                }
+                wardrobeUpdates[index].updatedAt = now
+            }
+
+            for item in wardrobeUpdates {
+                try await wardrobeRepository.save(item)
+            }
+            if let packingID = event.packingListID {
+                try? await packingListRepository.delete(id: packingID)
+            }
+            try await eventRepository.delete(id: event.id)
+            await load()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Clears need-to-wash on laundry pieces and removes the laundry plan.
+    func markLaundryWashed(_ event: CalendarEvent) async {
+        guard event.kind == .laundry else { return }
+        isSaving = true
+        errorMessage = nil
+        defer { isSaving = false }
+
+        do {
+            var wardrobeUpdates = wardrobeItems(for: event)
+            let now = Date()
+            for index in wardrobeUpdates.indices {
+                wardrobeUpdates[index].isInLaundry = false
+                wardrobeUpdates[index].updatedAt = now
+            }
+            for item in wardrobeUpdates {
+                try await wardrobeRepository.save(item)
+            }
+            try await eventRepository.delete(id: event.id)
+            await load()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     var monthTitle: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMMM yyyy"
@@ -147,10 +211,24 @@ final class CalendarViewModel: ObservableObject {
     }
 }
 
+private enum CalendarSheet: Identifiable, Equatable {
+    case daySummary
+    case addPlan
+    case editPlan(CalendarEvent)
+
+    var id: String {
+        switch self {
+        case .daySummary: return "summary"
+        case .addPlan: return "add"
+        case .editPlan(let event): return "edit-\(event.id.uuidString)"
+        }
+    }
+}
+
 struct CalendarFeatureView: View {
     private let container: AppContainer
     @StateObject private var viewModel: CalendarViewModel
-    @State private var showDayPlanSheet = false
+    @State private var activeSheet: CalendarSheet?
 
     private let columns = Array(repeating: GridItem(.flexible()), count: 7)
 
@@ -173,28 +251,78 @@ struct CalendarFeatureView: View {
             .nookSafeScreenInsets()
             .nookScreenBackground()
             .navigationTitle(NSLocalizedString("Calendar", comment: ""))
-            .sheet(isPresented: $showDayPlanSheet) {
-                DayPlanSheetView(
-                    date: viewModel.selectedDate,
-                    wardrobeItems: viewModel.items,
-                    imageStorage: viewModel.imageStorage,
-                    onSave: { event, packing, wardrobeUpdates in
-                        showDayPlanSheet = false
-                        Task {
-                            await viewModel.saveDayPlan(
-                                event: event,
-                                packingList: packing,
-                                wardrobeUpdates: wardrobeUpdates
-                            )
+            .sheet(item: $activeSheet) { sheet in
+                switch sheet {
+                case .daySummary:
+                    DaySummarySheetView(
+                        date: viewModel.selectedDate,
+                        events: viewModel.events(on: viewModel.selectedDate),
+                        wardrobeItems: viewModel.items,
+                        imageStorage: viewModel.imageStorage,
+                        onAdd: {
+                            activeSheet = .addPlan
+                        },
+                        onEdit: { event in
+                            activeSheet = .editPlan(event)
+                        },
+                        onDelete: { event in
+                            activeSheet = nil
+                            Task { await viewModel.deleteDayPlan(event) }
+                        },
+                        onMarkWashed: { event in
+                            activeSheet = nil
+                            Task { await viewModel.markLaundryWashed(event) }
+                        },
+                        onClose: { activeSheet = nil }
+                    )
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+                case .addPlan:
+                    DayPlanSheetView(
+                        date: viewModel.selectedDate,
+                        wardrobeItems: viewModel.items,
+                        imageStorage: viewModel.imageStorage,
+                        onSave: { event, packing, wardrobeUpdates in
+                            activeSheet = nil
+                            Task {
+                                await viewModel.saveDayPlan(
+                                    event: event,
+                                    packingList: packing,
+                                    wardrobeUpdates: wardrobeUpdates
+                                )
+                            }
+                        },
+                        onCancel: {
+                            // Return to day summary instead of closing everything.
+                            activeSheet = .daySummary
                         }
-                    },
-                    onCancel: { showDayPlanSheet = false }
-                )
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
+                    )
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+                case .editPlan(let event):
+                    DayPlanSheetView(
+                        date: viewModel.selectedDate,
+                        wardrobeItems: viewModel.items,
+                        imageStorage: viewModel.imageStorage,
+                        existingEvent: event,
+                        onSave: { updated, packing, wardrobeUpdates in
+                            activeSheet = nil
+                            Task {
+                                await viewModel.saveDayPlan(
+                                    event: updated,
+                                    packingList: packing,
+                                    wardrobeUpdates: wardrobeUpdates
+                                )
+                            }
+                        },
+                        onCancel: { activeSheet = .daySummary }
+                    )
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+                }
             }
             .task { await viewModel.load() }
-            .alert("Couldn’t save", isPresented: Binding(
+            .alert("Couldn’t update", isPresented: Binding(
                 get: { viewModel.errorMessage != nil },
                 set: { if !$0 { viewModel.errorMessage = nil } }
             )) {
@@ -242,7 +370,7 @@ struct CalendarFeatureView: View {
                     if let date {
                         Button {
                             viewModel.selectedDate = date
-                            showDayPlanSheet = true
+                            activeSheet = .daySummary
                         } label: {
                             DayCell(
                                 date: date,
@@ -270,9 +398,9 @@ struct CalendarFeatureView: View {
                     .font(AppTypography.headline)
                 Spacer()
                 Button {
-                    showDayPlanSheet = true
+                    activeSheet = .daySummary
                 } label: {
-                    Label("Plan", systemImage: "plus")
+                    Label("Open", systemImage: "calendar")
                         .font(.subheadline.weight(.semibold))
                         .foregroundColor(AppColors.brand)
                         .padding(.horizontal, 14)
@@ -284,7 +412,7 @@ struct CalendarFeatureView: View {
 
             let dayEvents = viewModel.events(on: viewModel.selectedDate)
             if dayEvents.isEmpty {
-                Text("Tap a date to plan an outfit, event, trip, laundry, or donate.")
+                Text("Tap a date to review plans or add an outfit, event, trip, laundry, or donate.")
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding()
@@ -293,11 +421,35 @@ struct CalendarFeatureView: View {
             } else {
                 VStack(spacing: 10) {
                     ForEach(dayEvents) { event in
-                        DayPlanRow(
-                            event: event,
-                            linkedItems: viewModel.wardrobeItems(for: event),
-                            storage: viewModel.imageStorage
-                        )
+                        Button {
+                            activeSheet = .editPlan(event)
+                        } label: {
+                            DayPlanRow(
+                                event: event,
+                                linkedItems: viewModel.wardrobeItems(for: event),
+                                storage: viewModel.imageStorage
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .contextMenu {
+                            Button {
+                                activeSheet = .editPlan(event)
+                            } label: {
+                                Label("Edit", systemImage: "pencil")
+                            }
+                            if event.kind == .laundry {
+                                Button {
+                                    Task { await viewModel.markLaundryWashed(event) }
+                                } label: {
+                                    Label("Mark washed", systemImage: "checkmark.circle")
+                                }
+                            }
+                            Button(role: .destructive) {
+                                Task { await viewModel.deleteDayPlan(event) }
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
                     }
                 }
             }
@@ -321,6 +473,7 @@ private struct DayPlanRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(event.title)
                         .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(AppColors.textPrimary)
                     if let summary = event.weatherSummary, !summary.isEmpty {
                         Text(summary)
                             .font(.caption)
@@ -341,9 +494,11 @@ private struct DayPlanRow: View {
                     }
                 }
                 Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppColors.textTertiary)
             }
 
-            // Existing wardrobe thumbnails only — never create/scan images here.
             if !linkedItems.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {

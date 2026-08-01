@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-/// Sheet shown when the user taps a calendar day.
+/// Create or edit a day plan (wear / event / trip / laundry / donate).
 struct DayPlanSheetView: View {
     enum Step: Equatable {
         case chooseKind
@@ -15,39 +15,80 @@ struct DayPlanSheetView: View {
     let date: Date
     let wardrobeItems: [WardrobeItem]
     let imageStorage: ImageStorage
+    let existingEvent: CalendarEvent?
     let onSave: (CalendarEvent, PackingList?, [WardrobeItem]) -> Void
     let onCancel: () -> Void
 
-    @State private var step: Step = .chooseKind
-    @State private var selectedItemIDs: Set<UUID> = []
-    @State private var eventType: DayEventType = .work
-    @State private var customEventNote = ""
-    @State private var destination = ""
+    @State private var step: Step
+    @State private var planID: UUID
+    @State private var packingListID: UUID?
+    @State private var selectedItemIDs: Set<UUID>
+    @State private var eventType: DayEventType
+    @State private var customEventNote: String
+    @State private var destination: String
     @State private var tripEndDate: Date
     @State private var travelPlace: GeocodedPlace?
     @State private var travelAnalysis: TravelPackingAdvisor.Result?
-    @State private var packingTips: [String] = []
-    @State private var suggestedIDs: Set<UUID> = []
+    @State private var packingTips: [String]
+    @State private var suggestedIDs: Set<UUID>
+    @State private var weatherSummary: String?
     @State private var isWorking = false
     @State private var errorMessage: String?
 
     private let weatherClient = OpenMeteoWeatherClient()
     private let calendar = Calendar.current
+    private var isEditing: Bool { existingEvent != nil }
 
     init(
         date: Date,
         wardrobeItems: [WardrobeItem],
         imageStorage: ImageStorage,
+        existingEvent: CalendarEvent? = nil,
         onSave: @escaping (CalendarEvent, PackingList?, [WardrobeItem]) -> Void,
         onCancel: @escaping () -> Void
     ) {
         self.date = date
         self.wardrobeItems = wardrobeItems
         self.imageStorage = imageStorage
+        self.existingEvent = existingEvent
         self.onSave = onSave
         self.onCancel = onCancel
-        let defaultEnd = Calendar.current.date(byAdding: .day, value: 3, to: date) ?? date
-        _tripEndDate = State(initialValue: defaultEnd)
+
+        let calendar = Calendar.current
+        let defaultEnd = calendar.date(byAdding: .day, value: 3, to: date) ?? date
+
+        if let existing = existingEvent {
+            _step = State(initialValue: Self.step(for: existing.kind))
+            _planID = State(initialValue: existing.id)
+            _packingListID = State(initialValue: existing.packingListID)
+            _selectedItemIDs = State(initialValue: Set(existing.wardrobeItemIDs))
+            _eventType = State(initialValue: DayEventType(rawValue: existing.eventType ?? "") ?? .work)
+            _customEventNote = State(initialValue: existing.notes ?? existing.dressCode ?? "")
+            _destination = State(initialValue: existing.location ?? "")
+            _tripEndDate = State(initialValue: existing.endDate)
+            _suggestedIDs = State(initialValue: Set(existing.suggestedItemIDs.isEmpty ? existing.wardrobeItemIDs : existing.suggestedItemIDs))
+            _packingTips = State(initialValue: (existing.notes ?? "").split(separator: "\n").map(String.init).filter { !$0.isEmpty })
+            _weatherSummary = State(initialValue: existing.weatherSummary)
+            if let location = existing.location, !location.isEmpty {
+                _travelPlace = State(initialValue: GeocodedPlace(name: location, latitude: 0, longitude: 0))
+            } else {
+                _travelPlace = State(initialValue: nil)
+            }
+        } else {
+            _step = State(initialValue: .chooseKind)
+            _planID = State(initialValue: UUID())
+            _packingListID = State(initialValue: nil)
+            _selectedItemIDs = State(initialValue: [])
+            _eventType = State(initialValue: .work)
+            _customEventNote = State(initialValue: "")
+            _destination = State(initialValue: "")
+            _tripEndDate = State(initialValue: defaultEnd)
+            _travelPlace = State(initialValue: nil)
+            _travelAnalysis = State(initialValue: nil)
+            _packingTips = State(initialValue: [])
+            _suggestedIDs = State(initialValue: [])
+            _weatherSummary = State(initialValue: nil)
+        }
     }
 
     var body: some View {
@@ -60,7 +101,7 @@ struct DayPlanSheetView: View {
                     itemPickerForm(
                         title: "Select what you’re wearing",
                         emptyMessage: "Your wardrobe is empty. Scan a piece first, then come back.",
-                        items: wardrobeItems.filter(\.isAvailableToWear),
+                        items: selectableItems(includingSelected: true) { $0.isAvailableToWear || selectedItemIDs.contains($0.id) },
                         saveTitle: "Save to calendar",
                         onSave: saveKnownOutfit
                     )
@@ -72,7 +113,7 @@ struct DayPlanSheetView: View {
                     itemPickerForm(
                         title: "Mark what needs a wash",
                         emptyMessage: "Nothing left to mark — everything is already in laundry.",
-                        items: wardrobeItems.filter { !$0.isInLaundry },
+                        items: selectableItems(includingSelected: true) { !$0.isInLaundry || selectedItemIDs.contains($0.id) },
                         saveTitle: "Mark as need to wash",
                         onSave: saveLaundry
                     )
@@ -80,7 +121,7 @@ struct DayPlanSheetView: View {
                     itemPickerForm(
                         title: "Choose pieces to donate",
                         emptyMessage: "No pieces available to mark for donate right now.",
-                        items: wardrobeItems.filter { !$0.isListedForDonate },
+                        items: selectableItems(includingSelected: true) { !$0.isListedForDonate || selectedItemIDs.contains($0.id) },
                         saveTitle: "Mark for donate",
                         onSave: saveDonate
                     )
@@ -91,7 +132,7 @@ struct DayPlanSheetView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(step == .chooseKind ? "Close" : "Back") {
+                    Button(backButtonTitle) {
                         handleBack()
                     }
                 }
@@ -110,17 +151,37 @@ struct DayPlanSheetView: View {
     private var navigationTitle: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEE, MMM d"
-        return formatter.string(from: date)
+        let day = formatter.string(from: date)
+        return isEditing ? "Edit · \(day)" : day
+    }
+
+    private var backButtonTitle: String {
+        if step == .chooseKind || isEditing { return "Close" }
+        return "Back"
     }
 
     private func handleBack() {
-        switch step {
-        case .chooseKind:
+        if isEditing || step == .chooseKind {
             onCancel()
-        case .knownOutfit, .eventDetails, .travelDetails, .laundry, .donate:
-            selectedItemIDs = []
-            step = .chooseKind
+            return
         }
+        selectedItemIDs = []
+        step = .chooseKind
+    }
+
+    private static func step(for kind: DayPlanKind) -> Step {
+        switch kind {
+        case .knownOutfit: return .knownOutfit
+        case .event: return .eventDetails
+        case .travel: return .travelDetails
+        case .laundry: return .laundry
+        case .donate: return .donate
+        case .mood, .shopping, .note: return .chooseKind
+        }
+    }
+
+    private func selectableItems(includingSelected: Bool, filter: (WardrobeItem) -> Bool) -> [WardrobeItem] {
+        wardrobeItems.filter(filter)
     }
 
     // MARK: - Kind picker
@@ -233,13 +294,19 @@ struct DayPlanSheetView: View {
             ? "Planned look"
             : names.prefix(2).joined(separator: " · ")
 
-        var updatedItems = wardrobeItems.filter { ids.contains($0.id) }
+        let previousIDs = Set(existingEvent?.wardrobeItemIDs ?? [])
+        var updatedItems = wardrobeItems.filter { ids.contains($0.id) || previousIDs.contains($0.id) }
         for index in updatedItems.indices {
-            updatedItems[index].plannedDate = calendar.startOfDay(for: date)
+            if ids.contains(updatedItems[index].id) {
+                updatedItems[index].plannedDate = calendar.startOfDay(for: date)
+            } else if calendar.isDate(updatedItems[index].plannedDate ?? .distantPast, inSameDayAs: date) {
+                updatedItems[index].plannedDate = nil
+            }
             updatedItems[index].updatedAt = Date()
         }
 
         let event = CalendarEvent(
+            id: planID,
             title: title,
             startDate: calendar.startOfDay(for: date),
             endDate: calendar.startOfDay(for: date),
@@ -252,13 +319,15 @@ struct DayPlanSheetView: View {
 
     private func saveLaundry() {
         let ids = Array(selectedItemIDs)
-        var updatedItems = wardrobeItems.filter { ids.contains($0.id) }
+        let previousIDs = Set(existingEvent?.wardrobeItemIDs ?? [])
+        var updatedItems = wardrobeItems.filter { ids.contains($0.id) || previousIDs.contains($0.id) }
         for index in updatedItems.indices {
-            updatedItems[index].isInLaundry = true
+            updatedItems[index].isInLaundry = ids.contains(updatedItems[index].id)
             updatedItems[index].updatedAt = Date()
         }
 
         let event = CalendarEvent(
+            id: planID,
             title: "Laundry",
             startDate: calendar.startOfDay(for: date),
             endDate: calendar.startOfDay(for: date),
@@ -273,15 +342,18 @@ struct DayPlanSheetView: View {
     private func saveDonate() {
         let ids = Array(selectedItemIDs)
         let now = Date()
-        var updatedItems = wardrobeItems.filter { ids.contains($0.id) }
+        let previousIDs = Set(existingEvent?.wardrobeItemIDs ?? [])
+        var updatedItems = wardrobeItems.filter { ids.contains($0.id) || previousIDs.contains($0.id) }
         for index in updatedItems.indices {
-            updatedItems[index].isListedForDonate = true
-            updatedItems[index].listedForDonateAt = calendar.startOfDay(for: date)
-            updatedItems[index].isInLaundry = false
+            let selected = ids.contains(updatedItems[index].id)
+            updatedItems[index].isListedForDonate = selected
+            updatedItems[index].listedForDonateAt = selected ? calendar.startOfDay(for: date) : nil
+            if selected { updatedItems[index].isInLaundry = false }
             updatedItems[index].updatedAt = now
         }
 
         let event = CalendarEvent(
+            id: planID,
             title: "Donate",
             startDate: calendar.startOfDay(for: date),
             endDate: calendar.startOfDay(for: date),
@@ -348,6 +420,7 @@ struct DayPlanSheetView: View {
         let dress = customEventNote.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
             ?? eventType.suggestedDressCode
         let event = CalendarEvent(
+            id: planID,
             title: eventType.displayName,
             startDate: calendar.startOfDay(for: date),
             endDate: calendar.startOfDay(for: date),
@@ -409,6 +482,12 @@ struct DayPlanSheetView: View {
                             .foregroundStyle(AppColors.olive)
                     }
 
+                    if let summary = weatherSummary, travelAnalysis == nil {
+                        Text(summary)
+                            .font(.caption)
+                            .foregroundStyle(AppColors.textSecondary)
+                    }
+
                     if let analysis = travelAnalysis {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(analysis.weatherSummary)
@@ -448,13 +527,38 @@ struct DayPlanSheetView: View {
                                 }
                             }
                         }
+                    } else if !suggestedIDs.isEmpty {
+                        let selected = wardrobeItems.filter { suggestedIDs.contains($0.id) }
+                        if !selected.isEmpty {
+                            Text("Packed pieces")
+                                .font(AppTypography.headline)
+                                .padding(.top, 8)
+                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                                ForEach(selected) { item in
+                                    SelectableWardrobeCell(
+                                        item: item,
+                                        storage: imageStorage,
+                                        isSelected: suggestedIDs.contains(item.id)
+                                    ) {
+                                        if suggestedIDs.contains(item.id) {
+                                            suggestedIDs.remove(item.id)
+                                        } else {
+                                            suggestedIDs.insert(item.id)
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
                 .padding()
                 .padding(.bottom, 100)
             }
 
-            saveBar(title: "Save to calendar", enabled: travelPlace != nil) {
+            saveBar(
+                title: "Save to calendar",
+                enabled: travelPlace != nil || !destination.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ) {
                 saveTravel()
             }
         }
@@ -497,6 +601,7 @@ struct DayPlanSheetView: View {
             )
             travelAnalysis = analysis
             packingTips = analysis.packingTips
+            weatherSummary = analysis.weatherSummary
             suggestedIDs = Set(analysis.suggestedItems.map(\.id))
         } catch {
             errorMessage = error.localizedDescription
@@ -507,16 +612,19 @@ struct DayPlanSheetView: View {
         let placeName = travelPlace?.displayName
             ?? destination.trimmingCharacters(in: .whitespacesAndNewlines)
         let ids = Array(suggestedIDs)
+        let listID = packingListID ?? UUID()
+        packingListID = listID
         let packing = PackingList(
-            id: UUID(),
+            id: listID,
             title: "Trip to \(placeName)",
             destination: placeName,
             startDate: calendar.startOfDay(for: date),
             endDate: calendar.startOfDay(for: tripEndDate),
             itemIDs: ids,
-            createdAt: Date()
+            createdAt: existingEvent == nil ? Date() : (existingEvent?.startDate ?? Date())
         )
         let event = CalendarEvent(
+            id: planID,
             title: "Trip · \(placeName)",
             startDate: calendar.startOfDay(for: date),
             endDate: calendar.startOfDay(for: tripEndDate),
@@ -525,9 +633,9 @@ struct DayPlanSheetView: View {
             kind: .travel,
             wardrobeItemIDs: ids,
             suggestedItemIDs: ids,
-            weatherSummary: travelAnalysis?.weatherSummary,
-            notes: packingTips.joined(separator: "\n"),
-            packingListID: packing.id
+            weatherSummary: travelAnalysis?.weatherSummary ?? weatherSummary,
+            notes: packingTips.isEmpty ? existingEvent?.notes : packingTips.joined(separator: "\n"),
+            packingListID: listID
         )
         onSave(event, packing, [])
     }
