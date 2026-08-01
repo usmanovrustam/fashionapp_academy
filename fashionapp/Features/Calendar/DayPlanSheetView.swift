@@ -5,11 +5,11 @@ import UIKit
 struct DayPlanSheetView: View {
     enum Step: Equatable {
         case chooseKind
-        case moreOptions
         case knownOutfit
         case eventDetails
         case travelDetails
-        case simpleNote(DayPlanKind)
+        case laundry
+        case donate
     }
 
     let date: Date
@@ -28,7 +28,6 @@ struct DayPlanSheetView: View {
     @State private var travelAnalysis: TravelPackingAdvisor.Result?
     @State private var packingTips: [String] = []
     @State private var suggestedIDs: Set<UUID> = []
-    @State private var noteText = ""
     @State private var isWorking = false
     @State private var errorMessage: String?
 
@@ -56,17 +55,35 @@ struct DayPlanSheetView: View {
             Group {
                 switch step {
                 case .chooseKind:
-                    kindList(options: DayPlanKind.primaryOptions, showMore: true)
-                case .moreOptions:
-                    kindList(options: DayPlanKind.moreOptions, showMore: false)
+                    kindList
                 case .knownOutfit:
-                    knownOutfitForm
+                    itemPickerForm(
+                        title: "Select what you’re wearing",
+                        emptyMessage: "Your wardrobe is empty. Scan a piece first, then come back.",
+                        items: wardrobeItems.filter(\.isAvailableToWear),
+                        saveTitle: "Save to calendar",
+                        onSave: saveKnownOutfit
+                    )
                 case .eventDetails:
                     eventForm
                 case .travelDetails:
                     travelForm
-                case .simpleNote(let kind):
-                    simpleNoteForm(kind: kind)
+                case .laundry:
+                    itemPickerForm(
+                        title: "Mark what needs a wash",
+                        emptyMessage: "Nothing left to mark — everything is already in laundry or listed to donate.",
+                        items: wardrobeItems.filter { !$0.isInLaundry && !$0.isListedForDonate },
+                        saveTitle: "Mark as need to wash",
+                        onSave: saveLaundry
+                    )
+                case .donate:
+                    itemPickerForm(
+                        title: "Add to the giveaway store",
+                        emptyMessage: "No pieces available to list right now.",
+                        items: wardrobeItems.filter { !$0.isListedForDonate },
+                        saveTitle: "List in store",
+                        onSave: saveDonate
+                    )
                 }
             }
             .nookScreenBackground()
@@ -100,20 +117,15 @@ struct DayPlanSheetView: View {
         switch step {
         case .chooseKind:
             onCancel()
-        case .moreOptions:
+        case .knownOutfit, .eventDetails, .travelDetails, .laundry, .donate:
+            selectedItemIDs = []
             step = .chooseKind
-        case .knownOutfit, .eventDetails, .travelDetails, .simpleNote:
-            if case .simpleNote(let kind) = step, DayPlanKind.moreOptions.contains(kind) {
-                step = .moreOptions
-            } else {
-                step = .chooseKind
-            }
         }
     }
 
     // MARK: - Kind picker
 
-    private func kindList(options: [DayPlanKind], showMore: Bool) -> some View {
+    private var kindList: some View {
         ScrollView {
             VStack(spacing: AppSpacing.md) {
                 Text("What do you have this day?")
@@ -121,7 +133,7 @@ struct DayPlanSheetView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, AppSpacing.sm)
 
-                ForEach(options) { kind in
+                ForEach(DayPlanKind.dayOptions) { kind in
                     Button {
                         open(kind)
                     } label: {
@@ -151,62 +163,47 @@ struct DayPlanSheetView: View {
                     }
                     .buttonStyle(.plain)
                 }
-
-                if showMore {
-                    Button {
-                        step = .moreOptions
-                    } label: {
-                        HStack {
-                            Image(systemName: "ellipsis.circle.fill")
-                                .foregroundStyle(AppColors.accent)
-                            Text("More options")
-                                .font(.body.weight(.semibold))
-                                .foregroundStyle(AppColors.textPrimary)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(AppColors.textTertiary)
-                        }
-                        .padding()
-                        .liquidGlass(cornerRadius: AppRadius.medium)
-                        .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                }
             }
             .padding()
         }
     }
 
     private func open(_ kind: DayPlanKind) {
+        selectedItemIDs = []
         switch kind {
         case .knownOutfit: step = .knownOutfit
         case .event: step = .eventDetails
         case .travel: step = .travelDetails
-        case .mood, .laundry, .shopping, .note:
-            noteText = ""
-            step = .simpleNote(kind)
+        case .laundry: step = .laundry
+        case .donate: step = .donate
+        case .mood, .shopping, .note: break
         }
     }
 
-    // MARK: - Know what to wear
+    // MARK: - Shared item picker
 
-    private var knownOutfitForm: some View {
+    private func itemPickerForm(
+        title: String,
+        emptyMessage: String,
+        items: [WardrobeItem],
+        saveTitle: String,
+        onSave: @escaping () -> Void
+    ) -> some View {
         VStack(spacing: 0) {
-            Text("Select what you’re wearing")
+            Text(title)
                 .font(AppTypography.headline)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
 
-            if wardrobeItems.isEmpty {
-                Text("Your wardrobe is empty. Scan a piece first, then come back.")
+            if items.isEmpty {
+                Text(emptyMessage)
                     .foregroundStyle(.secondary)
                     .padding()
                 Spacer()
             } else {
                 ScrollView {
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                        ForEach(wardrobeItems) { item in
+                        ForEach(items) { item in
                             SelectableWardrobeCell(
                                 item: item,
                                 storage: imageStorage,
@@ -225,9 +222,7 @@ struct DayPlanSheetView: View {
                 }
             }
 
-            saveBar(enabled: !selectedItemIDs.isEmpty) {
-                saveKnownOutfit()
-            }
+            saveBar(title: saveTitle, enabled: !selectedItemIDs.isEmpty, action: onSave)
         }
     }
 
@@ -251,6 +246,49 @@ struct DayPlanSheetView: View {
             isAllDay: true,
             kind: .knownOutfit,
             wardrobeItemIDs: ids
+        )
+        onSave(event, nil, updatedItems)
+    }
+
+    private func saveLaundry() {
+        let ids = Array(selectedItemIDs)
+        var updatedItems = wardrobeItems.filter { ids.contains($0.id) }
+        for index in updatedItems.indices {
+            updatedItems[index].isInLaundry = true
+            updatedItems[index].updatedAt = Date()
+        }
+
+        let event = CalendarEvent(
+            title: "Laundry",
+            startDate: calendar.startOfDay(for: date),
+            endDate: calendar.startOfDay(for: date),
+            isAllDay: true,
+            kind: .laundry,
+            wardrobeItemIDs: ids,
+            notes: "\(ids.count) piece(s) marked as need to wash"
+        )
+        onSave(event, nil, updatedItems)
+    }
+
+    private func saveDonate() {
+        let ids = Array(selectedItemIDs)
+        let now = Date()
+        var updatedItems = wardrobeItems.filter { ids.contains($0.id) }
+        for index in updatedItems.indices {
+            updatedItems[index].isListedForDonate = true
+            updatedItems[index].listedForDonateAt = calendar.startOfDay(for: date)
+            updatedItems[index].isInLaundry = false
+            updatedItems[index].updatedAt = now
+        }
+
+        let event = CalendarEvent(
+            title: "Donate",
+            startDate: calendar.startOfDay(for: date),
+            endDate: calendar.startOfDay(for: date),
+            isAllDay: true,
+            kind: .donate,
+            wardrobeItemIDs: ids,
+            notes: "\(ids.count) piece(s) listed in the giveaway store"
         )
         onSave(event, nil, updatedItems)
     }
@@ -300,7 +338,7 @@ struct DayPlanSheetView: View {
                 .padding(.bottom, 100)
             }
 
-            saveBar(enabled: true) {
+            saveBar(title: "Save to calendar", enabled: true) {
                 saveEvent()
             }
         }
@@ -416,7 +454,7 @@ struct DayPlanSheetView: View {
                 .padding(.bottom, 100)
             }
 
-            saveBar(enabled: travelPlace != nil) {
+            saveBar(title: "Save to calendar", enabled: travelPlace != nil) {
                 saveTravel()
             }
         }
@@ -436,7 +474,6 @@ struct DayPlanSheetView: View {
                 1,
                 calendar.dateComponents([.day], from: calendar.startOfDay(for: date), to: calendar.startOfDay(for: tripEndDate)).day ?? 1
             ) + 1
-            // Open-Meteo only forecasts forward from “today”; request enough days to cover the trip when possible.
             let daysFromNow = calendar.dateComponents(
                 [.day],
                 from: calendar.startOfDay(for: Date()),
@@ -495,71 +532,11 @@ struct DayPlanSheetView: View {
         onSave(event, packing, [])
     }
 
-    // MARK: - More options notes
-
-    private func simpleNoteForm(kind: DayPlanKind) -> some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: AppSpacing.md) {
-                    Text(kind.title)
-                        .font(AppTypography.headline)
-                    Text(kind.subtitle)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
-                    TextField(placeholder(for: kind), text: $noteText, axis: .vertical)
-                        .lineLimit(3...8)
-                        .padding()
-                        .liquidGlass(cornerRadius: AppRadius.medium)
-                        .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
-                }
-                .padding()
-                .padding(.bottom, 100)
-            }
-
-            saveBar(enabled: !noteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || kind == .laundry) {
-                saveSimple(kind: kind)
-            }
-        }
-    }
-
-    private func placeholder(for kind: DayPlanKind) -> String {
-        switch kind {
-        case .mood: return "e.g. calm, confident, cozy…"
-        case .laundry: return "Optional: what needs washing"
-        case .shopping: return "e.g. black loafers, modest blouse…"
-        case .note: return "Private note for this day"
-        default: return "Notes"
-        }
-    }
-
-    private func saveSimple(kind: DayPlanKind) {
-        let trimmed = noteText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let title: String
-        switch kind {
-        case .mood: title = trimmed.isEmpty ? "Mood plan" : "Mood · \(trimmed)"
-        case .laundry: title = "Laundry day"
-        case .shopping: title = trimmed.isEmpty ? "Shopping need" : "Shop · \(trimmed)"
-        case .note: title = trimmed.isEmpty ? "Note" : trimmed
-        default: title = kind.title
-        }
-
-        let event = CalendarEvent(
-            title: String(title.prefix(80)),
-            startDate: calendar.startOfDay(for: date),
-            endDate: calendar.startOfDay(for: date),
-            isAllDay: true,
-            kind: kind,
-            notes: trimmed.nilIfEmpty
-        )
-        onSave(event, nil, [])
-    }
-
     // MARK: - Save bar
 
-    private func saveBar(enabled: Bool, action: @escaping () -> Void) -> some View {
+    private func saveBar(title: String, enabled: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Text("Save to calendar")
+            Text(title)
                 .font(.body.weight(.semibold))
                 .foregroundStyle(AppColors.brand)
                 .frame(maxWidth: .infinity)

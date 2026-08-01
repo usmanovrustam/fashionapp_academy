@@ -54,7 +54,7 @@ enum TravelPackingAdvisor {
             tips.append("Layer knits and a coat; leave summer pieces at home.")
         }
 
-        let available = wardrobe.filter { !$0.isInLaundry }
+        let available = wardrobe.filter(\.isAvailableToWear)
         let scored = available.map { item -> (WardrobeItem, Double) in
             (item, score(item: item, season: season, band: band, rainy: rainyDays > 0, snowy: snowy))
         }

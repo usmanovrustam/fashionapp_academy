@@ -16,7 +16,7 @@ final class LocalStylingAssistant: StylingAssisting {
         context: RecommendationContext
     ) async throws -> StylingAssistantResponse {
         let intent = parseIntent(message)
-        var filtered = wardrobe.filter { !$0.isInLaundry }
+        var filtered = wardrobe.filter(\.isAvailableToWear)
 
         if let color = intent.requiredColor {
             filtered = filtered.filter {

@@ -8,7 +8,7 @@ final class RuleBasedOutfitRecommender: OutfitRecommending {
         context: RecommendationContext,
         limit: Int
     ) async throws -> [OutfitRecommendation] {
-        let available = wardrobe.filter { !$0.isInLaundry }
+        let available = wardrobe.filter(\.isAvailableToWear)
         guard !available.isEmpty else { return [] }
 
         let occasions: [OutfitOccasion]

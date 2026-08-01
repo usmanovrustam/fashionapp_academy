@@ -35,28 +35,30 @@ enum DayPlanKind: String, Codable, CaseIterable, Identifiable, Hashable {
     case knownOutfit
     case event
     case travel
-    case mood
     case laundry
+    case donate
+    /// Legacy values kept for decoding older saved plans.
+    case mood
     case shopping
     case note
 
     var id: String { rawValue }
 
-    /// Primary choices shown first when a day is tapped.
-    static var primaryOptions: [DayPlanKind] { [.knownOutfit, .event, .travel] }
-
-    /// Extra choices under “More options”.
-    static var moreOptions: [DayPlanKind] { [.mood, .laundry, .shopping, .note] }
+    /// Choices shown when a day is tapped.
+    static var dayOptions: [DayPlanKind] {
+        [.knownOutfit, .event, .travel, .laundry, .donate]
+    }
 
     var title: String {
         switch self {
         case .knownOutfit: return NSLocalizedString("I know what to wear", comment: "Day plan option")
         case .event: return NSLocalizedString("I have an event", comment: "Day plan option")
         case .travel: return NSLocalizedString("I'm going on a trip", comment: "Day plan option")
-        case .mood: return NSLocalizedString("Plan by mood", comment: "Day plan option")
-        case .laundry: return NSLocalizedString("Laundry day", comment: "Day plan option")
-        case .shopping: return NSLocalizedString("Need to shop", comment: "Day plan option")
-        case .note: return NSLocalizedString("Add a note", comment: "Day plan option")
+        case .laundry: return NSLocalizedString("Laundry", comment: "Day plan option")
+        case .donate: return NSLocalizedString("Donate", comment: "Day plan option")
+        case .mood: return NSLocalizedString("Mood", comment: "Legacy day plan")
+        case .shopping: return NSLocalizedString("Shopping", comment: "Legacy day plan")
+        case .note: return NSLocalizedString("Note", comment: "Legacy day plan")
         }
     }
 
@@ -65,10 +67,9 @@ enum DayPlanKind: String, Codable, CaseIterable, Identifiable, Hashable {
         case .knownOutfit: return NSLocalizedString("Pick pieces from your wardrobe for this day.", comment: "")
         case .event: return NSLocalizedString("Tell us the occasion so Nook can dress for it.", comment: "")
         case .travel: return NSLocalizedString("Destination, season, and packing suggestions.", comment: "")
-        case .mood: return NSLocalizedString("Capture how you want to feel in your clothes.", comment: "")
-        case .laundry: return NSLocalizedString("Mark a day for washing or refreshing pieces.", comment: "")
-        case .shopping: return NSLocalizedString("Note a gap before you buy something new.", comment: "")
-        case .note: return NSLocalizedString("A private reminder for this day.", comment: "")
+        case .laundry: return NSLocalizedString("Mark pieces that need a wash.", comment: "")
+        case .donate: return NSLocalizedString("List pieces in the giveaway store for nearby people.", comment: "")
+        case .mood, .shopping, .note: return ""
         }
     }
 
@@ -77,8 +78,9 @@ enum DayPlanKind: String, Codable, CaseIterable, Identifiable, Hashable {
         case .knownOutfit: return "tshirt.fill"
         case .event: return "calendar.badge.clock"
         case .travel: return "airplane"
-        case .mood: return "heart.text.square"
         case .laundry: return "washer.fill"
+        case .donate: return "gift.fill"
+        case .mood: return "heart.text.square"
         case .shopping: return "bag.fill"
         case .note: return "note.text"
         }

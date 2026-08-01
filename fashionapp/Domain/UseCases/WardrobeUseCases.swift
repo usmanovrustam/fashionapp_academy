@@ -83,6 +83,8 @@ struct ScanAndSaveClothingUseCase {
             wornCount: 0,
             lastWornAt: nil,
             isInLaundry: false,
+            isListedForDonate: false,
+            listedForDonateAt: nil,
             notes: nil,
             plannedDate: plannedDate,
             createdAt: now,
