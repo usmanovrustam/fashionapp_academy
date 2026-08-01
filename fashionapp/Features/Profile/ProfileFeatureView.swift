@@ -217,8 +217,7 @@ struct ProfileFeatureView: View {
                     Label(NSLocalizedString("Log Out", comment: ""), systemImage: "rectangle.portrait.and.arrow.right")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(LiquidGlassButtonStyle(prominent: false, tint: AppColors.brand))
-                .tint(.red)
+                .buttonStyle(LiquidGlassButtonStyle(prominent: false, tint: .red))
                 .controlSize(.large)
             }
         }
