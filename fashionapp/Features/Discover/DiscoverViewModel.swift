@@ -5,13 +5,11 @@ import SwiftUI
 final class DiscoverViewModel: ObservableObject {
     @Published var recommendations: [OutfitRecommendation] = []
     @Published var weather: WeatherSnapshot?
-    @Published var forecast: [DailyWeatherForecast] = []
     @Published var isWeatherLoading = false
     @Published var weatherError: String?
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var topIndex = 0
-    @Published var showAssistant = false
 
     private let recommendationsUseCase: GenerateDailyRecommendationsUseCase
     private let weatherProvider: WeatherProviding
@@ -111,7 +109,6 @@ final class DiscoverViewModel: ObservableObject {
                 "temp_c": String(Int(snapshot.temperatureCelsius)),
                 "location": String(snapshot.locationName.prefix(40))
             ])
-            forecast = (try? await weatherProvider.dailyForecast(days: 3)) ?? []
         } catch {
             if weather == nil {
                 weatherError = error.localizedDescription
@@ -131,32 +128,6 @@ final class DiscoverViewModel: ObservableObject {
 
     func temperatureUnitLabel() -> String {
         usesCelsius ? "C" : "F"
-    }
-
-    func formattedWind(_ kmh: Double) -> String {
-        if usesCelsius {
-            return "\(Int(kmh.rounded())) km/h"
-        }
-        let mph = kmh * 0.621371
-        return "\(Int(mph.rounded())) mph"
-    }
-
-    func formattedHumidity(_ humidity: Double) -> String {
-        "\(Int((humidity * 100).rounded()))%"
-    }
-
-    func formattedRain(_ probability: Double) -> String {
-        "\(Int((probability * 100).rounded()))%"
-    }
-
-    func formattedUV(_ uvIndex: Double) -> String {
-        "\(Int(uvIndex.rounded()))"
-    }
-
-    func weekdayLabel(for date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEE"
-        return formatter.string(from: date)
     }
 
     private func converted(_ celsius: Double) -> Double {
