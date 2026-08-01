@@ -362,7 +362,7 @@ enum ImageProcessing {
         if let cg = image.cgImage {
             if image.imageOrientation == .up { return cg }
             let oriented = CIImage(cgImage: cg)
-                .oriented(CGImagePropertyOrientation(image.imageOrientation))
+                .oriented(cgImageOrientation(from: image.imageOrientation))
             return sharedCIContext.createCGImage(oriented, from: oriented.extent)
         }
         if let ci = image.ciImage {
@@ -370,11 +370,27 @@ enum ImageProcessing {
             if image.imageOrientation == .up {
                 oriented = ci
             } else {
-                oriented = ci.oriented(CGImagePropertyOrientation(image.imageOrientation))
+                oriented = ci.oriented(cgImageOrientation(from: image.imageOrientation))
             }
             return sharedCIContext.createCGImage(oriented, from: oriented.extent)
         }
         return nil
+    }
+
+    /// Explicit map — `CGImagePropertyOrientation(_: UIImage.Orientation)` is unavailable
+    /// in some SDK / module import combinations and resolves to the `rawValue:` init.
+    private static func cgImageOrientation(from orientation: UIImage.Orientation) -> CGImagePropertyOrientation {
+        switch orientation {
+        case .up: return .up
+        case .upMirrored: return .upMirrored
+        case .down: return .down
+        case .downMirrored: return .downMirrored
+        case .left: return .left
+        case .leftMirrored: return .leftMirrored
+        case .right: return .right
+        case .rightMirrored: return .rightMirrored
+        @unknown default: return .up
+        }
     }
 
     private static let sharedCIContext = CIContext(options: [.useSoftwareRenderer: false])
