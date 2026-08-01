@@ -42,15 +42,10 @@ struct DiscoverFeatureView: View {
                         viewModel.showAssistant = true
                     } label: {
                         Label("Ask AI Stylist", systemImage: "bubble.left.and.bubble.right.fill")
-                            .font(AppTypography.headline)
-                            .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(AppColors.primaryGradient)
-                            .clipShape(Capsule())
                     }
+                    .buttonStyle(LiquidGlassButtonStyle(prominent: true))
                     .padding(.horizontal)
-                    .buttonStyle(ScaleButtonStyle())
                 }
                 .padding(.vertical)
             }
@@ -129,7 +124,6 @@ struct DiscoverFeatureView: View {
                         selectedRecommendation = recommendation
                     }
                 }
-                .animation(.spring(), value: dragOffset)
             }
         }
     }
@@ -145,7 +139,7 @@ struct DiscoverFeatureView: View {
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
             Button("Refresh") {
-                Task { await viewModel.load() }
+                Task { await viewModel.load(force: true) }
             }
             .sylyoGlassProminent()
         }
@@ -160,7 +154,7 @@ struct DiscoverFeatureView: View {
             Text("You're all caught up")
                 .font(AppTypography.title2)
             Button("Refresh") {
-                Task { await viewModel.load() }
+                Task { await viewModel.load(force: true) }
             }
             .sylyoGlassProminent()
         }
@@ -168,14 +162,13 @@ struct DiscoverFeatureView: View {
 
     private func swipe(_ direction: Int, accepted: Bool) {
         viewModel.trackRecommendationView(at: viewModel.topIndex)
-        withAnimation {
+        withAnimation(.easeOut(duration: 0.2)) {
             dragOffset = CGSize(width: CGFloat(direction) * 500, height: 0)
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            withAnimation {
-                viewModel.advance(accepted: accepted)
-                dragOffset = .zero
-            }
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            viewModel.advance(accepted: accepted)
+            dragOffset = .zero
         }
     }
 }
@@ -216,44 +209,47 @@ private struct RecommendationCardView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(AppColors.primaryGradient)
 
-            HStack(spacing: 24) {
-                SylyoGlassContainer(spacing: 16) {
-                    HStack(spacing: 24) {
-                        Button(action: onNope) {
-                            HStack {
-                                Image(systemName: "xmark")
-                                Text("Nope")
-                            }
-                            .font(.headline)
-                            .foregroundColor(AppColors.textPrimary)
-                            .padding(.horizontal, 28)
-                            .padding(.vertical, 14)
-                        }
-                        .liquidGlassCapsule()
-
-                        Button(action: onYeah) {
-                            HStack {
-                                Image(systemName: "checkmark")
-                                Text("Yeah")
-                            }
-                            .font(.headline)
-                            .foregroundColor(AppColors.textPrimary)
-                            .padding(.horizontal, 28)
-                            .padding(.vertical, 14)
-                        }
-                        .liquidGlassCapsule()
+            HStack(spacing: 16) {
+                Button(action: onNope) {
+                    HStack {
+                        Image(systemName: "xmark")
+                        Text("Nope")
                     }
+                    .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(LiquidGlassButtonStyle(prominent: false))
+
+                Button(action: onYeah) {
+                    HStack {
+                        Image(systemName: "checkmark")
+                        Text("Yeah")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(LiquidGlassButtonStyle(prominent: true))
             }
         }
         .padding(.vertical, 32)
         .padding(.horizontal, 20)
         .liquidGlass(cornerRadius: AppRadius.xxLarge)
-        .task {
-            if let path = recommendation.items.first?.transparentImagePath
-                ?? recommendation.items.first?.originalImagePath {
-                image = UIImage(data: (try? await storage.loadImageData(at: path)) ?? Data())
+        .task(id: recommendation.id) {
+            guard let path = recommendation.items.first?.transparentImagePath
+                ?? recommendation.items.first?.originalImagePath else {
+                image = nil
+                return
             }
+            if let cached = ImageMemoryCache.image(for: path) {
+                image = cached
+                return
+            }
+            let data = (try? await storage.loadImageData(at: path)) ?? Data()
+            let decoded = await Task.detached(priority: .userInitiated) {
+                UIImage(data: data)
+            }.value
+            if let decoded {
+                ImageMemoryCache.store(decoded, for: path)
+            }
+            image = decoded
         }
     }
 }

@@ -16,6 +16,8 @@ final class DiscoverViewModel: ObservableObject {
     let imageStorage: ImageStorage
     private let settings: AppSettingsProviding
     private let analytics: AnalyticsTracking
+    private var wardrobeCount = 0
+    private var didLoadOnce = false
 
     init(container: AppContainer) {
         self.recommendationsUseCase = container.dailyRecommendationsUseCase
@@ -28,8 +30,14 @@ final class DiscoverViewModel: ObservableObject {
 
     var usesCelsius: Bool { settings.usesCelsius }
 
-    func load() async {
-        isLoading = true
+    func load(force: Bool = false) async {
+        // Keep returning to Discover snappy — skip duplicate network unless forced / empty.
+        if didLoadOnce && !force && !recommendations.isEmpty {
+            return
+        }
+
+        let showSpinner = recommendations.isEmpty
+        if showSpinner { isLoading = true }
         errorMessage = nil
         topIndex = 0
         analytics.track(.screenView, parameters: ["screen_name": "discover"])
@@ -47,10 +55,15 @@ final class DiscoverViewModel: ObservableObject {
         }
 
         do {
-            recommendations = try await recommendationsUseCase.execute(limit: 8)
-            if recommendations.isEmpty {
-                let items = try await wardrobeRepository.fetchAll()
-                recommendations = items.prefix(8).map { item in
+            let result = try await recommendationsUseCase.execute(
+                limit: 8,
+                prefetchedWeather: weather
+            )
+            wardrobeCount = result.wardrobeItems.count
+            if weather == nil { weather = result.weather }
+
+            if result.recommendations.isEmpty {
+                recommendations = result.wardrobeItems.prefix(8).map { item in
                     OutfitRecommendation(
                         id: UUID(),
                         outfit: Outfit(
@@ -75,20 +88,22 @@ final class DiscoverViewModel: ObservableObject {
                         generatedAt: Date()
                     )
                 }
+            } else {
+                recommendations = result.recommendations
             }
+            didLoadOnce = true
         } catch {
             errorMessage = error.localizedDescription
         }
 
-        let count = (try? await wardrobeRepository.fetchAll().count) ?? recommendations.count
+        isLoading = false
+
         WidgetSnapshotStore.publish(
             recommendation: recommendations.first,
             weather: weather,
-            wardrobeCount: count,
+            wardrobeCount: wardrobeCount,
             usesCelsius: usesCelsius
         )
-
-        isLoading = false
     }
 
     func formattedTemperature(_ celsius: Double) -> String {

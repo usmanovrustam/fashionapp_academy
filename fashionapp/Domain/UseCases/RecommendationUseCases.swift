@@ -1,5 +1,11 @@
 import Foundation
 
+struct DailyRecommendationsResult {
+    let recommendations: [OutfitRecommendation]
+    let wardrobeItems: [WardrobeItem]
+    let weather: WeatherSnapshot?
+}
+
 struct GenerateDailyRecommendationsUseCase {
     let wardrobeRepository: WardrobeRepository
     let weatherProvider: WeatherProviding
@@ -8,7 +14,8 @@ struct GenerateDailyRecommendationsUseCase {
     let recommender: OutfitRecommending
     let recommendationRepository: RecommendationRepository
 
-    func execute(limit: Int = 6) async throws -> [OutfitRecommendation] {
+    /// Pass `prefetchedWeather` to avoid a second WeatherKit round-trip from the caller.
+    func execute(limit: Int = 6, prefetchedWeather: WeatherSnapshot? = nil) async throws -> DailyRecommendationsResult {
         async let wardrobe = wardrobeRepository.fetchAll()
         async let profile = profileRepository.load()
         async let events = eventRepository.fetchEvents(
@@ -16,11 +23,15 @@ struct GenerateDailyRecommendationsUseCase {
             to: Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
         )
 
-        var weather: WeatherSnapshot?
-        do {
-            weather = try await weatherProvider.currentWeather()
-        } catch {
-            weather = nil
+        let weather: WeatherSnapshot?
+        if let prefetchedWeather {
+            weather = prefetchedWeather
+        } else {
+            do {
+                weather = try await weatherProvider.currentWeather()
+            } catch {
+                weather = nil
+            }
         }
 
         let items = try await wardrobe
@@ -45,7 +56,11 @@ struct GenerateDailyRecommendationsUseCase {
             limit: limit
         )
         try await recommendationRepository.save(recommendations)
-        return recommendations
+        return DailyRecommendationsResult(
+            recommendations: recommendations,
+            wardrobeItems: items,
+            weather: weather
+        )
     }
 }
 

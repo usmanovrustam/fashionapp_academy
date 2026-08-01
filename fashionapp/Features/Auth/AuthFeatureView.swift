@@ -223,7 +223,7 @@ struct AuthFeatureView: View {
                         if viewModel.isLoading {
                             ProgressView()
                                 .controlSize(.small)
-                                .tint(AppColors.textPrimary)
+                                .tint(.white)
                         }
                         Text(viewModel.mode.ctaTitle)
                             .font(.system(size: 17, weight: .semibold, design: .rounded))
@@ -398,10 +398,8 @@ struct AuthFeatureView: View {
 
 // MARK: - Atmosphere
 
-/// Soft morphing blobs — fashion runway light, not neon.
+/// Soft sky atmosphere — static radial washes (no live blur animation).
 private struct FashionLoginBackground: View {
-    @State private var phase = false
-
     var body: some View {
         ZStack {
             LinearGradient(
@@ -414,36 +412,25 @@ private struct FashionLoginBackground: View {
                 endPoint: .bottomTrailing
             )
 
-            Circle()
-                .fill(AppColors.brand.opacity(0.30))
-                .frame(width: 300, height: 300)
-                .blur(radius: 55)
-                .offset(x: phase ? 90 : -70, y: phase ? -220 : -160)
-
-            Circle()
-                .fill(AppColors.accent.opacity(0.36))
-                .frame(width: 320, height: 320)
-                .blur(radius: 60)
-                .offset(x: phase ? -100 : 80, y: phase ? 260 : 180)
-
-            Circle()
-                .fill(AppColors.blush.opacity(0.34))
-                .frame(width: 220, height: 220)
-                .blur(radius: 45)
-                .offset(x: phase ? 40 : -30, y: phase ? 40 : 90)
-
             RadialGradient(
-                colors: [Color.clear, Color.white.opacity(0.42)],
-                center: .center,
-                startRadius: 80,
-                endRadius: 520
+                colors: [AppColors.brand.opacity(0.28), Color.clear],
+                center: UnitPoint(x: 0.15, y: 0.05),
+                startRadius: 20,
+                endRadius: 320
+            )
+            RadialGradient(
+                colors: [AppColors.accent.opacity(0.30), Color.clear],
+                center: UnitPoint(x: 0.9, y: 0.75),
+                startRadius: 10,
+                endRadius: 340
+            )
+            RadialGradient(
+                colors: [AppColors.blush.opacity(0.35), Color.clear],
+                center: UnitPoint(x: 0.55, y: 0.45),
+                startRadius: 10,
+                endRadius: 260
             )
         }
         .ignoresSafeArea()
-        .onAppear {
-            withAnimation(.easeInOut(duration: 8).repeatForever(autoreverses: true)) {
-                phase = true
-            }
-        }
     }
 }
