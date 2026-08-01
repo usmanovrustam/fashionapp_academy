@@ -451,7 +451,8 @@ struct AuthFeatureView: View {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(Color(.systemRed).opacity(0.10))
                 )
-                .accessibilityLiveRegion(.assertive)
+                // accessibilityLiveRegion requires a newer SDK than our iOS 18 deployment.
+                .accessibilityAddTraits(.isStaticText)
         }
 
         if let info = viewModel.infoMessage {
@@ -464,7 +465,7 @@ struct AuthFeatureView: View {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(Color(.systemGreen).opacity(0.10))
                 )
-                .accessibilityLiveRegion(.polite)
+                .accessibilityAddTraits(.isStaticText)
         }
     }
 
