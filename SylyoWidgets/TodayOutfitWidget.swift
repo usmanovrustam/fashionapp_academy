@@ -26,7 +26,6 @@ struct TodayOutfitProvider: TimelineProvider {
 
 struct TodayOutfitWidgetView: View {
     @Environment(\.widgetFamily) private var family
-    @Environment(\.widgetRenderingMode) private var renderingMode
     var entry: TodayOutfitEntry
 
     var body: some View {
@@ -34,14 +33,13 @@ struct TodayOutfitWidgetView: View {
             switch family {
             case .systemSmall:
                 smallLayout
-            case .systemMedium, .systemLarge:
-                mediumLayout
+            case .systemLarge:
+                largeLayout
             default:
-                largePortraitLayout
+                mediumLayout
             }
         }
         .containerBackground(for: .widget) {
-            // Lets the Home Screen Liquid Glass material show through with brand tint.
             ZStack {
                 Color.clear
                 LinearGradient(
@@ -99,7 +97,7 @@ struct TodayOutfitWidgetView: View {
         }
     }
 
-    private var largePortraitLayout: some View {
+    private var largeLayout: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Image(systemName: "sparkles")
@@ -143,7 +141,6 @@ struct TodayOutfitWidgetView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .widgetAccentedRenderingMode(renderingMode == .accented ? .accentedDesaturated : .fullColor)
     }
 }
 
@@ -156,14 +153,6 @@ struct TodayOutfitWidget: Widget {
         }
         .configurationDisplayName("Today's Outfit")
         .description("AI outfit recommendation with weather context.")
-        .supportedFamilies(Self.supportedFamilies)
-    }
-
-    private static var supportedFamilies: [WidgetFamily] {
-        var families: [WidgetFamily] = [.systemSmall, .systemMedium, .systemLarge]
-        if #available(iOS 27.0, *) {
-            families.append(.systemExtraLargePortrait)
-        }
-        return families
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
