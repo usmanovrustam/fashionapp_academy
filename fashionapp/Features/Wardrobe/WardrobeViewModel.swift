@@ -34,8 +34,11 @@ final class WardrobeViewModel: ObservableObject {
         statisticsUseCase.execute(items: items)
     }
 
-    func load() async {
-        isLoading = true
+    func load(force: Bool = false) async {
+        if !force && !items.isEmpty { return }
+
+        let showSpinner = items.isEmpty
+        if showSpinner { isLoading = true }
         errorMessage = nil
         analytics.track(.screenView, parameters: ["screen_name": "wardrobe"])
         do {
@@ -50,29 +53,42 @@ final class WardrobeViewModel: ObservableObject {
         var updated = item
         updated.isFavorite.toggle()
         updated.updatedAt = Date()
+        // Optimistic local update — avoid full list refetch.
+        if let idx = items.firstIndex(where: { $0.id == item.id }) {
+            items[idx] = updated
+        }
+        if selectedItem?.id == item.id {
+            selectedItem = updated
+        }
         do {
             try await wardrobeRepository.save(updated)
             analytics.track(.itemFavorited, parameters: [
                 "item_id": item.id.uuidString,
                 "is_favorite": updated.isFavorite ? "true" : "false"
             ])
-            await load()
         } catch {
             errorMessage = error.localizedDescription
+            await load(force: true)
         }
     }
 
     func delete(_ item: WardrobeItem) async {
+        items.removeAll { $0.id == item.id }
+        if selectedItem?.id == item.id {
+            selectedItem = nil
+        }
         do {
             try await wardrobeRepository.delete(id: item.id)
             if let path = item.transparentImagePath {
+                ImageMemoryCache.remove(for: path)
                 try? await imageStorage.deleteImage(at: path)
             }
+            ImageMemoryCache.remove(for: item.originalImagePath)
             try? await imageStorage.deleteImage(at: item.originalImagePath)
             analytics.track(.itemDeleted, parameters: ["item_id": item.id.uuidString])
-            await load()
         } catch {
             errorMessage = error.localizedDescription
+            await load(force: true)
         }
     }
 

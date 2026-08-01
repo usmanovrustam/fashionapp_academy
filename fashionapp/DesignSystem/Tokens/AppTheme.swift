@@ -208,22 +208,33 @@ private struct LiquidGlassCapsuleModifier: ViewModifier {
     }
 }
 
-/// Clear Liquid Glass CTA — no color tint on the glass surface.
-/// `tint` only affects label color when provided (e.g. destructive red).
+/// Solid pastel-sky CTA (not transparent). `tint` overrides fill (e.g. destructive red).
 struct LiquidGlassButtonStyle: ButtonStyle {
     var prominent: Bool = true
     var tint: Color? = nil
     var isDisabled: Bool = false
 
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
+        let fill = tint ?? AppColors.brand
+        return configuration.label
             .font(AppTypography.headline)
-            .foregroundStyle(tint ?? AppColors.textPrimary)
+            .foregroundStyle(Color.white)
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 22)
             .padding(.vertical, 16)
-            .liquidGlassCapsule(interactive: !isDisabled, tint: nil)
-            .opacity(isDisabled ? 0.45 : (configuration.isPressed ? 0.86 : 1))
+            .background {
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: prominent
+                                ? [fill, AppColors.accent.opacity(tint == nil ? 1 : 0.85)]
+                                : [fill.opacity(0.92), fill.opacity(0.78)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+            .opacity(isDisabled ? 0.45 : (configuration.isPressed ? 0.88 : 1))
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
     }

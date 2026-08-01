@@ -17,6 +17,16 @@ enum WidgetSnapshotStore {
     }
 
     static func save(_ snapshot: Snapshot) {
+        if let existing = load(),
+           existing.outfitName == snapshot.outfitName,
+           existing.occasion == snapshot.occasion,
+           existing.confidence == snapshot.confidence,
+           existing.rationale == snapshot.rationale,
+           existing.weatherSummary == snapshot.weatherSummary,
+           existing.temperatureText == snapshot.temperatureText,
+           existing.wardrobeCount == snapshot.wardrobeCount {
+            return
+        }
         guard let data = try? JSONEncoder().encode(snapshot) else { return }
         AppGroupConfig.defaults.set(data, forKey: key)
         WidgetCenter.shared.reloadAllTimelines()

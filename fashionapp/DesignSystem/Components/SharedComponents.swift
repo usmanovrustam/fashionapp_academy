@@ -57,44 +57,19 @@ struct WardrobeItemCard: View {
 
 struct LoadingRingsView: View {
     var message: String = "Loading..."
-    @State private var spinning = false
 
     var body: some View {
-        SylyoGlassContainer(spacing: 24) {
-            VStack(spacing: 20) {
-                ZStack {
-                    ForEach(0..<3, id: \.self) { index in
-                        Circle()
-                            .stroke(
-                                LinearGradient(
-                                    colors: [AppColors.brand.opacity(0.7), AppColors.accent.opacity(0.7)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 4
-                            )
-                            .frame(width: 60 + CGFloat(index * 20), height: 60 + CGFloat(index * 20))
-                            .rotationEffect(.degrees(spinning ? 360 : 0))
-                            .animation(
-                                .linear(duration: 1.5)
-                                    .repeatForever(autoreverses: false)
-                                    .delay(Double(index) * 0.2),
-                                value: spinning
-                            )
-                    }
-                }
-                .padding(28)
-                .liquidGlass(cornerRadius: 40)
-
-                Text(message)
-                    .font(AppTypography.roundedMedium)
-                    .foregroundColor(.primary)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 10)
-                    .liquidGlassCapsule()
-            }
+        VStack(spacing: 16) {
+            ProgressView()
+                .controlSize(.large)
+                .tint(AppColors.brand)
+            Text(message)
+                .font(AppTypography.roundedMedium)
+                .foregroundStyle(AppColors.textSecondary)
+                .multilineTextAlignment(.center)
         }
-        .onAppear { spinning = true }
+        .padding(28)
+        .frame(maxWidth: .infinity)
     }
 }
 
@@ -214,7 +189,18 @@ struct StoredImageView: View {
                 image = nil
                 return
             }
-            image = UIImage(data: (try? await storage.loadImageData(at: path)) ?? Data())
+            if let cached = ImageMemoryCache.image(for: path) {
+                image = cached
+                return
+            }
+            let data = (try? await storage.loadImageData(at: path)) ?? Data()
+            let decoded = await Task.detached(priority: .userInitiated) {
+                UIImage(data: data)
+            }.value
+            if let decoded {
+                ImageMemoryCache.store(decoded, for: path)
+            }
+            image = decoded
         }
     }
 }

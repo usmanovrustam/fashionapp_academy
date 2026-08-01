@@ -55,7 +55,7 @@ struct WardrobeFeatureView: View {
                     .padding(.horizontal, AppSpacing.md)
                     .padding(.top, AppSpacing.md)
                 }
-                .refreshable { await viewModel.load() }
+                .refreshable { await viewModel.load(force: true) }
             }
             .navigationTitle(NSLocalizedString("Wardrobe", comment: ""))
             .toolbar {
@@ -150,9 +150,20 @@ private struct StoredWardrobeCard: View {
                         .padding(10)
                 }
             }
-            .task {
+            .task(id: item.id) {
                 let path = item.transparentImagePath ?? item.originalImagePath
-                image = UIImage(data: (try? await storage.loadImageData(at: path)) ?? Data())
+                if let cached = ImageMemoryCache.image(for: path) {
+                    image = cached
+                    return
+                }
+                let data = (try? await storage.loadImageData(at: path)) ?? Data()
+                let decoded = await Task.detached(priority: .userInitiated) {
+                    UIImage(data: data)
+                }.value
+                if let decoded {
+                    ImageMemoryCache.store(decoded, for: path)
+                }
+                image = decoded
             }
     }
 }
