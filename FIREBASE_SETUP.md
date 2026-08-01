@@ -6,7 +6,7 @@ Nook does **not** use mock auth or mock databases. Auth is **Firebase Authentica
 
 | Service | Status |
 |---|---|
-| Project | `sylyo-fashion` (display: stylo) |
+| Project | `sylyo-fashion` (app display name: Nook) |
 | GoogleService-Info.plist | In repo |
 | Authentication | Email/Password + Apple + Anonymous enabled |
 | Firestore | Database + rules deployed |
