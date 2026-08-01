@@ -27,7 +27,7 @@ struct WardrobeGlanceProvider: TimelineProvider {
         return WardrobeGlanceEntry(
             date: Date(),
             count: snapshot?.wardrobeCount ?? 0,
-            outfitName: snapshot?.outfitName ?? "Open Sylyo to sync"
+            outfitName: snapshot?.outfitName ?? "Open Nook to sync"
         )
     }
 }

@@ -104,7 +104,7 @@ struct TodayOutfitWidgetView: View {
                     .font(.title2)
                     .symbolRenderingMode(.hierarchical)
                     .widgetAccentable()
-                Text("Sylyo")
+                Text("Nook")
                     .font(.title2.bold())
                 Spacer()
                 Text(entry.snapshot.temperatureText ?? "—")

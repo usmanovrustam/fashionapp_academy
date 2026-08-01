@@ -54,8 +54,8 @@ struct WardrobeFeatureView: View {
                 .padding(.bottom, AppSpacing.lg)
             }
             .refreshable { await viewModel.load(force: true) }
-            .sylyoSafeScreenInsets()
-            .sylyoScreenBackground()
+            .nookSafeScreenInsets()
+            .nookScreenBackground()
             .navigationTitle(NSLocalizedString("Wardrobe", comment: ""))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -117,7 +117,7 @@ struct WardrobeFeatureView: View {
                 Button("Try Again") {
                     Task { await viewModel.load() }
                 }
-                .sylyoGlassProminent()
+                .nookGlassProminent()
             }
         }
     }
@@ -205,7 +205,7 @@ struct WardrobeItemDetailView: View {
                         )
                         .frame(maxWidth: .infinity)
                     }
-                    .sylyoGlassProminent()
+                    .nookGlassProminent()
 
                     Button(role: .destructive) {
                         Task { await viewModel.delete(item) }
@@ -219,8 +219,8 @@ struct WardrobeItemDetailView: View {
             }
             .padding()
         }
-        .sylyoSafeScreenInsets()
-        .sylyoScreenBackground()
+        .nookSafeScreenInsets()
+        .nookScreenBackground()
         .navigationTitle(item.category.displayName)
         .navigationBarTitleDisplayMode(.inline)
     }

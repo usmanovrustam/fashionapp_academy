@@ -113,18 +113,18 @@ extension View {
     /// Extra breathing room above the floating tab bar / home indicator.
     /// Prefer `.background { SoftBackground() }` over a ZStack sibling so the
     /// system safe area (nav + tab bar) still insets content correctly.
-    func sylyoSafeScreenInsets() -> some View {
+    func nookSafeScreenInsets() -> some View {
         self.safeAreaPadding(.bottom, AppSpacing.sm)
     }
 
     /// Full-bleed atmosphere without pulling foreground content under chrome.
-    func sylyoScreenBackground() -> some View {
+    func nookScreenBackground() -> some View {
         background { SoftBackground() }
     }
 }
 
 /// Groups glass elements on iOS 26+; identity wrapper on earlier OS versions.
-struct SylyoGlassContainer<Content: View>: View {
+struct NookGlassContainer<Content: View>: View {
     var spacing: CGFloat = 16
     @ViewBuilder var content: () -> Content
 
@@ -199,7 +199,7 @@ extension View {
 
     /// Morphing ID for Liquid Glass (no-op below iOS 26).
     @ViewBuilder
-    func sylyoGlassEffectID(_ id: String, in namespace: Namespace.ID) -> some View {
+    func nookGlassEffectID(_ id: String, in namespace: Namespace.ID) -> some View {
         if #available(iOS 26.0, *) {
             self.glassEffectID(id, in: namespace)
         } else {
@@ -287,14 +287,14 @@ struct GradientPrimaryButtonStyle: ButtonStyle {
 
 extension View {
     /// Primary glass-styled control.
-    func sylyoGlassProminent(disabled: Bool = false) -> some View {
+    func nookGlassProminent(disabled: Bool = false) -> some View {
         self
             .buttonStyle(LiquidGlassButtonStyle(prominent: true, isDisabled: disabled))
             .disabled(disabled)
     }
 
     /// Secondary glass-styled control.
-    func sylyoGlass(disabled: Bool = false) -> some View {
+    func nookGlass(disabled: Bool = false) -> some View {
         self
             .buttonStyle(LiquidGlassButtonStyle(prominent: false, isDisabled: disabled))
             .disabled(disabled)
@@ -316,7 +316,7 @@ struct ScaleButtonStyle: ButtonStyle {
 
 extension View {
     /// Hide decorative SF Symbols from VoiceOver (HIG Icons / SF Symbols).
-    func sylyoDecorativeSymbol() -> some View {
+    func nookDecorativeSymbol() -> some View {
         accessibilityHidden(true)
     }
 }

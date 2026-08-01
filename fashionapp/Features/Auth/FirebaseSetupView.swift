@@ -15,7 +15,7 @@ struct FirebaseSetupView: View {
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundStyle(AppColors.primaryGradient)
 
-                Text("Sylyo uses Firebase Authentication for sign-in. Add your project plist to continue.")
+                Text("Nook uses Firebase Authentication for sign-in. Add your project plist to continue.")
                     .font(AppTypography.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -54,8 +54,8 @@ struct FirebaseSetupView: View {
             }
             .padding(AppSpacing.xl)
         }
-        .sylyoSafeScreenInsets()
-        .sylyoScreenBackground()
+        .nookSafeScreenInsets()
+        .nookScreenBackground()
     }
 
     private func labeled(_ title: String, _ value: String) -> some View {

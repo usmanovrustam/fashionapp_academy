@@ -1,4 +1,5 @@
-"Wardrobe AI" = "Wardrobe AI";
+"Wardrobe AI" = "Nook: Private wardrobe";
+"Nook: Private wardrobe" = "Nook: Private wardrobe";
 "Current Location" = "Current Location";
 "Loading weather..." = "Loading weather...";
 "Swipe to see more outfits" = "Swipe to see more outfits";
@@ -26,7 +27,7 @@
 "Refresh" = "Refresh";
 "Your wardrobe is empty!" = "Your wardrobe is empty!";
 "Start building your wardrobe by adding your first outfit." = "Start building your wardrobe by adding your first outfit.";
-"Welcome to FashionApp" = "Welcome to Sylyo";
+"Welcome to FashionApp" = "Welcome to Nook";
 "Discover and manage your wardrobe in style." = "Discover and manage your wardrobe in style.";
 "Browse" = "Browse";
 "Find new outfits and inspiration." = "Find new outfits and inspiration.";
@@ -92,5 +93,5 @@
 "Clear All Data" = "Clear All Data";
 "Selected" = "Selected";
 "Name" = "Name";
-"Sylyo is a private closet tool. Outfit ideas stay on your device and account — not a public social feed." = "Sylyo is a private closet tool. Outfit ideas stay on your device and account — not a public social feed.";
+"Nook is a private closet tool. Outfit ideas stay on your device and account — not a public social feed." = "Nook is a private closet tool. Outfit ideas stay on your device and account — not a public social feed.";
 "Clearing data permanently removes wardrobe items stored for this account on this device." = "Clearing data permanently removes wardrobe items stored for this account on this device.";

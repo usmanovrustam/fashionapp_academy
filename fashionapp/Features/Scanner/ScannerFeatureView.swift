@@ -25,8 +25,8 @@ struct ScannerFeatureView: View {
                 }
                 .padding(.horizontal, AppSpacing.lg)
             }
-            .sylyoSafeScreenInsets()
-            .sylyoScreenBackground()
+            .nookSafeScreenInsets()
+            .nookScreenBackground()
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -112,7 +112,7 @@ struct ScannerFeatureView: View {
                 .font(AppTypography.title)
                 .foregroundStyle(AppColors.textPrimary)
                 .accessibilityAddTraits(.isHeader)
-            Text("Take a photo or choose one from your library. Sylyo finds the garment, crops it to a centered square, and suggests details for you to review.")
+            Text("Take a photo or choose one from your library. Nook finds the garment, crops it to a centered square, and suggests details for you to review.")
                 .font(AppTypography.body)
                 .foregroundStyle(AppColors.textSecondary)
                 .multilineTextAlignment(.center)
@@ -172,7 +172,7 @@ struct ScannerFeatureView: View {
                                 Image(systemName: "camera.viewfinder")
                                     .font(.largeTitle)
                                     .foregroundStyle(AppColors.primaryGradient)
-                                    .sylyoDecorativeSymbol()
+                                    .nookDecorativeSymbol()
                                 Text(NSLocalizedString("Tap to take photo", comment: ""))
                                     .foregroundStyle(AppColors.textSecondary)
                             }
@@ -186,7 +186,7 @@ struct ScannerFeatureView: View {
                 }
             }
 
-            SylyoGlassContainer(spacing: 12) {
+            NookGlassContainer(spacing: 12) {
                 HStack(spacing: 12) {
                     Button {
                         Task { await viewModel.openCamera() }
@@ -194,7 +194,7 @@ struct ScannerFeatureView: View {
                         Label("Camera", systemImage: "camera.fill")
                             .frame(maxWidth: .infinity)
                     }
-                    .sylyoGlassProminent()
+                    .nookGlassProminent()
                     .disabled(viewModel.isProcessing)
 
                     Button {
@@ -203,7 +203,7 @@ struct ScannerFeatureView: View {
                         Label("Library", systemImage: "photo.on.rectangle")
                             .frame(maxWidth: .infinity)
                     }
-                    .sylyoGlass()
+                    .nookGlass()
                     .disabled(viewModel.isProcessing)
                 }
             }
@@ -338,7 +338,7 @@ struct ScannerFeatureView: View {
             }
             .frame(maxWidth: .infinity)
         }
-        .sylyoGlassProminent(disabled: !viewModel.canSave)
+        .nookGlassProminent(disabled: !viewModel.canSave)
     }
 }
 

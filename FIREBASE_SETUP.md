@@ -1,6 +1,6 @@
 # Firebase Setup (real project only)
 
-Sylyo does **not** use mock auth or mock databases. Auth is **Firebase Authentication** (email/password, **Sign in with Apple**, and anonymous). Wardrobe, images, and analytics all require your Firebase project. There is no CloudKit dependency — see `CLEAN_BUILD.md` if an old install still logs CloudKit.
+Nook does **not** use mock auth or mock databases. Auth is **Firebase Authentication** (email/password, **Sign in with Apple**, and anonymous). Wardrobe, images, and analytics all require your Firebase project. There is no CloudKit dependency — see `CLEAN_BUILD.md` if an old install still logs CloudKit.
 
 ## Current status
 
@@ -18,7 +18,7 @@ Sylyo does **not** use mock auth or mock databases. Auth is **Firebase Authentic
 
 | | |
 |---|---|
-| Project | **Sylyo** |
+| Project | **Nook** |
 | Project ID | `sylyo-fashion` |
 | Console | https://console.firebase.google.com/project/sylyo-fashion/overview |
 | iOS bundle id | `apple.academy.stylo` |

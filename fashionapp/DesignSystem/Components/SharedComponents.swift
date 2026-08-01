@@ -80,7 +80,7 @@ struct EmptyWardrobeState: View {
     var action: () -> Void
 
     var body: some View {
-        SylyoGlassContainer(spacing: 20) {
+        NookGlassContainer(spacing: 20) {
             VStack(spacing: 25) {
                 Image(systemName: "tshirt.fill")
                     .font(.system(size: 54))
@@ -102,7 +102,7 @@ struct EmptyWardrobeState: View {
                         .padding(.horizontal, 30)
                         .padding(.vertical, 4)
                 }
-                .sylyoGlassProminent()
+                .nookGlassProminent()
             }
             .padding()
             .liquidGlass(cornerRadius: AppRadius.xxLarge)

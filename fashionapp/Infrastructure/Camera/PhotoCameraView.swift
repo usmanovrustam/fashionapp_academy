@@ -26,7 +26,7 @@ struct PhotoCameraView: View {
                     Button(NSLocalizedString("Close", comment: "")) {
                         model.finish(.failure(CameraCaptureError.unavailable))
                     }
-                    .sylyoGlassProminent()
+                    .nookGlassProminent()
                     .padding(.horizontal, 40)
                 }
             } else {
@@ -79,7 +79,7 @@ struct PhotoCameraView: View {
 private final class CameraSessionBox: @unchecked Sendable {
     let session = AVCaptureSession()
     let photoOutput = AVCapturePhotoOutput()
-    let queue = DispatchQueue(label: "sylyo.photo.camera.session")
+    let queue = DispatchQueue(label: "nook.photo.camera.session")
     private var configured = false
 
     func configureIfNeeded() throws {

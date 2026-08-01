@@ -7,8 +7,8 @@ struct OnboardingView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let pages: [(icon: String, title: String, subtitle: String)] = [
-        ("sparkles", "Sylyo", "Help choosing what to wear, based on your clothes and the weather."),
-        ("camera.viewfinder", "Add Your Clothes", "Take a photo or pick one from your library. Sylyo tags type, color, and season for you."),
+        ("sparkles", "Nook: Private wardrobe", "Help choosing what to wear, based on your clothes and the weather."),
+        ("camera.viewfinder", "Add Your Clothes", "Take a photo or pick one from your library. Nook tags type, color, and season for you."),
         ("tshirt.fill", "Your Wardrobe", "Keep everything in one place — favorites, wear history, and simple style notes."),
         ("cloud.sun.fill", "Daily Ideas", "See outfit ideas that match today’s weather and what you already own.")
     ]
@@ -33,7 +33,7 @@ struct OnboardingView: View {
                                 .foregroundStyle(AppColors.primaryGradient)
                                 .padding(28)
                                 .liquidGlass(cornerRadius: 40)
-                                .sylyoDecorativeSymbol()
+                                .nookDecorativeSymbol()
                                 .scaleEffect(reduceMotion ? 1 : (page == idx ? 1.0 : 0.92))
                                 .animation(
                                     reduceMotion ? nil : .spring(response: 0.5, dampingFraction: 0.75),
@@ -74,8 +74,8 @@ struct OnboardingView: View {
                 .padding(.horizontal, AppSpacing.xl)
                 .padding(.bottom, AppSpacing.xl)
         }
-        .sylyoSafeScreenInsets()
-        .sylyoScreenBackground()
+        .nookSafeScreenInsets()
+        .nookScreenBackground()
         .tint(AppColors.buttonBlue)
         .preferredColorScheme(.light)
     }
@@ -101,7 +101,7 @@ struct OnboardingView: View {
     }
 
     private var pageIndicators: some View {
-        SylyoGlassContainer(spacing: 8) {
+        NookGlassContainer(spacing: 8) {
             HStack(spacing: 8) {
                 ForEach(pages.indices, id: \.self) { idx in
                     Capsule()
@@ -122,7 +122,7 @@ struct OnboardingView: View {
     }
 
     private var nextButton: some View {
-        SylyoGlassContainer(spacing: 12) {
+        NookGlassContainer(spacing: 12) {
             Button {
                 if isLastPage {
                     finishOnboarding()
@@ -140,7 +140,7 @@ struct OnboardingView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(LiquidGlassButtonStyle(prominent: true))
-            .sylyoGlassEffectID("splash-primary", in: glassNamespace)
+            .nookGlassEffectID("splash-primary", in: glassNamespace)
         }
     }
 

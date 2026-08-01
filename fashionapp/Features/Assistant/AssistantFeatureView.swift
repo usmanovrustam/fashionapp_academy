@@ -102,15 +102,15 @@ struct AssistantFeatureView: View {
 
                 composer
             }
-            .sylyoSafeScreenInsets()
-            .sylyoScreenBackground()
+            .nookSafeScreenInsets()
+            .nookScreenBackground()
             .navigationTitle("AI Stylist")
             .navigationBarTitleDisplayMode(.inline)
         }
     }
 
     private var composer: some View {
-        SylyoGlassContainer(spacing: 10) {
+        NookGlassContainer(spacing: 10) {
             HStack(spacing: 10) {
                 TextField("What should I wear today?", text: $viewModel.input, axis: .vertical)
                     .lineLimit(1...4)

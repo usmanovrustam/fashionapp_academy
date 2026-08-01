@@ -27,8 +27,8 @@ struct DiscoverFeatureView: View {
                 .padding(.top, AppSpacing.sm)
                 .padding(.bottom, AppSpacing.lg)
             }
-            .sylyoSafeScreenInsets()
-            .sylyoScreenBackground()
+            .nookSafeScreenInsets()
+            .nookScreenBackground()
             .navigationTitle(NSLocalizedString("Discover", comment: ""))
             .sheet(item: $selectedRecommendation) { rec in
                 RecommendationDetailView(recommendation: rec, storage: viewModel.imageStorage)
@@ -191,7 +191,7 @@ struct DiscoverFeatureView: View {
             Button("Refresh") {
                 Task { await viewModel.load(force: true) }
             }
-            .sylyoGlassProminent()
+            .nookGlassProminent()
         }
         .padding()
     }
@@ -206,7 +206,7 @@ struct DiscoverFeatureView: View {
             Button("Refresh") {
                 Task { await viewModel.load(force: true) }
             }
-            .sylyoGlassProminent()
+            .nookGlassProminent()
         }
     }
 
@@ -350,8 +350,8 @@ struct RecommendationDetailView: View {
                 }
                 .padding()
             }
-            .sylyoSafeScreenInsets()
-            .sylyoScreenBackground()
+            .nookSafeScreenInsets()
+            .nookScreenBackground()
             .navigationTitle(NSLocalizedString("Outfit Details", comment: ""))
             .navigationBarTitleDisplayMode(.inline)
         }

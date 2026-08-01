@@ -1,6 +1,6 @@
-# Sylyo — AI Fashion Stylist
+# Nook: Private wardrobe
 
-Personal AI stylist for iOS. Scan clothing, sync a digital wardrobe to **Firebase**, and get weather-aware outfit recommendations with analytics exported to **BigQuery**.
+Private wardrobe app for iOS. Scan clothing, sync a digital closet to **Firebase**, and get weather-aware outfit ideas with analytics exported to **BigQuery**.
 
 ## Architecture
 

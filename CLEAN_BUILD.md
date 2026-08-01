@@ -31,7 +31,7 @@ Then in Xcode:
    ```bash
    rm -rf ~/Library/Developer/Xcode/DerivedData/fashionapp-*
    ```
-4. On the iPhone: **delete the Sylyo / fashionapp app** (old CloudKit cache lives there)
+4. On the iPhone: **delete the Nook / fashionapp app** (old CloudKit cache lives there)
 5. Reopen `fashionapp.xcodeproj`, select the iPhone, **Run**
 
 You should see Firebase bootstrap logs instead of `CloudKit Manager`.
@@ -48,7 +48,7 @@ You should see Firebase bootstrap logs instead of `CloudKit Manager`.
 
 `WeatherDaemon.WDSJWTAuthenticatorServiceListener.Errors Code=2` means Apple refused a WeatherKit JWT (usually App Services not enabled).
 
-Sylyo still shows local weather: it falls back to **Open-Meteo** using the same GPS coordinates when WeatherKit fails.
+Nook still shows local weather: it falls back to **Open-Meteo** using the same GPS coordinates when WeatherKit fails.
 
 Optional (to use Apple WeatherKit as primary): for team `T76V4FRBSW` / bundle `apple.academy.stylo` enable WeatherKit in **both** places on the App ID:
 
@@ -59,13 +59,13 @@ Optional (to use Apple WeatherKit as primary): for team `T76V4FRBSW` / bundle `a
 
 ## Firebase launch warnings
 
-Sylyo configures Firebase in `AppDelegate` (`UIResponder` + `UIApplicationDelegate`) **before** creating `AppContainer`, disables Firebase’s App Delegate proxy (`FirebaseAppDelegateProxyEnabled = false`), and keeps Analytics collection off until after configure.
+Nook configures Firebase in `AppDelegate` (`UIResponder` + `UIApplicationDelegate`) **before** creating `AppContainer`, disables Firebase’s App Delegate proxy (`FirebaseAppDelegateProxyEnabled = false`), and keeps Analytics collection off until after configure.
 
 After a clean pull + rebuild you should see `✅ Firebase configured for project: sylyo-fashion` and should **not** see `I-SWZ001014`. A rare early `I-COR000003` from framework load can still print once before Swift runs; it is harmless if configure succeeds immediately after. The IDFA / `GoogleAppMeasurementIdentitySupport` line is expected unless you link AdSupport for ads.
 
 ## Camera Portrait / BackDual console noise
 
-Sylyo forces still **photo** capture on the rear camera and presents the camera in a `fullScreenCover` (not a sheet). Remaining `BackDual` / `FigCapture` lines from the system camera stack are usually harmless. If capture fails, use **Library** instead.
+Nook forces still **photo** capture on the rear camera and presents the camera in a `fullScreenCover` (not a sheet). Remaining `BackDual` / `FigCapture` lines from the system camera stack are usually harmless. If capture fails, use **Library** instead.
 
 ## Privacy
 

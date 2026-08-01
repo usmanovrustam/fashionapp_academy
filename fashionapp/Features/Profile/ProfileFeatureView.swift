@@ -164,13 +164,13 @@ struct ProfileFeatureView: View {
             .sheet(isPresented: $viewModel.showPrivacy) {
                 infoSheet(
                     title: NSLocalizedString("Privacy Policy", comment: ""),
-                    bodyText: "Sylyo stores your account and wardrobe securely in your cloud project. Photos you add are processed on this device to remove backgrounds and suggest clothing details, then saved to your account storage. Anonymous usage events help improve the app. Location is used only while Sylyo is open to show local weather for outfit ideas — never for ads."
+                    bodyText: "Nook stores your account and wardrobe securely in your cloud project. Photos you add are processed on this device to remove backgrounds and suggest clothing details, then saved to your account storage. Anonymous usage events help improve the app. Location is used only while Nook is open to show local weather for outfit ideas — never for ads."
                 )
             }
             .sheet(isPresented: $viewModel.showAbout) {
                 infoSheet(
                     title: NSLocalizedString("About Us", comment: ""),
-                    bodyText: "Sylyo helps you manage a private wardrobe and choose modest, practical outfits. Add clothes from photos, organize your closet, and get ideas that match the weather — without a public social feed."
+                    bodyText: "Nook: Private wardrobe helps you manage your closet and choose modest, practical outfits. Add clothes from photos, organize what you own, and get ideas that match the weather — without a public social feed."
                 )
             }
             .alert(NSLocalizedString("Clear All Data?", comment: ""), isPresented: $viewModel.showClearAlert) {
@@ -339,7 +339,7 @@ struct ProfileFeatureView: View {
             Text(NSLocalizedString("Preferences", comment: ""))
         } footer: {
             Text(NSLocalizedString(
-                "Sylyo is a private closet tool. Outfit ideas stay on your device and account — not a public social feed.",
+                "Nook is a private closet tool. Outfit ideas stay on your device and account — not a public social feed.",
                 comment: "Preferences footer explaining private-first product stance"
             ))
         }

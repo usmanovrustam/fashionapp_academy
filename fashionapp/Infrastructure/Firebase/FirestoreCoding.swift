@@ -16,7 +16,7 @@ enum FirestorePaths {
 
 enum FirestoreCoding {
     static func encode<T: Encodable>(_ value: T) throws -> [String: Any] {
-        let data = try JSONEncoder.sylyo.encode(value)
+        let data = try JSONEncoder.nook.encode(value)
         let object = try JSONSerialization.jsonObject(with: data)
         guard let dictionary = object as? [String: Any] else {
             throw DomainError.storageFailed("Unable to encode Firestore document.")
@@ -26,12 +26,12 @@ enum FirestoreCoding {
 
     static func decode<T: Decodable>(_ type: T.Type, from data: [String: Any]) throws -> T {
         let json = try JSONSerialization.data(withJSONObject: data)
-        return try JSONDecoder.sylyo.decode(T.self, from: json)
+        return try JSONDecoder.nook.decode(T.self, from: json)
     }
 }
 
 extension JSONEncoder {
-    static let sylyo: JSONEncoder = {
+    static let nook: JSONEncoder = {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = [.sortedKeys]
@@ -40,7 +40,7 @@ extension JSONEncoder {
 }
 
 extension JSONDecoder {
-    static let sylyo: JSONDecoder = {
+    static let nook: JSONDecoder = {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return decoder

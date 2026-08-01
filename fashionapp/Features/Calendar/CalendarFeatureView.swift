@@ -120,8 +120,8 @@ struct CalendarFeatureView: View {
                 .padding()
                 .padding(.bottom, AppSpacing.lg)
             }
-            .sylyoSafeScreenInsets()
-            .sylyoScreenBackground()
+            .nookSafeScreenInsets()
+            .nookScreenBackground()
             .navigationTitle(NSLocalizedString("Calendar", comment: ""))
             .sheet(isPresented: $showScanner) {
                 ScannerFeatureView(container: container, plannedDate: viewModel.selectedDate)

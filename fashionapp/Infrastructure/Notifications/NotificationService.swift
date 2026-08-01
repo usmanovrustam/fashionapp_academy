@@ -14,7 +14,7 @@ final class LocalNotificationService: NotificationScheduling {
     func scheduleDailyOutfitReminder(at dateComponents: DateComponents) async throws {
         let content = UNMutableNotificationContent()
         content.title = "Today's outfit is ready"
-        content.body = "Open Sylyo for weather-aware looks from your wardrobe."
+        content.body = "Open Nook for weather-aware looks from your wardrobe."
         content.sound = .default
 
         let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)

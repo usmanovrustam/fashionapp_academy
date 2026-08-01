@@ -2,7 +2,7 @@ import WidgetKit
 import SwiftUI
 
 @main
-struct SylyoWidgetsBundle: WidgetBundle {
+struct NookWidgetsBundle: WidgetBundle {
     var body: some Widget {
         TodayOutfitWidget()
         WardrobeGlanceWidget()

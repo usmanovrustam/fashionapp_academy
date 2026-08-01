@@ -180,10 +180,14 @@ struct AuthFeatureView: View {
             ScrollView {
                 VStack(spacing: 20) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Sylyo")
+                        Text("Nook")
                             .font(AppTypography.brandHero)
                             .foregroundStyle(AppColors.textPrimary)
                             .accessibilityAddTraits(.isHeader)
+
+                        Text("Private wardrobe")
+                            .font(AppTypography.title2)
+                            .foregroundStyle(AppColors.textSecondary)
 
                         Text("Sign in to open your wardrobe and get outfit ideas for today.")
                             .font(AppTypography.body)
@@ -212,10 +216,10 @@ struct AuthFeatureView: View {
                 .padding(.bottom, 32)
                 .frame(maxWidth: 440)
                 .frame(maxWidth: .infinity)
-                .sylyoSafeScreenInsets()
+                .nookSafeScreenInsets()
             }
             .scrollDismissesKeyboard(.interactively)
-            .sylyoScreenBackground()
+            .nookScreenBackground()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {

@@ -7,7 +7,7 @@ import FirebaseAnalytics
 /// Important: do **not** mark this class `@MainActor`. GoogleUtilities checks
 /// `conforms(to: UIApplicationDelegate.self)` via the ObjC runtime; `@MainActor`
 /// on the class breaks that check and logs I-SWZ001014.
-@objc(SylyoAppDelegate)
+@objc(NookAppDelegate)
 final class AppDelegate: UIResponder, UIApplicationDelegate {
     /// Created only after `FirebaseApp.configure()` succeeds (or is skipped safely).
     private(set) var sharedContainer: AppContainer
