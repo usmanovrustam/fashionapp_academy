@@ -55,7 +55,7 @@ struct WardrobeGlanceWidgetView: View {
             ZStack {
                 Color.clear
                 LinearGradient(
-                    colors: [WidgetBrand.sky.opacity(0.30), WidgetBrand.mint.opacity(0.20)],
+                    colors: [WidgetBrand.mocha.opacity(0.28), WidgetBrand.sand.opacity(0.20)],
                     startPoint: .top,
                     endPoint: .bottom
                 )

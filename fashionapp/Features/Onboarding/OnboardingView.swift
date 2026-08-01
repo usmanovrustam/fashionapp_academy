@@ -20,20 +20,23 @@ struct OnboardingView: View {
                 ForEach(pages.indices, id: \.self) { idx in
                     VStack(spacing: AppSpacing.xl) {
                         Spacer()
-                        Image(systemName: pages[idx].icon)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 88, height: 88)
-                            .foregroundStyle(AppColors.primaryGradient)
-                            .padding(28)
-                            .liquidGlass(cornerRadius: 40, tint: AppColors.brand)
-                            .scaleEffect(page == idx ? 1.0 : 0.92)
-                            .animation(.spring(response: 0.5, dampingFraction: 0.75), value: page)
+                        // No app logo yet — feature icons only after the welcome page.
+                        if idx > 0 {
+                            Image(systemName: pages[idx].icon)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 88, height: 88)
+                                .foregroundStyle(AppColors.primaryGradient)
+                                .padding(28)
+                                .liquidGlass(cornerRadius: 40, tint: AppColors.brand)
+                                .scaleEffect(page == idx ? 1.0 : 0.92)
+                                .animation(.spring(response: 0.5, dampingFraction: 0.75), value: page)
+                        }
 
                         if idx == 0 {
                             Text(pages[idx].title)
-                                .font(.system(size: 44, weight: .bold, design: .rounded))
-                                .foregroundStyle(AppColors.primaryGradient)
+                                .font(.system(size: 44, weight: .semibold, design: .rounded))
+                                .foregroundStyle(AppColors.brand)
                         } else {
                             Text(pages[idx].title)
                                 .font(AppTypography.title)

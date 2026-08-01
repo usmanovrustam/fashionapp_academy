@@ -151,17 +151,11 @@ struct AuthFeatureView: View {
     }
 
     private var brandHero: some View {
-        VStack(spacing: 14) {
-            Text("SYLYO")
-                .font(.system(size: 52, weight: .semibold, design: .serif))
-                .tracking(6)
-                .foregroundStyle(AppColors.ink)
-                .shadow(color: AppColors.brand.opacity(0.12), radius: 18, y: 8)
-
-            Text("Dress with intention.")
-                .font(.system(size: 18, weight: .regular, design: .serif))
-                .italic()
-                .foregroundStyle(AppColors.brand.opacity(0.95))
+        // Wordmark only for now — no logo mark / app icon treatment.
+        VStack(spacing: 12) {
+            Text("Sylyo")
+                .font(.system(size: 40, weight: .semibold, design: .rounded))
+                .foregroundStyle(AppColors.brand)
 
             Text("Sign in to your AI wardrobe.")
                 .font(.subheadline)
@@ -226,7 +220,9 @@ struct AuthFeatureView: View {
                 } label: {
                     HStack(spacing: 10) {
                         if viewModel.isLoading {
-                            ProgressView().controlSize(.small)
+                            ProgressView()
+                                .controlSize(.small)
+                                .tint(.white)
                         }
                         Text(viewModel.mode.ctaTitle)
                             .font(.system(size: 17, weight: .semibold, design: .rounded))
@@ -411,34 +407,34 @@ private struct FashionLoginBackground: View {
         ZStack {
             LinearGradient(
                 colors: [
-                    Color(red: 0.92, green: 0.97, blue: 1.0),
-                    Color(red: 0.94, green: 0.96, blue: 1.0),
-                    Color(red: 0.96, green: 0.94, blue: 0.98)
+                    Color(red: 0.99, green: 0.97, blue: 0.94),
+                    Color(red: 0.97, green: 0.94, blue: 0.90),
+                    Color(red: 0.95, green: 0.91, blue: 0.86)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
 
             Circle()
-                .fill(AppColors.brand.opacity(0.34))
+                .fill(AppColors.brand.opacity(0.30))
                 .frame(width: 300, height: 300)
                 .blur(radius: 55)
                 .offset(x: phase ? 90 : -70, y: phase ? -220 : -160)
 
             Circle()
-                .fill(AppColors.accent.opacity(0.38))
+                .fill(AppColors.accent.opacity(0.36))
                 .frame(width: 320, height: 320)
                 .blur(radius: 60)
                 .offset(x: phase ? -100 : 80, y: phase ? 260 : 180)
 
             Circle()
-                .fill(AppColors.blush.opacity(0.28))
+                .fill(AppColors.blush.opacity(0.34))
                 .frame(width: 220, height: 220)
                 .blur(radius: 45)
                 .offset(x: phase ? 40 : -30, y: phase ? 40 : 90)
 
             RadialGradient(
-                colors: [Color.clear, Color.white.opacity(0.4)],
+                colors: [Color.clear, Color.white.opacity(0.42)],
                 center: .center,
                 startRadius: 80,
                 endRadius: 520
