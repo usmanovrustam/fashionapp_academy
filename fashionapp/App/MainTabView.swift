@@ -89,8 +89,8 @@ private enum AppTab: Int, CaseIterable, Identifiable, Hashable {
     func symbolName(selected: Bool) -> String {
         switch self {
         case .discover:
-            // `sparkles` has no fill pair; use star outline / fill for clear selected state.
-            return selected ? "star.fill" : "star"
+            // Prefer outline → denser/fill-like glyph (no `sparkles.fill` in SF Symbols).
+            return selected ? "sparkles" : "sparkle"
         case .wardrobe:
             return selected ? "tshirt.fill" : "tshirt"
         case .calendar:
