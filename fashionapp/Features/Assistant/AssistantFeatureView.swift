@@ -117,7 +117,7 @@ struct AssistantFeatureView: View {
                 TextField("What should I wear today?", text: $viewModel.input, axis: .vertical)
                     .lineLimit(1...4)
                     .padding(12)
-                    .liquidGlass(cornerRadius: AppRadius.medium, interactive: true, tint: .purple)
+                    .liquidGlass(cornerRadius: AppRadius.medium, interactive: true, tint: AppColors.brand)
 
                 Button {
                     Task { await viewModel.send() }
@@ -126,13 +126,13 @@ struct AssistantFeatureView: View {
                         .font(.headline.weight(.bold))
                 }
                 .buttonStyle(.glassProminent)
-                .tint(.purple)
+                .tint(AppColors.brand)
                 .controlSize(.large)
                 .buttonBorderShape(.circle)
                 .disabled(viewModel.isThinking || viewModel.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
             .padding()
-            .liquidGlass(cornerRadius: AppRadius.large, tint: .purple)
+            .liquidGlass(cornerRadius: AppRadius.large, tint: AppColors.brand)
         }
     }
 }
@@ -150,7 +150,7 @@ private struct ChatBubble: View {
                 .liquidGlass(
                     cornerRadius: 18,
                     interactive: false,
-                    tint: message.role == .user ? .purple : nil
+                    tint: message.role == .user ? AppColors.brand : nil
                 )
             if message.role != .user { Spacer(minLength: 40) }
         }

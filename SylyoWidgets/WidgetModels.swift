@@ -1,4 +1,11 @@
 import Foundation
+import SwiftUI
+
+/// Matches app fashion brand (rosewood + champagne).
+enum WidgetBrand {
+    static let rosewood = Color(red: 0.55, green: 0.22, blue: 0.30)
+    static let champagne = Color(red: 0.76, green: 0.62, blue: 0.45)
+}
 
 enum WidgetAppGroup {
     static let identifier = "group.apple.academy.stylo"

@@ -16,8 +16,8 @@ struct ScannerFeatureView: View {
                 LinearGradient(
                     colors: [
                         Color(.systemBackground),
-                        Color.purple.opacity(0.05),
-                        Color.pink.opacity(0.05)
+                        AppColors.brand.opacity(0.05),
+                        AppColors.accent.opacity(0.05)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -122,7 +122,7 @@ struct ScannerFeatureView: View {
                                 Image(systemName: "arrow.counterclockwise.circle.fill")
                                     .font(.title2)
                                     .symbolRenderingMode(.palette)
-                                    .foregroundStyle(.white, .purple)
+                                    .foregroundStyle(.white, AppColors.brand)
                                     .padding(12)
                             }
                         }
@@ -134,7 +134,7 @@ struct ScannerFeatureView: View {
                                         .font(.subheadline.weight(.medium))
                                 }
                                 .padding(24)
-                                .liquidGlass(cornerRadius: AppRadius.photo, tint: .purple)
+                                .liquidGlass(cornerRadius: AppRadius.photo, tint: AppColors.brand)
                             }
                         }
                 } else {
@@ -146,7 +146,7 @@ struct ScannerFeatureView: View {
                         .frame(width: 280, height: 320)
                         .background(
                             RoundedRectangle(cornerRadius: AppRadius.photo, style: .continuous)
-                                .fill(Color.purple.opacity(0.04))
+                                .fill(AppColors.brand.opacity(0.04))
                         )
                         .overlay {
                             VStack(spacing: 12) {

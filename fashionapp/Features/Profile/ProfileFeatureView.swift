@@ -249,7 +249,7 @@ struct ProfileFeatureView: View {
                         Image(systemName: "camera.circle.fill")
                             .font(.title2)
                             .symbolRenderingMode(.palette)
-                            .foregroundStyle(.white, .purple)
+                            .foregroundStyle(.white, AppColors.brand)
                     }
                     .offset(x: 4, y: 4)
                 }
@@ -289,12 +289,12 @@ struct ProfileFeatureView: View {
                 )) {
                     Label("Use Celsius", systemImage: "thermometer")
                 }
-                .tint(.purple)
+                .tint(AppColors.brand)
 
                 Toggle(isOn: $viewModel.profile.genderNeutralPreferred) {
                     Label("Gender-neutral looks", systemImage: "person.2")
                 }
-                .tint(.purple)
+                .tint(AppColors.brand)
                 .onChange(of: viewModel.profile.genderNeutralPreferred) { _, _ in
                     Task { await viewModel.saveProfile() }
                 }

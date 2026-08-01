@@ -126,7 +126,7 @@ struct AuthFeatureView: View {
                             SecureField("Password", text: $viewModel.password)
                                 .textContentType(viewModel.mode == .signUp ? .newPassword : .password)
                                 .padding()
-                                .liquidGlass(cornerRadius: AppRadius.medium, interactive: true, tint: .purple)
+                                .liquidGlass(cornerRadius: AppRadius.medium, interactive: true, tint: AppColors.brand)
                                 .glassEffectID("auth-password", in: glassNamespace)
                         }
                     }
@@ -148,7 +148,7 @@ struct AuthFeatureView: View {
                             }
                             .buttonStyle(LiquidGlassButtonStyle(
                                 prominent: true,
-                                tint: .purple,
+                                tint: AppColors.brand,
                                 isDisabled: !viewModel.canSubmit
                             ))
                             .disabled(!viewModel.canSubmit)
@@ -158,7 +158,7 @@ struct AuthFeatureView: View {
                                 Button("Forgot password?") {
                                     Task { await viewModel.resetPassword() }
                                 }
-                                .buttonStyle(LiquidGlassButtonStyle(prominent: false, tint: .purple))
+                                .buttonStyle(LiquidGlassButtonStyle(prominent: false, tint: AppColors.brand))
                                 .disabled(viewModel.isLoading)
                                 .glassEffectID("auth-reset", in: glassNamespace)
                             }
@@ -171,7 +171,7 @@ struct AuthFeatureView: View {
                             }
                             .buttonStyle(LiquidGlassButtonStyle(
                                 prominent: false,
-                                tint: .purple,
+                                tint: AppColors.brand,
                                 isDisabled: viewModel.isLoading
                             ))
                             .disabled(viewModel.isLoading)
@@ -199,7 +199,7 @@ struct AuthFeatureView: View {
                 .font(.system(size: 44, weight: .semibold))
                 .foregroundStyle(AppColors.primaryGradient)
                 .padding(26)
-                .liquidGlass(cornerRadius: 36, tint: .purple)
+                .liquidGlass(cornerRadius: 36, tint: AppColors.brand)
 
             Text("Sylyo")
                 .font(.system(size: 44, weight: .bold, design: .rounded))
@@ -221,7 +221,7 @@ struct AuthFeatureView: View {
         }
         .pickerStyle(.segmented)
         .padding(6)
-        .liquidGlass(cornerRadius: AppRadius.medium, tint: .purple)
+        .liquidGlass(cornerRadius: AppRadius.medium, tint: AppColors.brand)
     }
 
     @ViewBuilder
@@ -259,7 +259,7 @@ struct AuthFeatureView: View {
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
             .padding()
-            .liquidGlass(cornerRadius: AppRadius.medium, interactive: true, tint: .purple)
+            .liquidGlass(cornerRadius: AppRadius.medium, interactive: true, tint: AppColors.brand)
     }
 
     private func analyticsScreen() {

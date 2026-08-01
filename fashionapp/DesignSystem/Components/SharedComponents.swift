@@ -20,7 +20,7 @@ struct WardrobeItemCard: View {
                     RoundedRectangle(cornerRadius: AppRadius.large, style: .continuous)
                         .fill(Color(.systemGray5).opacity(0.5))
                         .frame(width: width, height: height)
-                        .overlay(ProgressView().tint(.purple))
+                        .overlay(ProgressView().tint(AppColors.brand))
                         .liquidGlass(cornerRadius: AppRadius.large)
                 }
 
@@ -67,7 +67,7 @@ struct LoadingRingsView: View {
                         Circle()
                             .stroke(
                                 LinearGradient(
-                                    colors: [Color.purple.opacity(0.7), Color.pink.opacity(0.7)],
+                                    colors: [AppColors.brand.opacity(0.7), AppColors.accent.opacity(0.7)],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 ),
@@ -84,14 +84,14 @@ struct LoadingRingsView: View {
                     }
                 }
                 .padding(28)
-                .liquidGlass(cornerRadius: 40, tint: .purple)
+                .liquidGlass(cornerRadius: 40, tint: AppColors.brand)
 
                 Text(message)
                     .font(AppTypography.roundedMedium)
                     .foregroundColor(.primary)
                     .padding(.horizontal, 18)
                     .padding(.vertical, 10)
-                    .liquidGlassCapsule(tint: .pink)
+                    .liquidGlassCapsule(tint: AppColors.accent)
             }
         }
         .onAppear { spinning = true }
@@ -111,7 +111,7 @@ struct EmptyWardrobeState: View {
                     .font(.system(size: 54))
                     .foregroundStyle(AppColors.primaryGradient)
                     .padding(28)
-                    .liquidGlass(cornerRadius: 36, tint: .purple)
+                    .liquidGlass(cornerRadius: 36, tint: AppColors.brand)
 
                 Text(title)
                     .font(AppTypography.title2)
@@ -148,7 +148,7 @@ struct GlassCard<Content: View>: View {
 struct SettingsRow: View {
     let icon: String
     let title: String
-    var tint: Color = .purple
+    var tint: Color = AppColors.brand
 
     var body: some View {
         HStack(spacing: 14) {
@@ -183,7 +183,7 @@ struct StatCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .liquidGlass(cornerRadius: AppRadius.medium, tint: .purple)
+        .liquidGlass(cornerRadius: AppRadius.medium, tint: AppColors.brand)
     }
 }
 
@@ -204,7 +204,7 @@ struct StoredImageView: View {
                     .aspectRatio(contentMode: contentMode)
             } else {
                 Color.clear
-                    .overlay(ProgressView().tint(.purple))
+                    .overlay(ProgressView().tint(AppColors.brand))
                     .liquidGlass(cornerRadius: AppRadius.medium)
             }
         }

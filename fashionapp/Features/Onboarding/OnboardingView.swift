@@ -26,7 +26,7 @@ struct OnboardingView: View {
                             .frame(width: 88, height: 88)
                             .foregroundStyle(AppColors.primaryGradient)
                             .padding(28)
-                            .liquidGlass(cornerRadius: 40, tint: .purple)
+                            .liquidGlass(cornerRadius: 40, tint: AppColors.brand)
                             .scaleEffect(page == idx ? 1.0 : 0.92)
                             .animation(.spring(response: 0.5, dampingFraction: 0.75), value: page)
 
@@ -60,7 +60,7 @@ struct OnboardingView: View {
         }
         .background(SoftBackground())
         // Prevent any system accent/blue from leaking into welcome controls.
-        .tint(.purple)
+        .tint(AppColors.brand)
     }
 
     private var pageIndicators: some View {
@@ -68,14 +68,14 @@ struct OnboardingView: View {
             HStack(spacing: 8) {
                 ForEach(pages.indices, id: \.self) { idx in
                     Capsule()
-                        .fill(page == idx ? Color.purple.opacity(0.85) : Color.secondary.opacity(0.25))
+                        .fill(page == idx ? AppColors.brand.opacity(0.85) : Color.secondary.opacity(0.25))
                         .frame(width: page == idx ? 22 : 8, height: 8)
                         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: page)
                 }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
-            .liquidGlassCapsule(interactive: false, tint: .purple)
+            .liquidGlassCapsule(interactive: false, tint: AppColors.brand)
         }
     }
 
@@ -91,7 +91,7 @@ struct OnboardingView: View {
                         Text(NSLocalizedString("Back", comment: "Onboarding back"))
                             .frame(minWidth: 72)
                     }
-                    .buttonStyle(LiquidGlassButtonStyle(prominent: false, tint: .purple))
+                    .buttonStyle(LiquidGlassButtonStyle(prominent: false, tint: AppColors.brand))
                     .glassEffectID("splash-back", in: glassNamespace)
                 }
 
@@ -104,7 +104,7 @@ struct OnboardingView: View {
                         Text(NSLocalizedString("Skip", comment: "Onboarding skip"))
                             .frame(minWidth: 64)
                     }
-                    .buttonStyle(LiquidGlassButtonStyle(prominent: false, tint: .purple))
+                    .buttonStyle(LiquidGlassButtonStyle(prominent: false, tint: AppColors.brand))
                     .glassEffectID("splash-skip", in: glassNamespace)
                 }
 
@@ -124,7 +124,7 @@ struct OnboardingView: View {
                            : NSLocalizedString("Next", comment: ""))
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(LiquidGlassButtonStyle(prominent: true, tint: .purple))
+                .buttonStyle(LiquidGlassButtonStyle(prominent: true, tint: AppColors.brand))
                 .glassEffectID("splash-primary", in: glassNamespace)
             }
         }

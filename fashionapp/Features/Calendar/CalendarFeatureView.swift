@@ -27,11 +27,11 @@ struct DayCell: View {
                 }
                 .overlay(
                     Circle()
-                        .stroke(Color.purple.opacity(isToday && !isSelected ? 1 : 0), lineWidth: 2)
+                        .stroke(AppColors.brand.opacity(isToday && !isSelected ? 1 : 0), lineWidth: 2)
                 )
 
             Circle()
-                .fill(Color.purple)
+                .fill(AppColors.brand)
                 .frame(width: 5, height: 5)
                 .opacity(hasOutfit ? 1 : 0)
         }

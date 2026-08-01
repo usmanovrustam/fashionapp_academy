@@ -1,13 +1,19 @@
 import SwiftUI
 
-/// Shared visual tokens — Liquid Glass (iOS 26/27) first.
+/// Fashion brand tokens — rosewood + champagne (no purple).
 enum AppColors {
-    static let backgroundTop = Color(red: 0.95, green: 0.95, blue: 1.0)
-    static let backgroundBottom = Color(red: 1.0, green: 0.95, blue: 0.98)
-    static let brandPurple = Color.purple
-    static let brandPink = Color.pink
+    /// Deep rosewood — editorial fashion primary.
+    static let brand = Color(red: 0.55, green: 0.22, blue: 0.30)
+    /// Soft champagne gold accent.
+    static let accent = Color(red: 0.76, green: 0.62, blue: 0.45)
+    /// Soft ink for emphasis.
+    static let ink = Color(red: 0.14, green: 0.12, blue: 0.13)
+
+    static let backgroundTop = Color(red: 0.98, green: 0.96, blue: 0.95)
+    static let backgroundBottom = Color(red: 0.95, green: 0.93, blue: 0.91)
+
     static let primaryGradient = LinearGradient(
-        colors: [brandPurple, brandPink],
+        colors: [brand, accent],
         startPoint: .leading,
         endPoint: .trailing
     )
@@ -17,7 +23,12 @@ enum AppColors {
         endPoint: .bottomTrailing
     )
     static let cardShadow = Color.black.opacity(0.08)
-    static let purpleShadow = Color.purple.opacity(0.15)
+    static let brandShadow = brand.opacity(0.16)
+
+    // Legacy aliases so older call sites keep compiling during migration.
+    static let brandPurple = brand
+    static let brandPink = accent
+    static let purpleShadow = brandShadow
 }
 
 enum AppRadius {
@@ -50,15 +61,14 @@ struct SoftBackground: View {
     var body: some View {
         ZStack {
             AppColors.softBackground
-            // Subtle depth so Liquid Glass has content to refract.
             RadialGradient(
-                colors: [Color.purple.opacity(0.18), Color.clear],
+                colors: [AppColors.brand.opacity(0.16), Color.clear],
                 center: .topTrailing,
                 startRadius: 20,
                 endRadius: 420
             )
             RadialGradient(
-                colors: [Color.pink.opacity(0.14), Color.clear],
+                colors: [AppColors.accent.opacity(0.18), Color.clear],
                 center: .bottomLeading,
                 startRadius: 10,
                 endRadius: 380
@@ -116,7 +126,7 @@ extension View {
     }
 
     /// Capsule Liquid Glass control.
-    func liquidGlassCapsule(interactive: Bool = true, tint: Color? = .purple) -> some View {
+    func liquidGlassCapsule(interactive: Bool = true, tint: Color? = AppColors.brand) -> some View {
         modifier(LiquidGlassCapsuleModifier(interactive: interactive, tint: tint))
     }
 }
@@ -144,22 +154,22 @@ private struct LiquidGlassCapsuleModifier: ViewModifier {
     }
 }
 
-/// True translucent Liquid Glass CTA — avoids opaque/system-blue prominent fills.
+/// True translucent Liquid Glass CTA — fashion rosewood tint.
 struct LiquidGlassButtonStyle: ButtonStyle {
     var prominent: Bool = true
-    var tint: Color? = .purple
+    var tint: Color? = AppColors.brand
     var isDisabled: Bool = false
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(AppTypography.headline)
-            .foregroundStyle(prominent ? Color.primary : Color.purple)
+            .foregroundStyle(prominent ? AppColors.ink : AppColors.brand)
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 22)
             .padding(.vertical, 16)
             .liquidGlassCapsule(
                 interactive: !isDisabled,
-                tint: prominent ? (tint ?? .purple) : tint
+                tint: prominent ? (tint ?? AppColors.brand) : tint
             )
             .opacity(isDisabled ? 0.45 : (configuration.isPressed ? 0.86 : 1))
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
@@ -172,23 +182,23 @@ struct GradientPrimaryButtonStyle: ButtonStyle {
     var isDisabled: Bool = false
 
     func makeBody(configuration: Configuration) -> some View {
-        LiquidGlassButtonStyle(prominent: true, tint: .purple, isDisabled: isDisabled)
+        LiquidGlassButtonStyle(prominent: true, tint: AppColors.brand, isDisabled: isDisabled)
             .makeBody(configuration: configuration)
     }
 }
 
 extension View {
-    /// iOS 27 Liquid Glass primary control (translucent, not solid blue).
+    /// iOS 27 Liquid Glass primary control.
     func sylyoGlassProminent(disabled: Bool = false) -> some View {
         self
-            .buttonStyle(LiquidGlassButtonStyle(prominent: true, tint: .purple, isDisabled: disabled))
+            .buttonStyle(LiquidGlassButtonStyle(prominent: true, tint: AppColors.brand, isDisabled: disabled))
             .disabled(disabled)
     }
 
     /// iOS 27 Liquid Glass secondary control.
     func sylyoGlass(disabled: Bool = false) -> some View {
         self
-            .buttonStyle(LiquidGlassButtonStyle(prominent: false, tint: .purple, isDisabled: disabled))
+            .buttonStyle(LiquidGlassButtonStyle(prominent: false, tint: AppColors.brand, isDisabled: disabled))
             .disabled(disabled)
     }
 }

@@ -126,7 +126,7 @@ private struct FilterChip: View {
         Button(action: action) {
             Text(title)
                 .font(.subheadline.weight(.semibold))
-                .foregroundColor(selected ? .white : .purple)
+                .foregroundColor(selected ? .white : AppColors.brand)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
                 .background {
@@ -134,7 +134,7 @@ private struct FilterChip: View {
                         Capsule().fill(AppColors.primaryGradient)
                     }
                 }
-                .liquidGlassCapsule(interactive: true, tint: selected ? .pink : .purple)
+                .liquidGlassCapsule(interactive: true, tint: selected ? AppColors.accent : AppColors.brand)
         }
         .buttonStyle(ScaleButtonStyle())
     }
@@ -150,7 +150,7 @@ private struct StoredWardrobeCard: View {
             .overlay(alignment: .topTrailing) {
                 if item.isFavorite {
                     Image(systemName: "heart.fill")
-                        .foregroundColor(.pink)
+                        .foregroundColor(AppColors.accent)
                         .padding(10)
                 }
             }
@@ -175,7 +175,7 @@ struct WardrobeItemDetailView: View {
                     contentMode: .fit
                 )
                 .frame(maxWidth: .infinity)
-                .liquidGlass(cornerRadius: AppRadius.xLarge, tint: .purple)
+                .liquidGlass(cornerRadius: AppRadius.xLarge, tint: AppColors.brand)
 
                 Text(item.name)
                     .font(AppTypography.title)
