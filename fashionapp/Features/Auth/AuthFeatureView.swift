@@ -89,7 +89,7 @@ final class AuthViewModel: ObservableObject {
     }
 }
 
-/// Firebase-only auth screen — iOS 27 Liquid Glass, no iCloud / Sign in with Apple.
+/// Firebase-only auth screen with Liquid Glass controls.
 struct AuthFeatureView: View {
     @StateObject private var viewModel: AuthViewModel
     @Namespace private var glassNamespace

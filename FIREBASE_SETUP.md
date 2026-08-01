@@ -1,6 +1,6 @@
 # Firebase Setup (real project only)
 
-Sylyo does **not** use mock auth, iCloud Sign in, or mock databases. Auth is **Firebase Authentication** only (email/password + anonymous). Wardrobe, images, and analytics all require your Firebase project.
+Sylyo does **not** use mock auth or mock databases. Auth is **Firebase Authentication** only (email/password + anonymous). Wardrobe, images, and analytics all require your Firebase project. There is no CloudKit dependency — see `CLEAN_BUILD.md` if an old install still logs CloudKit.
 
 ## Current status
 

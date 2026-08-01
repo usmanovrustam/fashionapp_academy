@@ -16,7 +16,9 @@ SylyoWidgets/        iOS 27 WidgetKit extension (App Group sync)
 
 **Backend (required):** Firebase Auth + Cloud Firestore + Cloud Storage + Analytics → BigQuery.
 
-Auth is **Firebase only** (email/password + anonymous). There is no iCloud auth manager, CloudKit account gate, or Sign in with Apple. Without `GoogleService-Info.plist` the app shows a setup screen.
+Auth is **Firebase only** (email/password + anonymous). CloudKit was removed. Without `GoogleService-Info.plist` the app shows a setup screen.
+
+If a device still logs `CloudKit Manager initialized`, follow **[CLEAN_BUILD.md](CLEAN_BUILD.md)** (old install — pull `develop`, clean DerivedData, delete the app, reinstall).
 
 ## Firebase + BigQuery
 
