@@ -1,18 +1,29 @@
 import SwiftUI
 
-/// Soft pastel brown brand — mocha / sand / warm cream.
+/// Soft pastel sky-blue brand. App is light-mode only.
+/// Text uses separate matte neutrals — never treat text colors as brand.
 enum AppColors {
-    /// Pastel mocha brown — primary.
-    static let brand = Color(red: 0.72, green: 0.56, blue: 0.44)
-    /// Soft sand accent.
-    static let accent = Color(red: 0.88, green: 0.78, blue: 0.66)
-    /// Warm cream highlight.
-    static let blush = Color(red: 0.95, green: 0.90, blue: 0.84)
-    /// Warm readable ink.
-    static let ink = Color(red: 0.30, green: 0.22, blue: 0.18)
+    // MARK: Brand (atmosphere / accents only — not body text)
+    /// Pastel sky blue — primary brand.
+    static let brand = Color(red: 0.52, green: 0.74, blue: 0.94)
+    /// Soft powder-blue accent.
+    static let accent = Color(red: 0.72, green: 0.86, blue: 0.96)
+    /// Airy cloud-blue highlight.
+    static let blush = Color(red: 0.86, green: 0.93, blue: 0.99)
 
-    static let backgroundTop = Color(red: 0.99, green: 0.97, blue: 0.94)
-    static let backgroundBottom = Color(red: 0.96, green: 0.93, blue: 0.88)
+    // MARK: Text (matte neutrals — not core brand)
+    /// Matte pastel black for titles / primary copy.
+    static let textPrimary = Color(red: 0.16, green: 0.17, blue: 0.19)
+    /// Soft grey for secondary copy.
+    static let textSecondary = Color(red: 0.45, green: 0.47, blue: 0.50)
+    /// Cool blue-grey for tertiary / muted labels.
+    static let textTertiary = Color(red: 0.50, green: 0.56, blue: 0.64)
+
+    /// Legacy alias → matte primary text.
+    static let ink = textPrimary
+
+    static let backgroundTop = Color(red: 0.96, green: 0.98, blue: 1.0)
+    static let backgroundBottom = Color(red: 0.92, green: 0.96, blue: 0.99)
 
     static let primaryGradient = LinearGradient(
         colors: [brand, accent],
@@ -25,7 +36,7 @@ enum AppColors {
         endPoint: .bottomTrailing
     )
     static let cardShadow = Color.black.opacity(0.06)
-    static let brandShadow = brand.opacity(0.18)
+    static let brandShadow = brand.opacity(0.16)
 
     // Legacy aliases.
     static let brandPurple = brand
@@ -207,7 +218,7 @@ struct LiquidGlassButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(AppTypography.headline)
-            .foregroundStyle(tint ?? AppColors.ink)
+            .foregroundStyle(tint ?? AppColors.textPrimary)
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 22)
             .padding(.vertical, 16)

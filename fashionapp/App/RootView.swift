@@ -23,6 +23,7 @@ struct RootView: View {
             }
         }
         .environment(\.locale, Locale(identifier: selectedLanguage))
+        .preferredColorScheme(.light)
         .task {
             _ = await container.authService.refreshSession()
         }

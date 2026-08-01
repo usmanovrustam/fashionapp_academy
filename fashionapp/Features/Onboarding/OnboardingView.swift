@@ -40,15 +40,16 @@ struct OnboardingView: View {
                         if idx == 0 {
                             Text(pages[idx].title)
                                 .font(.system(size: 44, weight: .semibold, design: .rounded))
-                                .foregroundStyle(AppColors.brand)
+                                .foregroundStyle(AppColors.textPrimary)
                         } else {
                             Text(pages[idx].title)
                                 .font(AppTypography.title)
+                                .foregroundStyle(AppColors.textPrimary)
                         }
 
                         Text(pages[idx].subtitle)
                             .font(AppTypography.body)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppColors.textSecondary)
                             .multilineTextAlignment(.center)
                         Spacer()
                     }
@@ -66,8 +67,8 @@ struct OnboardingView: View {
                 .padding(.bottom, AppSpacing.xl)
         }
         .background(SoftBackground())
-        // Prevent any system accent/blue from leaking into welcome controls.
         .tint(AppColors.brand)
+        .preferredColorScheme(.light)
     }
 
     private var topBar: some View {
@@ -81,7 +82,7 @@ struct OnboardingView: View {
                 } label: {
                     Text(NSLocalizedString("Skip", comment: "Onboarding skip"))
                         .font(.system(size: 16, weight: .semibold, design: .rounded))
-                        .foregroundStyle(AppColors.brand)
+                        .foregroundStyle(AppColors.textTertiary)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 8)
                 }
@@ -97,7 +98,7 @@ struct OnboardingView: View {
             HStack(spacing: 8) {
                 ForEach(pages.indices, id: \.self) { idx in
                     Capsule()
-                        .fill(page == idx ? AppColors.brand.opacity(0.85) : Color.secondary.opacity(0.25))
+                        .fill(page == idx ? AppColors.textTertiary.opacity(0.85) : AppColors.textTertiary.opacity(0.22))
                         .frame(width: page == idx ? 22 : 8, height: 8)
                         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: page)
                 }

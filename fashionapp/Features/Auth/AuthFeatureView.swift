@@ -134,7 +134,7 @@ struct AuthFeatureView: View {
 
                     Text("Your wardrobe syncs securely with Firebase.")
                         .font(.caption)
-                        .foregroundStyle(AppColors.ink.opacity(0.45))
+                        .foregroundStyle(AppColors.textTertiary)
                         .multilineTextAlignment(.center)
                         .padding(.top, 18)
                         .padding(.bottom, 32)
@@ -143,6 +143,7 @@ struct AuthFeatureView: View {
             }
         }
         .tint(AppColors.brand)
+        .preferredColorScheme(.light)
         .onAppear {
             withAnimation(.spring(response: 0.7, dampingFraction: 0.84)) {
                 appeared = true
@@ -155,11 +156,11 @@ struct AuthFeatureView: View {
         VStack(spacing: 12) {
             Text("Sylyo")
                 .font(.system(size: 40, weight: .semibold, design: .rounded))
-                .foregroundStyle(AppColors.brand)
+                .foregroundStyle(AppColors.textPrimary)
 
             Text("Sign in to your AI wardrobe.")
                 .font(.subheadline)
-                .foregroundStyle(AppColors.ink.opacity(0.55))
+                .foregroundStyle(AppColors.textSecondary)
         }
         .frame(maxWidth: .infinity)
     }
@@ -209,7 +210,7 @@ struct AuthFeatureView: View {
                             Task { await viewModel.resetPassword() }
                         }
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(AppColors.brand)
+                        .foregroundStyle(AppColors.textTertiary)
                         .disabled(viewModel.isLoading)
                     }
                 }
@@ -222,7 +223,7 @@ struct AuthFeatureView: View {
                         if viewModel.isLoading {
                             ProgressView()
                                 .controlSize(.small)
-                                .tint(AppColors.ink)
+                                .tint(AppColors.textPrimary)
                         }
                         Text(viewModel.mode.ctaTitle)
                             .font(.system(size: 17, weight: .semibold, design: .rounded))
@@ -254,7 +255,7 @@ struct AuthFeatureView: View {
                 } label: {
                     Text(mode.rawValue)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(viewModel.mode == mode ? AppColors.ink : AppColors.ink.opacity(0.45))
+                        .foregroundStyle(viewModel.mode == mode ? AppColors.textPrimary : AppColors.textSecondary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
                         .background {
@@ -276,7 +277,7 @@ struct AuthFeatureView: View {
         HStack(spacing: 12) {
             Image(systemName: "lock")
                 .font(.body.weight(.medium))
-                .foregroundStyle(AppColors.ink.opacity(0.55))
+                .foregroundStyle(AppColors.textTertiary)
                 .frame(width: 22)
 
             Group {
@@ -297,7 +298,7 @@ struct AuthFeatureView: View {
             } label: {
                 Image(systemName: viewModel.isPasswordVisible ? "eye.slash" : "eye")
                     .font(.body)
-                    .foregroundStyle(AppColors.ink.opacity(0.4))
+                    .foregroundStyle(AppColors.textTertiary)
             }
             .buttonStyle(.plain)
         }
@@ -306,7 +307,7 @@ struct AuthFeatureView: View {
         .liquidGlass(cornerRadius: AppRadius.medium, interactive: true)
         .overlay {
             RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
-                .stroke(AppColors.ink.opacity(focusedField == .password ? 0.28 : 0.10), lineWidth: 1)
+                .stroke(AppColors.textTertiary.opacity(focusedField == .password ? 0.45 : 0.22), lineWidth: 1)
         }
     }
 
@@ -314,13 +315,13 @@ struct AuthFeatureView: View {
         VStack(spacing: 12) {
             HStack(spacing: 12) {
                 Rectangle()
-                    .fill(AppColors.ink.opacity(0.08))
+                    .fill(AppColors.textTertiary.opacity(0.22))
                     .frame(height: 1)
                 Text("or")
                     .font(.caption.weight(.medium))
-                    .foregroundStyle(AppColors.ink.opacity(0.35))
+                    .foregroundStyle(AppColors.textSecondary)
                 Rectangle()
-                    .fill(AppColors.ink.opacity(0.08))
+                    .fill(AppColors.textTertiary.opacity(0.22))
                     .frame(height: 1)
             }
 
@@ -375,7 +376,7 @@ struct AuthFeatureView: View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.body.weight(.medium))
-                .foregroundStyle(AppColors.ink.opacity(0.55))
+                .foregroundStyle(AppColors.textTertiary)
                 .frame(width: 22)
 
             TextField(title, text: text)
@@ -390,7 +391,7 @@ struct AuthFeatureView: View {
         .liquidGlass(cornerRadius: AppRadius.medium, interactive: true)
         .overlay {
             RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous)
-                .stroke(AppColors.ink.opacity(focusedField == field ? 0.28 : 0.10), lineWidth: 1)
+                .stroke(AppColors.textTertiary.opacity(focusedField == field ? 0.45 : 0.22), lineWidth: 1)
         }
     }
 }
@@ -405,9 +406,9 @@ private struct FashionLoginBackground: View {
         ZStack {
             LinearGradient(
                 colors: [
-                    Color(red: 0.99, green: 0.97, blue: 0.94),
-                    Color(red: 0.97, green: 0.94, blue: 0.90),
-                    Color(red: 0.95, green: 0.91, blue: 0.86)
+                    Color(red: 0.96, green: 0.98, blue: 1.0),
+                    Color(red: 0.94, green: 0.97, blue: 1.0),
+                    Color(red: 0.92, green: 0.95, blue: 0.99)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
