@@ -112,9 +112,10 @@ final class FirebaseAuthService: ObservableObject, AuthServicing {
     func signInWithApple(idToken: String, rawNonce: String, fullName: PersonNameComponents?) async throws -> AuthUser {
         try ensureConfigured()
         do {
-            // Prefer the Apple-specific API (passes fullName; avoids AuthProviderID mismatch).
-            let credential = OAuthProvider.appleCredential(
-                withIDToken: idToken,
+            // Must use AuthProviderID (not the "apple.com" String) + Apple-specific helper.
+            // See: OAuthProvider.appleCredential / AuthProviderID.apple
+            let credential = Self.makeAppleCredential(
+                idToken: idToken,
                 rawNonce: rawNonce,
                 fullName: fullName
             )
@@ -136,6 +137,20 @@ final class FirebaseAuthService: ObservableObject, AuthServicing {
         } catch {
             throw mapError(error)
         }
+    }
+
+    /// Builds an Apple OAuth credential without passing a raw `String` provider id
+    /// (FirebaseAuth expects `AuthProviderID`).
+    private static func makeAppleCredential(
+        idToken: String,
+        rawNonce: String,
+        fullName: PersonNameComponents?
+    ) -> AuthCredential {
+        OAuthProvider.appleCredential(
+            withIDToken: idToken,
+            rawNonce: rawNonce,
+            fullName: fullName
+        )
     }
 
     private func ensureConfigured() throws {
