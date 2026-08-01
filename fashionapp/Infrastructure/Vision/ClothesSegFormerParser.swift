@@ -64,8 +64,8 @@ final class ClothesSegFormerParser: @unchecked Sendable {
             "pixel_values": MLFeatureValue(multiArray: pixelValues)
         ])
 
-        // Core ML prediction is the heavy step — keep off the main actor.
-        let output = try model.prediction(from: input)
+        // Core ML prediction is async in current SDKs — keep off the main actor via caller.
+        let output = try await model.prediction(from: input)
         let logits = output.featureValue(for: "logits")?.multiArrayValue
             ?? output.featureValue(for: "var_1196")?.multiArrayValue
         guard let logits else {
