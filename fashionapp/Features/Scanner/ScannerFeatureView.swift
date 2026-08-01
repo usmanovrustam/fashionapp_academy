@@ -163,7 +163,7 @@ struct ScannerFeatureView: View {
                 }
             }
 
-            GlassEffectContainer(spacing: 12) {
+            SylyoGlassContainer(spacing: 12) {
                 HStack(spacing: 12) {
                     Button {
                         Task { await viewModel.openCamera() }

@@ -216,7 +216,7 @@ private struct RecommendationCardView: View {
                 .foregroundStyle(AppColors.primaryGradient)
 
             HStack(spacing: 24) {
-                GlassEffectContainer(spacing: 16) {
+                SylyoGlassContainer(spacing: 16) {
                     HStack(spacing: 24) {
                         Button(action: onNope) {
                             HStack {

@@ -78,7 +78,23 @@ struct SoftBackground: View {
     }
 }
 
-/// Applies Apple Liquid Glass with Reduce Transparency fallback.
+/// Groups glass elements on iOS 26+; identity wrapper on earlier OS versions.
+struct SylyoGlassContainer<Content: View>: View {
+    var spacing: CGFloat = 16
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer(spacing: spacing) {
+                content()
+            }
+        } else {
+            content()
+        }
+    }
+}
+
+/// Applies Liquid Glass on iOS 26+, material fallback otherwise.
 struct LiquidGlassModifier: ViewModifier {
     var cornerRadius: CGFloat = AppRadius.large
     var interactive: Bool = false
@@ -93,13 +109,19 @@ struct LiquidGlassModifier: ViewModifier {
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                         .fill(Color(.secondarySystemBackground))
                 )
+        } else if #available(iOS 26.0, *) {
+            content.glassEffect(makeGlass(), in: .rect(cornerRadius: cornerRadius))
         } else {
             content
-                .glassEffect(glassStyle, in: .rect(cornerRadius: cornerRadius))
+                .background(
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                )
         }
     }
 
-    private var glassStyle: Glass {
+    @available(iOS 26.0, *)
+    private func makeGlass() -> Glass {
         var style: Glass = .regular
         if let tint {
             style = style.tint(tint)
@@ -129,6 +151,16 @@ extension View {
     func liquidGlassCapsule(interactive: Bool = true, tint: Color? = AppColors.brand) -> some View {
         modifier(LiquidGlassCapsuleModifier(interactive: interactive, tint: tint))
     }
+
+    /// Morphing ID for Liquid Glass (no-op below iOS 26).
+    @ViewBuilder
+    func sylyoGlassEffectID(_ id: String, in namespace: Namespace.ID) -> some View {
+        if #available(iOS 26.0, *) {
+            self.glassEffectID(id, in: namespace)
+        } else {
+            self
+        }
+    }
 }
 
 private struct LiquidGlassCapsuleModifier: ViewModifier {
@@ -141,12 +173,15 @@ private struct LiquidGlassCapsuleModifier: ViewModifier {
         if reduceTransparency {
             content
                 .background(Capsule().fill(Color(.secondarySystemBackground)))
+        } else if #available(iOS 26.0, *) {
+            content.glassEffect(makeGlass(), in: .capsule)
         } else {
-            content.glassEffect(style, in: .capsule)
+            content.background(Capsule().fill(.ultraThinMaterial))
         }
     }
 
-    private var style: Glass {
+    @available(iOS 26.0, *)
+    private func makeGlass() -> Glass {
         var s: Glass = .regular
         if let tint { s = s.tint(tint) }
         if interactive { s = s.interactive() }
@@ -154,7 +189,7 @@ private struct LiquidGlassCapsuleModifier: ViewModifier {
     }
 }
 
-/// True translucent Liquid Glass CTA — fashion rosewood tint.
+/// Translucent fashion CTA — Liquid Glass on iOS 26+, material earlier.
 struct LiquidGlassButtonStyle: ButtonStyle {
     var prominent: Bool = true
     var tint: Color? = AppColors.brand
@@ -188,14 +223,14 @@ struct GradientPrimaryButtonStyle: ButtonStyle {
 }
 
 extension View {
-    /// iOS 27 Liquid Glass primary control.
+    /// Primary glass-styled control.
     func sylyoGlassProminent(disabled: Bool = false) -> some View {
         self
             .buttonStyle(LiquidGlassButtonStyle(prominent: true, tint: AppColors.brand, isDisabled: disabled))
             .disabled(disabled)
     }
 
-    /// iOS 27 Liquid Glass secondary control.
+    /// Secondary glass-styled control.
     func sylyoGlass(disabled: Bool = false) -> some View {
         self
             .buttonStyle(LiquidGlassButtonStyle(prominent: false, tint: AppColors.brand, isDisabled: disabled))
@@ -211,7 +246,7 @@ struct ScaleButtonStyle: ButtonStyle {
     }
 }
 
-/// Shared App Group used by the main app + iOS 27 widgets.
+/// Shared App Group used by the main app + widgets.
 enum AppGroupConfig {
     static let identifier = "group.apple.academy.stylo"
     static var defaults: UserDefaults {

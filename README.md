@@ -51,8 +51,8 @@ Cursor Firebase MCP is configured in `.cursor/mcp.json` (`npx firebase-tools@lat
 
 ## Requirements
 
-- Xcode with iOS 27 SDK (Liquid Glass + WidgetKit families)
-- iOS 27.0+
+- Xcode 16+ (iOS 26/27 SDK recommended for Liquid Glass)
+- iOS 18.0+ (Liquid Glass on iOS 26+; material fallback earlier)
 - Firebase project with `GoogleService-Info.plist`
 - Capabilities: Camera, Photos, Location, WeatherKit, App Group `group.apple.academy.stylo`
 

@@ -161,8 +161,9 @@ struct TodayOutfitWidget: Widget {
 
     private static var supportedFamilies: [WidgetFamily] {
         var families: [WidgetFamily] = [.systemSmall, .systemMedium, .systemLarge]
-        // iOS 27: extra-large portrait for richer glanceable looks.
-        families.append(.systemExtraLargePortrait)
+        if #available(iOS 27.0, *) {
+            families.append(.systemExtraLargePortrait)
+        }
         return families
     }
 }

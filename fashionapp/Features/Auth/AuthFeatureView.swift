@@ -106,13 +106,13 @@ struct AuthFeatureView: View {
                 VStack(spacing: AppSpacing.lg) {
                     header
 
-                    GlassEffectContainer(spacing: 16) {
+                    SylyoGlassContainer(spacing: 16) {
                         VStack(spacing: 16) {
                             modePicker
 
                             if viewModel.mode == .signUp {
                                 field("Name", text: $viewModel.displayName, contentType: .name)
-                                    .glassEffectID("auth-name", in: glassNamespace)
+                                    .sylyoGlassEffectID("auth-name", in: glassNamespace)
                             }
 
                             field(
@@ -121,19 +121,19 @@ struct AuthFeatureView: View {
                                 contentType: .emailAddress,
                                 keyboard: .emailAddress
                             )
-                            .glassEffectID("auth-email", in: glassNamespace)
+                            .sylyoGlassEffectID("auth-email", in: glassNamespace)
 
                             SecureField("Password", text: $viewModel.password)
                                 .textContentType(viewModel.mode == .signUp ? .newPassword : .password)
                                 .padding()
                                 .liquidGlass(cornerRadius: AppRadius.medium, interactive: true, tint: AppColors.brand)
-                                .glassEffectID("auth-password", in: glassNamespace)
+                                .sylyoGlassEffectID("auth-password", in: glassNamespace)
                         }
                     }
 
                     statusMessages
 
-                    GlassEffectContainer(spacing: 12) {
+                    SylyoGlassContainer(spacing: 12) {
                         VStack(spacing: 12) {
                             Button {
                                 Task { await viewModel.submit() }
@@ -152,7 +152,7 @@ struct AuthFeatureView: View {
                                 isDisabled: !viewModel.canSubmit
                             ))
                             .disabled(!viewModel.canSubmit)
-                            .glassEffectID("auth-primary", in: glassNamespace)
+                            .sylyoGlassEffectID("auth-primary", in: glassNamespace)
 
                             if viewModel.mode == .signIn {
                                 Button("Forgot password?") {
@@ -160,7 +160,7 @@ struct AuthFeatureView: View {
                                 }
                                 .buttonStyle(LiquidGlassButtonStyle(prominent: false, tint: AppColors.brand))
                                 .disabled(viewModel.isLoading)
-                                .glassEffectID("auth-reset", in: glassNamespace)
+                                .sylyoGlassEffectID("auth-reset", in: glassNamespace)
                             }
 
                             Button {
@@ -175,7 +175,7 @@ struct AuthFeatureView: View {
                                 isDisabled: viewModel.isLoading
                             ))
                             .disabled(viewModel.isLoading)
-                            .glassEffectID("auth-guest", in: glassNamespace)
+                            .sylyoGlassEffectID("auth-guest", in: glassNamespace)
                         }
                     }
 

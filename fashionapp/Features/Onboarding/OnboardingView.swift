@@ -64,7 +64,7 @@ struct OnboardingView: View {
     }
 
     private var pageIndicators: some View {
-        GlassEffectContainer(spacing: 8) {
+        SylyoGlassContainer(spacing: 8) {
             HStack(spacing: 8) {
                 ForEach(pages.indices, id: \.self) { idx in
                     Capsule()
@@ -80,7 +80,7 @@ struct OnboardingView: View {
     }
 
     private var splashButtons: some View {
-        GlassEffectContainer(spacing: 12) {
+        SylyoGlassContainer(spacing: 12) {
             HStack(spacing: 12) {
                 if page > 0 {
                     Button {
@@ -92,7 +92,7 @@ struct OnboardingView: View {
                             .frame(minWidth: 72)
                     }
                     .buttonStyle(LiquidGlassButtonStyle(prominent: false, tint: AppColors.brand))
-                    .glassEffectID("splash-back", in: glassNamespace)
+                    .sylyoGlassEffectID("splash-back", in: glassNamespace)
                 }
 
                 if !isLastPage {
@@ -105,7 +105,7 @@ struct OnboardingView: View {
                             .frame(minWidth: 64)
                     }
                     .buttonStyle(LiquidGlassButtonStyle(prominent: false, tint: AppColors.brand))
-                    .glassEffectID("splash-skip", in: glassNamespace)
+                    .sylyoGlassEffectID("splash-skip", in: glassNamespace)
                 }
 
                 Button {
@@ -125,7 +125,7 @@ struct OnboardingView: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(LiquidGlassButtonStyle(prominent: true, tint: AppColors.brand))
-                .glassEffectID("splash-primary", in: glassNamespace)
+                .sylyoGlassEffectID("splash-primary", in: glassNamespace)
             }
         }
     }

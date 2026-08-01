@@ -112,7 +112,7 @@ struct AssistantFeatureView: View {
     }
 
     private var composer: some View {
-        GlassEffectContainer(spacing: 10) {
+        SylyoGlassContainer(spacing: 10) {
             HStack(spacing: 10) {
                 TextField("What should I wear today?", text: $viewModel.input, axis: .vertical)
                     .lineLimit(1...4)

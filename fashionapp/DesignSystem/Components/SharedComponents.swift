@@ -60,7 +60,7 @@ struct LoadingRingsView: View {
     @State private var spinning = false
 
     var body: some View {
-        GlassEffectContainer(spacing: 24) {
+        SylyoGlassContainer(spacing: 24) {
             VStack(spacing: 20) {
                 ZStack {
                     ForEach(0..<3, id: \.self) { index in
@@ -105,7 +105,7 @@ struct EmptyWardrobeState: View {
     var action: () -> Void
 
     var body: some View {
-        GlassEffectContainer(spacing: 20) {
+        SylyoGlassContainer(spacing: 20) {
             VStack(spacing: 25) {
                 Image(systemName: "tshirt.fill")
                     .font(.system(size: 54))

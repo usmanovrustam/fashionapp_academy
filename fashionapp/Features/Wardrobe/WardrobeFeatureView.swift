@@ -199,7 +199,7 @@ struct WardrobeItemDetailView: View {
                     } label: {
                         Image(systemName: "trash")
                     }
-                    .buttonStyle(.glass)
+                    .buttonStyle(LiquidGlassButtonStyle(prominent: false, tint: AppColors.brand))
                     .tint(.red)
                     .controlSize(.large)
                     .buttonBorderShape(.circle)
