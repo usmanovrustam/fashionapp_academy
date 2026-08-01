@@ -6,15 +6,17 @@ import UIKit
 /// U²-Net based segmenter / background remover.
 /// Designed behind protocols so the CoreML model can be swapped later.
 final class U2NetClothingSegmenter: ClothingSegmenter {
-    private let model: VNCoreMLModel?
+    /// Loaded on first scan — not during `AppContainer` init / app launch.
+    private lazy var model: VNCoreMLModel? = Self.loadModel()
     private let inputSize = 320
 
-    init() {
-        if let mlModel = try? u2net(configuration: MLModelConfiguration()).model {
-            self.model = try? VNCoreMLModel(for: mlModel)
-        } else {
-            self.model = nil
+    init() {}
+
+    private static func loadModel() -> VNCoreMLModel? {
+        guard let mlModel = try? u2net(configuration: MLModelConfiguration()).model else {
+            return nil
         }
+        return try? VNCoreMLModel(for: mlModel)
     }
 
     func segment(imageData: Data) async throws -> Data {

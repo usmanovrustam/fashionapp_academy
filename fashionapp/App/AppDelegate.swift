@@ -13,10 +13,16 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
     private(set) var sharedContainer: AppContainer
 
     override init() {
-        // Configure before any Firebase product (Auth / Analytics / Storage) is touched.
         _ = FirebaseBootstrap.configureIfPossible()
-        // App launch is on the main thread; AppContainer is MainActor-isolated.
-        sharedContainer = AppContainer()
+        // `AppContainer` is `@MainActor`. App launch is on the main thread — build it there
+        // without loading Core ML models (those are lazy on first scan).
+        if Thread.isMainThread {
+            sharedContainer = MainActor.assumeIsolated { AppContainer() }
+        } else {
+            sharedContainer = DispatchQueue.main.sync {
+                MainActor.assumeIsolated { AppContainer() }
+            }
+        }
         super.init()
     }
 

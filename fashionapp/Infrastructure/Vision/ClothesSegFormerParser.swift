@@ -10,7 +10,10 @@ import CoreML
 ///
 /// Safe for background threads: uses Core Graphics + pointer I/O (no UIGraphicsImageRenderer).
 final class ClothesSegFormerParser: @unchecked Sendable {
-    static let shared = ClothesSegFormerParser()
+    /// Lazy so TestFlight / cold launch does not compile+load Core ML before first scan.
+    static let shared: ClothesSegFormerParser = {
+        ClothesSegFormerParser()
+    }()
 
     private let model: MLModel?
     private let inputSize = 512
@@ -112,7 +115,8 @@ final class ClothesSegFormerParser: @unchecked Sendable {
 
     private static func loadModel() -> MLModel? {
         let config = MLModelConfiguration()
-        config.computeUnits = .all
+        // Prefer CPU+GPU; `.all` (ANE) has crashed some devices while compiling at first load.
+        config.computeUnits = .cpuAndGPU
 
         let candidates: [URL?] = [
             Bundle.main.url(forResource: "ClothesSegFormer", withExtension: "mlmodelc"),
@@ -121,8 +125,13 @@ final class ClothesSegFormerParser: @unchecked Sendable {
         ]
 
         for url in candidates.compactMap({ $0 }) {
-            if let model = try? MLModel(contentsOf: url, configuration: config) {
-                return model
+            do {
+                return try MLModel(contentsOf: url, configuration: config)
+            } catch {
+                #if DEBUG
+                print("⚠️ ClothesSegFormer failed to load from \(url.lastPathComponent): \(error)")
+                #endif
+                continue
             }
         }
         return nil

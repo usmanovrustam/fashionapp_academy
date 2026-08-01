@@ -270,34 +270,39 @@ final class DefaultClothingScanPipeline: ClothingScanPipeline {
     private let segmenter: ClothingSegmenter
     private let backgroundRemover: BackgroundRemover
     private let metadataExtractor: ClothingMetadataExtractor
-    private let clothesParser: ClothesSegFormerParser
+    /// Lazily resolves SegFormer so app launch does not load a ~50MB Core ML model.
+    private let clothesParserProvider: () -> ClothesSegFormerParser
 
     init(
         detector: ClothingDetector,
         segmenter: ClothingSegmenter,
         backgroundRemover: BackgroundRemover,
         metadataExtractor: ClothingMetadataExtractor,
-        clothesParser: ClothesSegFormerParser = .shared
+        clothesParserProvider: @escaping () -> ClothesSegFormerParser = { .shared }
     ) {
         self.detector = detector
         self.segmenter = segmenter
         self.backgroundRemover = backgroundRemover
         self.metadataExtractor = metadataExtractor
-        self.clothesParser = clothesParser
+        self.clothesParserProvider = clothesParserProvider
     }
 
     func scan(imageData: Data) async throws -> ClothingScanResult {
         guard !imageData.isEmpty else { throw DomainError.invalidImage }
 
+        let clothesParser = clothesParserProvider()
         if clothesParser.isAvailable {
-            return try await scanWithSegFormer(imageData: imageData)
+            return try await scanWithSegFormer(parser: clothesParser, imageData: imageData)
         }
         return try await scanWithFallback(imageData: imageData)
     }
 
     /// SegFormer path: classify garment → square-center crop → cutout → metadata.
-    private func scanWithSegFormer(imageData: Data) async throws -> ClothingScanResult {
-        let parsed = try await clothesParser.parse(imageData: imageData)
+    private func scanWithSegFormer(
+        parser: ClothesSegFormerParser,
+        imageData: Data
+    ) async throws -> ClothingScanResult {
+        let parsed = try await parser.parse(imageData: imageData)
 
         var transparentData: Data?
         do {

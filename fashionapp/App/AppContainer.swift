@@ -36,11 +36,14 @@ final class AppContainer: ObservableObject {
     var isFirebaseConfigured: Bool { FirebaseConfig.isConfigured && authService.isFirebaseConfigured }
 
     init() {
-        // Caller (`AppDelegate`) must configure Firebase before constructing this container.
-        precondition(
+        // Prefer configure before Auth/Storage touch; never crash launch if ordering races.
+        _ = FirebaseBootstrap.configureIfPossible()
+        #if DEBUG
+        assert(
             FirebaseBootstrap.isConfigured || !FirebaseConfig.isConfigured,
-            "FirebaseApp.configure() must run before AppContainer when GoogleService-Info.plist is present."
+            "FirebaseApp.configure() should run before AppContainer when GoogleService-Info.plist is present."
         )
+        #endif
 
         let settings = UserDefaultsAppSettings()
         let authService = FirebaseAuthService()
@@ -66,6 +69,7 @@ final class AppContainer: ObservableObject {
             cache: weatherCacheRepository
         )
 
+        // Do not touch ClothesSegFormerParser.shared here — default provider is lazy on first scan.
         let pipeline = DefaultClothingScanPipeline(
             detector: HeuristicClothingDetector(),
             segmenter: U2NetClothingSegmenter(),

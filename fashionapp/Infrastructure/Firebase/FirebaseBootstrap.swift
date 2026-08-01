@@ -34,7 +34,8 @@ enum FirebaseBootstrap {
         }
 
         // Prefer explicit options from the bundled plist (clearer than implicit default lookup).
-        if let options = FirebaseOptions(contentsOfFile: FirebaseConfig.plistURLInBundle!.path) {
+        if let plistURL = FirebaseConfig.plistURLInBundle,
+           let options = FirebaseOptions(contentsOfFile: plistURL.path) {
             FirebaseApp.configure(options: options)
         } else {
             FirebaseApp.configure()
