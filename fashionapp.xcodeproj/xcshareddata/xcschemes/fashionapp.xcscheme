@@ -29,8 +29,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "A71CCD13486F4257AACB71AB"
-               BuildableName = "SylyoWidgets.appex"
-               BlueprintName = "SylyoWidgets"
+               BuildableName = "NookWidgets.appex"
+               BlueprintName = "NookWidgets"
                ReferencedContainer = "container:fashionapp.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>

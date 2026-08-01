@@ -19,7 +19,7 @@ if git grep -nE "$PATTERN" -- \
 fi
 
 # Entitlements must not enable iCloud containers.
-if rg -n 'com\.apple\.developer\.icloud|iCloud\.' fashionapp/*.entitlements SylyoWidgets/*.entitlements 2>/dev/null; then
+if rg -n 'com\.apple\.developer\.icloud|iCloud\.' fashionapp/*.entitlements NookWidgets/*.entitlements 2>/dev/null; then
   echo "❌ iCloud entitlements still present"
   exit 1
 fi
