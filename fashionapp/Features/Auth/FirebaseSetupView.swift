@@ -11,7 +11,7 @@ struct FirebaseSetupView: View {
                         .font(.system(size: 56, weight: .semibold))
                         .foregroundStyle(AppColors.primaryGradient)
                         .padding(28)
-                        .liquidGlass(cornerRadius: 40, tint: AppColors.brand)
+                        .liquidGlass(cornerRadius: 40)
 
                     Text("Connect Firebase")
                         .font(.system(size: 32, weight: .bold, design: .rounded))
@@ -31,7 +31,7 @@ struct FirebaseSetupView: View {
                                 .foregroundStyle(AppColors.brand)
                                 .padding(10)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .liquidGlass(cornerRadius: 10, tint: AppColors.brand)
+                                .liquidGlass(cornerRadius: 10)
 
                             Text("Download GoogleService-Info.plist from Firebase Console → Project settings → Your apps (bundle id \(FirebaseConfig.expectedBundleID)), then put it at the path above and rebuild.")
                                 .font(.subheadline)

@@ -134,7 +134,7 @@ struct ScannerFeatureView: View {
                                         .font(.subheadline.weight(.medium))
                                 }
                                 .padding(24)
-                                .liquidGlass(cornerRadius: AppRadius.photo, tint: AppColors.brand)
+                                .liquidGlass(cornerRadius: AppRadius.photo)
                             }
                         }
                 } else {

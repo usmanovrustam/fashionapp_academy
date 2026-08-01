@@ -155,8 +155,8 @@ extension View {
         ))
     }
 
-    /// Capsule Liquid Glass control.
-    func liquidGlassCapsule(interactive: Bool = true, tint: Color? = AppColors.brand) -> some View {
+    /// Capsule Liquid Glass control (untinted / clear by default).
+    func liquidGlassCapsule(interactive: Bool = true, tint: Color? = nil) -> some View {
         modifier(LiquidGlassCapsuleModifier(interactive: interactive, tint: tint))
     }
 
@@ -197,28 +197,22 @@ private struct LiquidGlassCapsuleModifier: ViewModifier {
     }
 }
 
-/// Pastel brown CTA with white label text.
+/// Clear Liquid Glass CTA — no color tint on the glass surface.
+/// `tint` only affects label color when provided (e.g. destructive red).
 struct LiquidGlassButtonStyle: ButtonStyle {
     var prominent: Bool = true
-    var tint: Color? = AppColors.brand
+    var tint: Color? = nil
     var isDisabled: Bool = false
 
     func makeBody(configuration: Configuration) -> some View {
-        let fill = tint ?? AppColors.brand
-        return configuration.label
+        configuration.label
             .font(AppTypography.headline)
-            .foregroundStyle(Color.white)
+            .foregroundStyle(tint ?? AppColors.ink)
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 22)
             .padding(.vertical, 16)
-            .background {
-                Capsule()
-                    .fill(fill.opacity(isDisabled ? 0.45 : (configuration.isPressed ? 0.82 : (prominent ? 0.95 : 0.78))))
-            }
-            .liquidGlassCapsule(
-                interactive: !isDisabled,
-                tint: fill
-            )
+            .liquidGlassCapsule(interactive: !isDisabled, tint: nil)
+            .opacity(isDisabled ? 0.45 : (configuration.isPressed ? 0.86 : 1))
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
     }
@@ -229,7 +223,7 @@ struct GradientPrimaryButtonStyle: ButtonStyle {
     var isDisabled: Bool = false
 
     func makeBody(configuration: Configuration) -> some View {
-        LiquidGlassButtonStyle(prominent: true, tint: AppColors.brand, isDisabled: isDisabled)
+        LiquidGlassButtonStyle(prominent: true, isDisabled: isDisabled)
             .makeBody(configuration: configuration)
     }
 }
@@ -238,14 +232,14 @@ extension View {
     /// Primary glass-styled control.
     func sylyoGlassProminent(disabled: Bool = false) -> some View {
         self
-            .buttonStyle(LiquidGlassButtonStyle(prominent: true, tint: AppColors.brand, isDisabled: disabled))
+            .buttonStyle(LiquidGlassButtonStyle(prominent: true, isDisabled: disabled))
             .disabled(disabled)
     }
 
     /// Secondary glass-styled control.
     func sylyoGlass(disabled: Bool = false) -> some View {
         self
-            .buttonStyle(LiquidGlassButtonStyle(prominent: false, tint: AppColors.brand, isDisabled: disabled))
+            .buttonStyle(LiquidGlassButtonStyle(prominent: false, isDisabled: disabled))
             .disabled(disabled)
     }
 }

@@ -126,15 +126,11 @@ private struct FilterChip: View {
         Button(action: action) {
             Text(title)
                 .font(.subheadline.weight(.semibold))
-                .foregroundColor(selected ? .white : AppColors.brand)
+                .foregroundColor(selected ? AppColors.ink : AppColors.ink.opacity(0.55))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
-                .background {
-                    if selected {
-                        Capsule().fill(AppColors.primaryGradient)
-                    }
-                }
-                .liquidGlassCapsule(interactive: true, tint: selected ? AppColors.accent : AppColors.brand)
+                .liquidGlassCapsule(interactive: true)
+                .opacity(selected ? 1 : 0.72)
         }
         .buttonStyle(ScaleButtonStyle())
     }
@@ -175,7 +171,7 @@ struct WardrobeItemDetailView: View {
                     contentMode: .fit
                 )
                 .frame(maxWidth: .infinity)
-                .liquidGlass(cornerRadius: AppRadius.xLarge, tint: AppColors.brand)
+                .liquidGlass(cornerRadius: AppRadius.xLarge)
 
                 Text(item.name)
                     .font(AppTypography.title)
