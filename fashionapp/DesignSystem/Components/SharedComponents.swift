@@ -26,13 +26,17 @@ struct WardrobeItemCard: View {
 
                 VStack {
                     Spacer()
-                    LinearGradient(
-                        colors: [Color.clear, Color.black.opacity(0.4)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                    .frame(height: 60)
-                    .clipShape(RoundedRectangle(cornerRadius: AppRadius.large, style: .continuous))
+                    Color.black.opacity(0.35)
+                        .frame(height: 56)
+                        .clipShape(
+                            UnevenRoundedRectangle(
+                                topLeadingRadius: 0,
+                                bottomLeadingRadius: AppRadius.large,
+                                bottomTrailingRadius: AppRadius.large,
+                                topTrailingRadius: 0,
+                                style: .continuous
+                            )
+                        )
                 }
 
                 VStack {

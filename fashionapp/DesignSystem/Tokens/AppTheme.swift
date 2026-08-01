@@ -34,23 +34,14 @@ enum AppColors {
     /// Legacy alias → primary text.
     static let ink = textPrimary
 
-    /// Near-white screen base (keeps UI calm).
+    /// Flat white screen base — no gradients.
     static let backgroundTop = Color.white
-    /// Very light gold tint of `#fee697` mixed toward white.
-    static let backgroundBottom = Color(hex: 0xFFFBF2)
+    static let backgroundBottom = Color.white
 
-    /// Decorative gradient: amber → olive (controls / icons — not full-screen fills).
-    static let primaryGradient = LinearGradient(
-        colors: [accent, olive],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
-    /// Subtle white → whisper-gold wash for all main tabs.
-    static let softBackground = LinearGradient(
-        colors: [backgroundTop, backgroundBottom],
-        startPoint: .top,
-        endPoint: .bottom
-    )
+    /// Solid brand fill for icons / strokes (legacy name kept for call sites).
+    static let primaryGradient = olive
+    /// Flat white screen fill.
+    static let softBackground = Color.white
     static let cardShadow = espresso.opacity(0.08)
     static let brandShadow = olive.opacity(0.12)
 
@@ -102,18 +93,8 @@ enum AppTypography {
 
 struct SoftBackground: View {
     var body: some View {
-        ZStack {
-            Color.white
-            // Single whisper of brand gold — no amber/olive washes on screens.
-            AppColors.softBackground
-            RadialGradient(
-                colors: [AppColors.brand.opacity(0.10), Color.clear],
-                center: .topTrailing,
-                startRadius: 40,
-                endRadius: 480
-            )
-        }
-        .ignoresSafeArea()
+        Color.white
+            .ignoresSafeArea()
     }
 }
 
@@ -270,15 +251,9 @@ struct LiquidGlassButtonStyle: ButtonStyle {
         if let tint {
             Capsule().fill(tint.opacity(prominent ? 0.95 : 0.82))
         } else if prominent {
-            Capsule().fill(
-                LinearGradient(
-                    colors: [AppColors.buttonBlue, AppColors.buttonBlueDark],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
+            Capsule().fill(AppColors.olive)
         } else {
-            Capsule().fill(AppColors.buttonBlue.opacity(0.90))
+            Capsule().fill(AppColors.olive.opacity(0.90))
         }
     }
 }

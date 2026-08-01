@@ -353,32 +353,15 @@ struct ScanningShimmerOverlay: View {
             ZStack {
                 Color.black.opacity(0.38)
 
-                LinearGradient(
-                    colors: [
-                        .clear,
-                        AppColors.accent.opacity(0.22),
-                        Color.white.opacity(0.55),
-                        AppColors.accent.opacity(0.22),
-                        .clear
-                    ],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .frame(width: geo.size.width * 0.55)
-                .offset(x: sweep * geo.size.width)
-                .blur(radius: 1.5)
+                // Flat sweep (no gradients).
+                Color.white.opacity(0.28)
+                    .frame(width: geo.size.width * 0.28)
+                    .offset(x: sweep * geo.size.width)
 
                 Rectangle()
-                    .fill(
-                        LinearGradient(
-                            colors: [.clear, Color.white.opacity(0.85), AppColors.accent.opacity(0.75), .clear],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .frame(height: 3)
+                    .fill(AppColors.accent)
+                    .frame(height: 2)
                     .offset(y: (scanY - 0.5) * geo.size.height)
-                    .shadow(color: AppColors.accent.opacity(0.45), radius: 6, y: 0)
 
                 VStack(spacing: 10) {
                     Image(systemName: "sparkles")
