@@ -20,7 +20,7 @@ struct WardrobeItemCard: View {
                     RoundedRectangle(cornerRadius: AppRadius.large, style: .continuous)
                         .fill(Color(.systemGray5).opacity(0.5))
                         .frame(width: width, height: height)
-                        .overlay(ProgressView().tint(AppColors.brand))
+                        .overlay(ProgressView().tint(AppColors.olive))
                         .liquidGlass(cornerRadius: AppRadius.large)
                 }
 
@@ -62,7 +62,7 @@ struct LoadingRingsView: View {
         VStack(spacing: 16) {
             ProgressView()
                 .controlSize(.large)
-                .tint(AppColors.brand)
+                .tint(AppColors.olive)
             Text(message)
                 .font(AppTypography.roundedMedium)
                 .foregroundStyle(AppColors.textSecondary)
@@ -179,7 +179,7 @@ struct StoredImageView: View {
                     .aspectRatio(contentMode: contentMode)
             } else {
                 Color.clear
-                    .overlay(ProgressView().tint(AppColors.brand))
+                    .overlay(ProgressView().tint(AppColors.olive))
                     .liquidGlass(cornerRadius: AppRadius.medium)
             }
         }
