@@ -172,24 +172,34 @@ struct AuthFeatureView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    header
-
-                    // SIWA first — prominent, no scroll required on typical iPhone (HIG SIWA).
-                    signInWithAppleSection
-
-                    dividerLabel("or use email")
-
+                VStack(spacing: 12) {
                     formFields
                     statusMessages
                     emailActions
+
+                    if viewModel.mode == .signIn {
+                        Button("Forgot Password?") {
+                            Task { await viewModel.resetPassword() }
+                        }
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(AppColors.buttonBlue)
+                        .disabled(viewModel.isLoading)
+                    }
+
                     modeSwitchLink
+
+                    dividerLabel("or")
+
+                    // Apple under email/password (after primary email path).
+                    signInWithAppleSection
+
                     privacyFootnote
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 12)
-                .padding(.bottom, 32)
-                .frame(maxWidth: 560)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
+                .padding(.top, 28)
+                .padding(.bottom, 24)
+                .frame(maxWidth: 420)
                 .frame(maxWidth: .infinity)
             }
             .scrollDismissesKeyboard(.interactively)
@@ -207,59 +217,30 @@ struct AuthFeatureView: View {
         .preferredColorScheme(.light)
     }
 
-    // MARK: - Header
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Sylyo")
-                .font(.largeTitle.weight(.bold))
-                .foregroundStyle(AppColors.textPrimary)
-                .accessibilityAddTraits(.isHeader)
-
-            Text(viewModel.mode == .signIn ? "Sign in to your account" : "Create your account")
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(AppColors.textPrimary)
-                .animation(nil, value: viewModel.mode)
-
-            Text("Sync your wardrobe and get personalized outfits across devices. Sign in with Apple is fast and private.")
-                .font(.subheadline)
-                .foregroundStyle(AppColors.placeholder)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-    }
-
     // MARK: - Sign in with Apple
 
     private var signInWithAppleSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            SignInWithAppleButton(viewModel.mode.appleButtonType) { request in
-                viewModel.prepareAppleRequest(request)
-            } onCompletion: { result in
-                Task { await viewModel.handleAppleCompletion(result) }
-            }
-            // Black style on light backgrounds (HIG SIWA).
-            .signInWithAppleButtonStyle(.black)
-            // Match capsule CTAs; min size 140×30, keep ≥ other buttons.
-            .frame(maxWidth: .infinity)
-            .frame(height: 50)
-            .clipShape(Capsule())
-            // Margin ≥ 1/10 of button height around the control.
-            .padding(.vertical, 5)
-            .disabled(viewModel.isLoading)
-            .opacity(viewModel.isLoading ? 0.6 : 1)
-            .accessibilityHint("Uses your Apple Account with Face ID or Touch ID when available")
+        SignInWithAppleButton(viewModel.mode.appleButtonType) { request in
+            viewModel.prepareAppleRequest(request)
+        } onCompletion: { result in
+            Task { await viewModel.handleAppleCompletion(result) }
         }
+        .signInWithAppleButtonStyle(.black)
+        .frame(maxWidth: .infinity)
+        .frame(height: 48)
+        .clipShape(Capsule())
+        .disabled(viewModel.isLoading)
+        .opacity(viewModel.isLoading ? 0.6 : 1)
+        .accessibilityHint("Uses your Apple Account with Face ID or Touch ID when available")
     }
 
     private func dividerLabel(_ text: String) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
             Rectangle()
                 .fill(AppColors.textTertiary.opacity(0.22))
                 .frame(height: 1)
             Text(text)
-                .font(.footnote.weight(.medium))
+                .font(.caption.weight(.medium))
                 .foregroundStyle(AppColors.placeholder)
                 .layoutPriority(1)
             Rectangle()
@@ -301,67 +282,52 @@ struct AuthFeatureView: View {
                 .foregroundStyle(AppColors.buttonBlue)
             }
         }
-        .font(.subheadline)
+        .font(.footnote)
         .frame(maxWidth: .infinity)
-        .frame(minHeight: 44)
-        .multilineTextAlignment(.center)
+        .padding(.vertical, 2)
         .accessibilityElement(children: .combine)
     }
 
     // MARK: - Fields
 
     private var formFields: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 10) {
             if viewModel.mode == .signUp {
-                labeledField(title: "Name", field: .name) {
+                plainField(field: .name) {
                     TextField(
                         "",
                         text: $viewModel.displayName,
-                        prompt: Text("Your name").foregroundStyle(AppColors.placeholder)
+                        prompt: Text("Name").foregroundStyle(AppColors.placeholder)
                     )
-                        .textContentType(.name)
-                        .textInputAutocapitalization(.words)
-                        .autocorrectionDisabled()
-                        .submitLabel(.next)
-                        .focused($focusedField, equals: .name)
-                        .onSubmit { focusedField = .email }
+                    .multilineTextAlignment(.center)
+                    .textContentType(.name)
+                    .textInputAutocapitalization(.words)
+                    .autocorrectionDisabled()
+                    .submitLabel(.next)
+                    .focused($focusedField, equals: .name)
+                    .onSubmit { focusedField = .email }
                 }
-                .transition(.opacity.combined(with: .move(edge: .top)))
+                .transition(.opacity)
             }
 
-            labeledField(title: "Email", field: .email) {
+            plainField(field: .email) {
                 TextField(
                     "",
                     text: $viewModel.email,
-                    prompt: Text("name@example.com").foregroundStyle(AppColors.placeholder)
+                    prompt: Text("Email").foregroundStyle(AppColors.placeholder)
                 )
-                    .textContentType(.emailAddress)
-                    .keyboardType(.emailAddress)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .submitLabel(.next)
-                    .focused($focusedField, equals: .email)
-                    .onSubmit { focusedField = .password }
+                .multilineTextAlignment(.center)
+                .textContentType(.emailAddress)
+                .keyboardType(.emailAddress)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .submitLabel(.next)
+                .focused($focusedField, equals: .email)
+                .onSubmit { focusedField = .password }
             }
 
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Password")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(AppColors.textPrimary)
-                    Spacer(minLength: 8)
-                    if viewModel.mode == .signIn {
-                        Button("Forgot Password?") {
-                            Task { await viewModel.resetPassword() }
-                        }
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(AppColors.buttonBlue)
-                        .disabled(viewModel.isLoading)
-                        .frame(minHeight: 44)
-                    }
-                }
-
-                HStack(spacing: 10) {
+            plainField(field: .password) {
+                HStack(spacing: 8) {
                     Group {
                         if viewModel.isPasswordVisible {
                             TextField(
@@ -369,16 +335,17 @@ struct AuthFeatureView: View {
                                 text: $viewModel.password,
                                 prompt: Text("Password").foregroundStyle(AppColors.placeholder)
                             )
-                                .textContentType(viewModel.mode == .signUp ? .newPassword : .password)
+                            .textContentType(viewModel.mode == .signUp ? .newPassword : .password)
                         } else {
                             SecureField(
                                 "",
                                 text: $viewModel.password,
                                 prompt: Text("Password").foregroundStyle(AppColors.placeholder)
                             )
-                                .textContentType(viewModel.mode == .signUp ? .newPassword : .password)
+                            .textContentType(viewModel.mode == .signUp ? .newPassword : .password)
                         }
                     }
+                    .multilineTextAlignment(.center)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .submitLabel(.go)
@@ -395,36 +362,27 @@ struct AuthFeatureView: View {
                         Image(systemName: viewModel.isPasswordVisible ? "eye.slash" : "eye")
                             .font(.body)
                             .foregroundStyle(AppColors.placeholder)
-                            .frame(width: 44, height: 44)
+                            .frame(width: 36, height: 36)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(viewModel.isPasswordVisible ? "Hide password" : "Show password")
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 4)
-                .frame(minHeight: 48)
-                .background(fieldBackground(focused: focusedField == .password))
             }
         }
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: viewModel.mode)
     }
 
-    private func labeledField<Content: View>(
-        title: String,
+    private func plainField<Content: View>(
         field: Field,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(AppColors.textPrimary)
-            content()
-                .padding(.horizontal, 14)
-                .padding(.vertical, 12)
-                .frame(minHeight: 48)
-                .background(fieldBackground(focused: focusedField == field))
-        }
+        content()
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .frame(minHeight: 48)
+            .frame(maxWidth: .infinity)
+            .background(fieldBackground(focused: focusedField == field))
     }
 
     private func fieldBackground(focused: Bool) -> some View {
@@ -445,26 +403,27 @@ struct AuthFeatureView: View {
     private var statusMessages: some View {
         if let error = viewModel.errorMessage {
             Label(error, systemImage: "exclamationmark.triangle.fill")
-                .font(.footnote)
+                .font(.caption)
                 .foregroundStyle(Color(.systemRed))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(12)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .padding(10)
                 .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .fill(Color(.systemRed).opacity(0.10))
                 )
-                // accessibilityLiveRegion requires a newer SDK than our iOS 18 deployment.
                 .accessibilityAddTraits(.isStaticText)
         }
 
         if let info = viewModel.infoMessage {
             Label(info, systemImage: "checkmark.circle.fill")
-                .font(.footnote)
+                .font(.caption)
                 .foregroundStyle(Color(.systemGreen))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(12)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .padding(10)
                 .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .fill(Color(.systemGreen).opacity(0.10))
                 )
                 .accessibilityAddTraits(.isStaticText)
@@ -478,7 +437,7 @@ struct AuthFeatureView: View {
             focusedField = nil
             Task { await viewModel.submit() }
         } label: {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 if viewModel.isLoading {
                     ProgressView()
                         .controlSize(.small)
@@ -502,10 +461,9 @@ struct AuthFeatureView: View {
 
     private var privacyFootnote: some View {
         Text("Sign in with Apple shares only the name and email you choose.")
-            .font(.footnote)
+            .font(.caption2)
             .foregroundStyle(AppColors.placeholder)
-            .multilineTextAlignment(.leading)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 4)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
     }
 }
