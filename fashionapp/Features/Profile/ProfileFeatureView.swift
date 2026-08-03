@@ -19,15 +19,17 @@ final class ProfileViewModel: ObservableObject {
     @Published var showClearAlert = false
     @Published var showResetAlert = false
     @Published var showSignOutAlert = false
+    @Published var showMarkAllWashedAlert = false
     @Published var avatarImage: UIImage?
     @Published var authUser: AuthUser?
+    @Published var laundryItems: [WardrobeItem] = []
 
     private let profileRepository: UserProfileRepository
     private let wardrobeRepository: WardrobeRepository
     private let statisticsUseCase: ComputeWardrobeStatisticsUseCase
     private let settings: AppSettingsProviding
     private let notifications: NotificationScheduling
-    private let imageStorage: ImageStorage
+    let imageStorage: ImageStorage
     private let analytics: AnalyticsTracking
     private let signOutAction: () -> Void
 
@@ -42,6 +44,8 @@ final class ProfileViewModel: ObservableObject {
         self.signOutAction = { container.signOut() }
         self.authUser = container.currentAuthUser
     }
+
+    var laundryCount: Int { laundryItems.count }
 
     var usesCelsius: Bool {
         get { settings.usesCelsius }
@@ -121,11 +125,46 @@ final class ProfileViewModel: ObservableObject {
             }
             let items = try await wardrobeRepository.fetchAll()
             statistics = statisticsUseCase.execute(items: items)
+            laundryItems = items
+                .filter(\.isInLaundry)
+                .sorted { $0.updatedAt > $1.updatedAt }
             if let path = profile.avatarImagePath {
                 avatarImage = UIImage(data: (try? await imageStorage.loadImageData(at: path)) ?? Data())
             }
         } catch {
             // Keep defaults.
+        }
+    }
+
+    func markWashed(_ item: WardrobeItem) async {
+        var updated = item
+        updated.isInLaundry = false
+        updated.updatedAt = Date()
+        do {
+            try await wardrobeRepository.save(updated)
+            laundryItems.removeAll { $0.id == item.id }
+            let items = try await wardrobeRepository.fetchAll()
+            statistics = statisticsUseCase.execute(items: items)
+        } catch {
+            // Keep current list; refresh on next load.
+        }
+    }
+
+    func markAllWashed() async {
+        let pending = laundryItems
+        guard !pending.isEmpty else { return }
+        do {
+            for item in pending {
+                var updated = item
+                updated.isInLaundry = false
+                updated.updatedAt = Date()
+                try await wardrobeRepository.save(updated)
+            }
+            laundryItems = []
+            let items = try await wardrobeRepository.fetchAll()
+            statistics = statisticsUseCase.execute(items: items)
+        } catch {
+            await load()
         }
     }
 
@@ -162,6 +201,7 @@ final class ProfileViewModel: ObservableObject {
         settings.clearLocalPreferences()
         profile = .default
         statistics = statisticsUseCase.execute(items: [])
+        laundryItems = []
         avatarImage = nil
     }
 
@@ -186,6 +226,7 @@ struct ProfileFeatureView: View {
             List {
                 profileSection
                 wardrobeSection
+                laundrySection
                 accountSection
                 preferencesSection
                 aboutSection
@@ -247,6 +288,21 @@ struct ProfileFeatureView: View {
             } message: {
                 Text(NSLocalizedString("Are you sure you want to log out?", comment: ""))
             }
+            .alert(
+                NSLocalizedString("Mark all washed?", comment: ""),
+                isPresented: $viewModel.showMarkAllWashedAlert
+            ) {
+                Button(NSLocalizedString("Mark all washed", comment: "")) {
+                    Task { await viewModel.markAllWashed() }
+                }
+                Button(NSLocalizedString("Cancel", comment: ""), role: .cancel) {}
+            } message: {
+                Text(NSLocalizedString(
+                    "This clears the need-to-wash mark on every piece in laundry.",
+                    comment: "Confirm mark all laundry washed"
+                ))
+            }
+            .refreshable { await viewModel.load() }
         }
     }
 
@@ -325,6 +381,80 @@ struct ProfileFeatureView: View {
             )
         } header: {
             Text(NSLocalizedString("Wardrobe", comment: ""))
+        }
+    }
+
+    private var laundrySection: some View {
+        Section {
+            labeledValueRow(
+                title: NSLocalizedString("Needs wash", comment: ""),
+                value: "\(viewModel.laundryCount)",
+                systemImage: "washer"
+            )
+
+            if viewModel.laundryItems.isEmpty {
+                Text(NSLocalizedString(
+                    "Nothing in laundry. Mark pieces from the calendar when they need a wash.",
+                    comment: "Empty laundry footer-style row"
+                ))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            } else {
+                ForEach(viewModel.laundryItems.prefix(8)) { item in
+                    HStack(spacing: 12) {
+                        ProfileLaundryThumb(item: item, storage: viewModel.imageStorage)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.name)
+                                .font(.body)
+                                .lineLimit(1)
+                            Text(item.category.displayName)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer(minLength: 8)
+
+                        Button {
+                            Task { await viewModel.markWashed(item) }
+                        } label: {
+                            Text(NSLocalizedString("Washed", comment: "Mark single laundry item washed"))
+                                .font(.subheadline.weight(.semibold))
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(AppColors.olive)
+                    }
+                    .padding(.vertical, 2)
+                }
+
+                if viewModel.laundryCount > 8 {
+                    Text(
+                        String(
+                            format: NSLocalizedString("+%d more in laundry", comment: ""),
+                            viewModel.laundryCount - 8
+                        )
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+
+                Button {
+                    viewModel.showMarkAllWashedAlert = true
+                } label: {
+                    Label(
+                        NSLocalizedString("Mark all washed", comment: ""),
+                        systemImage: "checkmark.circle"
+                    )
+                }
+                .tint(AppColors.olive)
+            }
+        } header: {
+            Text(NSLocalizedString("Laundry", comment: ""))
+        } footer: {
+            Text(NSLocalizedString(
+                "Pieces marked on the calendar stay here until you mark them washed.",
+                comment: "Laundry section footer"
+            ))
         }
     }
 
