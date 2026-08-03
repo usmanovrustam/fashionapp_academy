@@ -698,3 +698,32 @@ struct ProfileFeatureView: View {
         }
     }
 }
+
+private struct ProfileLaundryThumb: View {
+    let item: WardrobeItem
+    let storage: ImageStorage
+    @State private var image: UIImage?
+
+    var body: some View {
+        Group {
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Color(.secondarySystemFill)
+                    .overlay {
+                        Image(systemName: "tshirt")
+                            .foregroundStyle(.secondary)
+                    }
+            }
+        }
+        .frame(width: 44, height: 44)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .task(id: item.id) {
+            let path = item.transparentImagePath ?? item.originalImagePath
+            guard !path.isEmpty else { return }
+            image = UIImage(data: (try? await storage.loadImageData(at: path)) ?? Data())
+        }
+    }
+}
