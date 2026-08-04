@@ -87,6 +87,7 @@
 "Email" = "Email";
 "Preferences" = "Preferences";
 "Use Celsius" = "Use Celsius";
+"Language follows your iPhone settings (%@)." = "Language follows your iPhone settings (%@).";
 "Notifications" = "Notifications";
 "On" = "On";
 "Off" = "Off";

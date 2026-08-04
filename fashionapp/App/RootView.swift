@@ -3,7 +3,6 @@ import SwiftUI
 struct RootView: View {
     @EnvironmentObject private var container: AppContainer
     @AppStorage("didFinishOnboarding") private var didFinishOnboarding = false
-    @AppStorage("selectedLanguage") private var selectedLanguage: String = Locale.current.language.languageCode?.identifier ?? "en"
     @AppStorage("appearanceMode") private var appearanceModeRaw: String = AppAppearanceMode.light.rawValue
 
     private var preferredScheme: ColorScheme? {
@@ -27,7 +26,6 @@ struct RootView: View {
                 MainTabView(didFinishOnboarding: $didFinishOnboarding)
             }
         }
-        .environment(\.locale, Locale(identifier: selectedLanguage))
         .preferredColorScheme(preferredScheme)
         .task {
             _ = await container.authService.refreshSession()

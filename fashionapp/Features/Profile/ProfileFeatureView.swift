@@ -1,6 +1,7 @@
 import SwiftUI
 import PhotosUI
 import StoreKit
+import UIKit
 
 @MainActor
 final class ProfileViewModel: ObservableObject {
@@ -14,7 +15,6 @@ final class ProfileViewModel: ObservableObject {
         leastWornItemID: nil,
         averageFormality: 0
     )
-    @Published var showLanguage = false
     @Published var showNotifications = false
     @Published var showPrivacy = false
     @Published var showTerms = false
@@ -94,12 +94,8 @@ final class ProfileViewModel: ObservableObject {
     }
 
     var selectedLanguage: String {
-        get { settings.selectedLanguage }
-        set {
-            objectWillChange.send()
-            settings.selectedLanguage = newValue
-            UserDefaults.standard.set(newValue, forKey: "selectedLanguage")
-        }
+        // Follow the device / system language — not an in-app override.
+        Locale.current.language.languageCode?.identifier ?? "en"
     }
 
     private func applyReminderSetting(enabled: Bool) async {
@@ -120,10 +116,8 @@ final class ProfileViewModel: ObservableObject {
     }
 
     var languageDisplayName: String {
-        switch selectedLanguage {
-        case "it": return "Italiano"
-        default: return "English"
-        }
+        let code = selectedLanguage
+        return Locale.current.localizedString(forLanguageCode: code)?.capitalized ?? code.uppercased()
     }
 
     var appVersionLabel: String {
@@ -149,6 +143,8 @@ final class ProfileViewModel: ObservableObject {
         do {
             profile = try await profileRepository.load()
             profile.genderNeutralPreferred = false
+            // Keep profile language in sync with the device language.
+            profile.preferredLanguage = selectedLanguage
             if let authName = authUser?.displayName, profile.displayName == UserProfile.default.displayName {
                 profile.displayName = authName
             }
@@ -333,9 +329,6 @@ struct ProfileFeatureView: View {
                     }
                 }
             }
-            .sheet(isPresented: $viewModel.showLanguage) {
-                languageSheet
-            }
             .sheet(isPresented: $viewModel.showNotifications) {
                 NavigationStack {
                     NotificationsSettingsView(viewModel: viewModel)
@@ -498,35 +491,19 @@ struct ProfileFeatureView: View {
 
     private var preferencesSection: some View {
         Section {
-            Button {
-                viewModel.showLanguage = true
-            } label: {
-                HStack {
-                    Label(NSLocalizedString("Language", comment: ""), systemImage: "globe")
-                    Spacer()
-                    Text(viewModel.languageDisplayName)
-                        .foregroundStyle(.secondary)
-                    Image(systemName: "chevron.right")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.tertiary)
-                }
+            disclosureButton(
+                title: NSLocalizedString("Language", comment: ""),
+                systemImage: "globe"
+            ) {
+                openSystemLanguageSettings()
             }
-            .foregroundStyle(.primary)
 
-            Button {
+            disclosureButton(
+                title: NSLocalizedString("Notifications", comment: ""),
+                systemImage: "bell"
+            ) {
                 viewModel.showNotifications = true
-            } label: {
-                HStack {
-                    Label(NSLocalizedString("Notifications", comment: ""), systemImage: "bell")
-                    Spacer()
-                    Text(notificationsStatusLabel)
-                        .foregroundStyle(.secondary)
-                    Image(systemName: "chevron.right")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.tertiary)
-                }
             }
-            .foregroundStyle(.primary)
 
             Picker(
                 selection: Binding(
@@ -554,18 +531,17 @@ struct ProfileFeatureView: View {
             }
         } header: {
             Text(NSLocalizedString("Preferences", comment: ""))
+        } footer: {
+            Text(
+                String(
+                    format: NSLocalizedString(
+                        "Language follows your iPhone settings (%@).",
+                        comment: "Preferences language footer; %@ is current language name"
+                    ),
+                    viewModel.languageDisplayName
+                )
+            )
         }
-    }
-
-    private var notificationsStatusLabel: String {
-        guard viewModel.dailyOutfitReminderEnabled else {
-            return NSLocalizedString("Off", comment: "Notifications disabled")
-        }
-        let hour = viewModel.dailyOutfitReminderHour
-        let period = hour >= 12 ? "PM" : "AM"
-        let display = hour % 12 == 0 ? 12 : hour % 12
-        let on = NSLocalizedString("On", comment: "Notifications enabled")
-        return "\(on) · \(display):00 \(period)"
     }
 
     private var legalSection: some View {
@@ -693,25 +669,6 @@ struct ProfileFeatureView: View {
 
     // MARK: - Sheets
 
-    private var languageSheet: some View {
-        NavigationStack {
-            List {
-                languageRow("English", code: "en")
-                languageRow("Italiano", code: "it")
-            }
-            .listStyle(.insetGrouped)
-            .navigationTitle(NSLocalizedString("Select Language", comment: ""))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(NSLocalizedString("Close", comment: "")) {
-                        viewModel.showLanguage = false
-                    }
-                }
-            }
-        }
-    }
-
     private var favoritesSheet: some View {
         NavigationStack {
             List {
@@ -811,25 +768,9 @@ struct ProfileFeatureView: View {
         }
     }
 
-    private func languageRow(_ title: String, code: String) -> some View {
-        Button {
-            viewModel.selectedLanguage = code
-            viewModel.profile.preferredLanguage = code
-            Task { await viewModel.saveProfile() }
-            viewModel.showLanguage = false
-        } label: {
-            HStack {
-                Text(title)
-                    .foregroundStyle(.primary)
-                Spacer()
-                if viewModel.selectedLanguage == code {
-                    Image(systemName: "checkmark")
-                        .fontWeight(.semibold)
-                        .foregroundStyle(Color.accentColor)
-                        .accessibilityLabel(NSLocalizedString("Selected", comment: ""))
-                }
-            }
-        }
+    private func openSystemLanguageSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
     }
 
     private func infoSheet(title: String, bodyText: String, dismiss: @escaping () -> Void) -> some View {
