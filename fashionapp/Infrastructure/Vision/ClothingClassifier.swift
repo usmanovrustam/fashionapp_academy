@@ -349,7 +349,7 @@ final class DefaultClothingScanPipeline: ClothingScanPipeline {
         )
     }
 
-    /// Legacy Vision + U²-Net path with square crop from the soft mask.
+    /// Legacy Vision + U²-Net path with square crop from the hardened garment mask.
     private func scanWithFallback(imageData: Data) async throws -> ClothingScanResult {
         let (category, detectionConfidence) = try await detector.detectCategory(in: imageData)
 

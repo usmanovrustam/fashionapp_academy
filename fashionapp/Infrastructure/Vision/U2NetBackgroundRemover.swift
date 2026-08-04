@@ -131,28 +131,137 @@ final class U2NetClothingSegmenter: ClothingSegmenter {
                     index = [y as NSNumber, x as NSNumber]
                 }
                 let normalized = (multiArray[index].doubleValue - minValue) / range
-                pixels[y * width + x] = UInt8(max(0, min(255, normalized * 255)))
+                // Harden saliency so fallback cutouts are solid garments, not speckles.
+                pixels[y * width + x] = normalized >= 0.45 ? 255 : 0
             }
         }
 
-        let colorSpace = CGColorSpaceCreateDeviceGray()
-        guard let provider = CGDataProvider(data: Data(pixels) as CFData),
-              let cgImage = CGImage(
-                width: width,
-                height: height,
-                bitsPerComponent: 8,
-                bitsPerPixel: 8,
-                bytesPerRow: width,
-                space: colorSpace,
-                bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.none.rawValue),
-                provider: provider,
-                decode: nil,
-                shouldInterpolate: false,
-                intent: .defaultIntent
-              ) else {
-            return nil
+        Self.erodeMask(&pixels, width: width, height: height, radius: 1)
+        Self.dilateMask(&pixels, width: width, height: height, radius: 1)
+        Self.keepLargestForegroundComponents(&pixels, width: width, height: height, minFractionOfLargest: 0.12)
+        Self.fillMaskHoles(&pixels, width: width, height: height)
+        Self.dilateMask(&pixels, width: width, height: height, radius: 1)
+
+        return ImageProcessing.grayImage(from: pixels, width: width, height: height)
+    }
+
+    private static func keepLargestForegroundComponents(
+        _ pixels: inout [UInt8],
+        width: Int,
+        height: Int,
+        minFractionOfLargest: Float
+    ) {
+        let count = width * height
+        guard count == pixels.count, count > 0 else { return }
+        var labels = [Int](repeating: -1, count: count)
+        var sizes: [Int] = []
+        var nextLabel = 0
+        for start in 0..<count where pixels[start] >= 128 && labels[start] < 0 {
+            var size = 0
+            var queue = [start]
+            labels[start] = nextLabel
+            var head = 0
+            while head < queue.count {
+                let i = queue[head]
+                head += 1
+                size += 1
+                let x = i % width
+                let y = i / width
+                for n in [i - 1, i + 1, i - width, i + width] {
+                    guard n >= 0, n < count, labels[n] < 0, pixels[n] >= 128 else { continue }
+                    let nx = n % width
+                    let ny = n / width
+                    if abs(nx - x) + abs(ny - y) != 1 { continue }
+                    labels[n] = nextLabel
+                    queue.append(n)
+                }
+            }
+            sizes.append(size)
+            nextLabel += 1
         }
-        return UIImage(cgImage: cgImage)
+        guard let largest = sizes.max(), largest > 0 else { return }
+        let minKeep = max(1, Int(Float(largest) * minFractionOfLargest))
+        var keepLabels = Set<Int>()
+        for (label, size) in sizes.enumerated() where size >= minKeep {
+            keepLabels.insert(label)
+        }
+        for i in 0..<count where pixels[i] >= 128 && !keepLabels.contains(labels[i]) {
+            pixels[i] = 0
+        }
+    }
+
+    private static func fillMaskHoles(_ pixels: inout [UInt8], width: Int, height: Int) {
+        let count = width * height
+        guard count == pixels.count, count > 0 else { return }
+        var exterior = [Bool](repeating: false, count: count)
+        var queue: [Int] = []
+        func enqueue(_ idx: Int) {
+            guard idx >= 0, idx < count, !exterior[idx], pixels[idx] < 128 else { return }
+            exterior[idx] = true
+            queue.append(idx)
+        }
+        for x in 0..<width {
+            enqueue(x)
+            enqueue((height - 1) * width + x)
+        }
+        for y in 0..<height {
+            enqueue(y * width)
+            enqueue(y * width + (width - 1))
+        }
+        var head = 0
+        while head < queue.count {
+            let i = queue[head]
+            head += 1
+            let x = i % width
+            let y = i / width
+            if x > 0 { enqueue(i - 1) }
+            if x + 1 < width { enqueue(i + 1) }
+            if y > 0 { enqueue(i - width) }
+            if y + 1 < height { enqueue(i + width) }
+        }
+        for i in 0..<count where pixels[i] < 128 && !exterior[i] {
+            pixels[i] = 255
+        }
+    }
+
+    private static func dilateMask(_ pixels: inout [UInt8], width: Int, height: Int, radius: Int) {
+        guard radius > 0 else { return }
+        let src = pixels
+        for y in 0..<height {
+            for x in 0..<width {
+                if src[y * width + x] >= 128 { continue }
+                var hit = false
+                let y0 = max(0, y - radius), y1 = min(height - 1, y + radius)
+                let x0 = max(0, x - radius), x1 = min(width - 1, x + radius)
+                outer: for yy in y0...y1 {
+                    for xx in x0...x1 where src[yy * width + xx] >= 128 {
+                        hit = true
+                        break outer
+                    }
+                }
+                if hit { pixels[y * width + x] = 255 }
+            }
+        }
+    }
+
+    private static func erodeMask(_ pixels: inout [UInt8], width: Int, height: Int, radius: Int) {
+        guard radius > 0 else { return }
+        let src = pixels
+        for y in 0..<height {
+            for x in 0..<width {
+                if src[y * width + x] < 128 { continue }
+                var keep = true
+                let y0 = max(0, y - radius), y1 = min(height - 1, y + radius)
+                let x0 = max(0, x - radius), x1 = min(width - 1, x + radius)
+                outer: for yy in y0...y1 {
+                    for xx in x0...x1 where src[yy * width + xx] < 128 {
+                        keep = false
+                        break outer
+                    }
+                }
+                if !keep { pixels[y * width + x] = 0 }
+            }
+        }
     }
 }
 
