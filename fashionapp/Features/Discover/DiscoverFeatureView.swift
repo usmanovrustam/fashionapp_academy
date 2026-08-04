@@ -234,22 +234,31 @@ private struct RecommendationCardView: View {
     let onNope: () -> Void
     let onYeah: () -> Void
     @State private var image: UIImage?
+    @State private var isLoadingImage = true
 
     var body: some View {
         VStack(spacing: 20) {
-            if let image {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: 180)
-                    .clipShape(RoundedRectangle(cornerRadius: AppRadius.xLarge, style: .continuous))
-                    .shadow(radius: 8, y: 4)
-            } else {
-                RoundedRectangle(cornerRadius: AppRadius.xLarge, style: .continuous)
-                    .fill(Color(.systemGray6))
-                    .frame(height: 180)
-                    .overlay(ProgressView())
+            Group {
+                if let image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                } else if isLoadingImage {
+                    Color(.systemGray6)
+                        .overlay(ProgressView().tint(AppColors.olive))
+                } else {
+                    Color(.systemGray6)
+                        .overlay {
+                            Image(systemName: "tshirt.fill")
+                                .font(.system(size: 40))
+                                .foregroundStyle(AppColors.textTertiary)
+                        }
+                }
             }
+            .frame(height: 180)
+            .frame(maxWidth: .infinity)
+            .clipShape(RoundedRectangle(cornerRadius: AppRadius.xLarge, style: .continuous))
+            .shadow(color: image == nil ? .clear : .black.opacity(0.08), radius: 8, y: 4)
 
             Text(recommendation.displayName)
                 .font(.title2.bold())
@@ -288,23 +297,14 @@ private struct RecommendationCardView: View {
         .padding(.horizontal, 20)
         .liquidGlass(cornerRadius: AppRadius.xxLarge)
         .task(id: recommendation.id) {
-            guard let path = recommendation.items.first?.transparentImagePath
-                ?? recommendation.items.first?.originalImagePath else {
-                image = nil
-                return
-            }
-            if let cached = ImageMemoryCache.image(for: path) {
-                image = cached
-                return
-            }
-            let data = (try? await storage.loadImageData(at: path)) ?? Data()
-            let decoded = await Task.detached(priority: .userInitiated) {
-                UIImage(data: data)
-            }.value
-            if let decoded {
-                ImageMemoryCache.store(decoded, for: path)
-            }
-            image = decoded
+            isLoadingImage = true
+            let item = recommendation.items.first
+            image = await WardrobeImageLoader.load(
+                primaryPath: item?.transparentImagePath,
+                fallbackPath: item?.originalImagePath,
+                storage: storage
+            )
+            isLoadingImage = false
         }
     }
 }
@@ -331,7 +331,8 @@ struct RecommendationDetailView: View {
                     ForEach(recommendation.items) { item in
                         HStack(spacing: 12) {
                             StoredImageView(
-                                path: item.transparentImagePath ?? item.originalImagePath,
+                                path: item.transparentImagePath,
+                                fallbackPath: item.originalImagePath,
                                 storage: storage,
                                 width: 72,
                                 height: 90,

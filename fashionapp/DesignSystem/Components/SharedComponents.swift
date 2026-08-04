@@ -168,12 +168,14 @@ struct StatCard: View {
 
 struct StoredImageView: View {
     let path: String?
+    var fallbackPath: String? = nil
     let storage: ImageStorage
     var width: CGFloat? = nil
     var height: CGFloat? = nil
     var contentMode: ContentMode = .fill
 
     @State private var image: UIImage?
+    @State private var isLoading = true
 
     var body: some View {
         Group {
@@ -181,30 +183,86 @@ struct StoredImageView: View {
                 Image(uiImage: image)
                     .resizable()
                     .aspectRatio(contentMode: contentMode)
-            } else {
+            } else if isLoading {
                 Color.clear
                     .overlay(ProgressView().tint(AppColors.olive))
                     .liquidGlass(cornerRadius: AppRadius.medium)
+            } else {
+                Color(.systemGray6)
+                    .overlay {
+                        Image(systemName: "tshirt")
+                            .font(.title2)
+                            .foregroundStyle(AppColors.textTertiary)
+                    }
             }
         }
         .frame(width: width, height: height)
-        .task(id: path) {
-            guard let path, !path.isEmpty else {
-                image = nil
-                return
-            }
+        .task(id: "\(path ?? "")|\(fallbackPath ?? "")") {
+            isLoading = true
+            image = await WardrobeImageLoader.load(
+                primaryPath: path,
+                fallbackPath: fallbackPath,
+                storage: storage
+            )
+            isLoading = false
+        }
+    }
+}
+
+/// Loads wardrobe photos with cache + fallback path; never hangs the UI forever.
+enum WardrobeImageLoader {
+    static func load(
+        primaryPath: String?,
+        fallbackPath: String? = nil,
+        storage: ImageStorage,
+        timeoutSeconds: TimeInterval = 12
+    ) async -> UIImage? {
+        let paths = [primaryPath, fallbackPath]
+            .compactMap { $0 }
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        guard !paths.isEmpty else { return nil }
+
+        for path in paths {
             if let cached = ImageMemoryCache.image(for: path) {
-                image = cached
-                return
+                return cached
             }
-            let data = (try? await storage.loadImageData(at: path)) ?? Data()
+        }
+
+        for path in paths {
+            guard let data = await loadData(path: path, storage: storage, timeoutSeconds: timeoutSeconds),
+                  !data.isEmpty else {
+                continue
+            }
             let decoded = await Task.detached(priority: .userInitiated) {
                 UIImage(data: data)
             }.value
             if let decoded {
                 ImageMemoryCache.store(decoded, for: path)
+                return decoded
             }
-            image = decoded
+        }
+        return nil
+    }
+
+    private static func loadData(
+        path: String,
+        storage: ImageStorage,
+        timeoutSeconds: TimeInterval
+    ) async -> Data? {
+        await withTaskGroup(of: Data?.self) { group in
+            group.addTask {
+                try? await storage.loadImageData(at: path)
+            }
+            group.addTask {
+                let nanos = UInt64(timeoutSeconds * 1_000_000_000)
+                try? await Task.sleep(nanoseconds: nanos)
+                return nil
+            }
+            let first = await group.next() ?? nil
+            group.cancelAll()
+            return first ?? nil
         }
     }
 }
