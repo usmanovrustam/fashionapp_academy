@@ -329,8 +329,9 @@ def distill(
             p.requires_grad_(False)
 
     opt = torch.optim.AdamW(student.parameters(), lr=lr, weight_decay=1e-4)
-    image_iter = iter_distill_images(limit=max(steps, 128), size=size)
+    image_iter = iter_distill_images(limit=max(256, min(steps, 512)), size=size)
     images = list(image_iter)
+    print(f"Distill image pool: {len(images)}", flush=True)
     if not images:
         raise RuntimeError("No distillation images available.")
 

@@ -40,23 +40,29 @@
   "teachers": [
     {
       "repo": "mattmdjaga/segformer_b0_clothes",
-      "weight": 0.1875,
+      "weight": 0.15,
       "schema": "atr",
       "role": "fast ATR prior"
     },
     {
       "repo": "mattmdjaga/segformer_b2_clothes",
-      "weight": 0.375,
+      "weight": 0.3,
       "schema": "atr",
       "role": "current Nook baseline"
     },
     {
       "repo": "sayeed99/segformer_b3_clothes",
-      "weight": 0.4375,
+      "weight": 0.35,
       "schema": "atr",
       "role": "stronger ATR teacher"
+    },
+    {
+      "repo": "fashn-ai/fashn-human-parser",
+      "weight": 0.2,
+      "schema": "fashn",
+      "role": "fashion / try-on tuned"
     }
   ],
-  "version": "2.0.0",
+  "version": "2.1.0",
   "notes": "Strong Core ML clothes parser for Nook. Built by collecting multiple Hugging Face teachers (ATR SegFormers + optional FASHN) into one on-device model."
 }
