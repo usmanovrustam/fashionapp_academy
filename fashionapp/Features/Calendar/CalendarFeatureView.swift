@@ -5,6 +5,7 @@ struct DayCell: View {
     let isSelected: Bool
     let isToday: Bool
     let hasPlan: Bool
+    var compact: Bool = false
 
     private static let dayFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -12,12 +13,15 @@ struct DayCell: View {
         return formatter
     }()
 
+    private var cellSize: CGFloat { compact ? 28 : 30 }
+    private var dotSize: CGFloat { compact ? 4 : 5 }
+
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: compact ? 2 : 3) {
             Text(Self.dayFormatter.string(from: date))
-                .font(.system(.body, design: .rounded).weight(isSelected ? .bold : .medium))
+                .font(.system(compact ? .footnote : .subheadline, design: .rounded).weight(isSelected ? .bold : .medium))
                 .foregroundColor(isSelected ? .white : .primary)
-                .frame(width: 36, height: 36)
+                .frame(width: cellSize, height: cellSize)
                 .background {
                     if isSelected {
                         Circle().fill(AppColors.primaryGradient)
@@ -27,12 +31,12 @@ struct DayCell: View {
                 }
                 .overlay(
                     Circle()
-                        .stroke(AppColors.brand.opacity(isToday && !isSelected ? 1 : 0), lineWidth: 2)
+                        .stroke(AppColors.brand.opacity(isToday && !isSelected ? 1 : 0), lineWidth: 1.5)
                 )
 
             Circle()
                 .fill(AppColors.brand)
-                .frame(width: 5, height: 5)
+                .frame(width: dotSize, height: dotSize)
                 .opacity(hasPlan ? 1 : 0)
         }
     }
@@ -92,6 +96,14 @@ final class CalendarViewModel: ObservableObject {
 
     func hasPlan(on date: Date) -> Bool {
         !events(on: date).isEmpty
+    }
+
+    /// Sunday-start week containing `date` (matches the S–S grid).
+    func weekDays(containing date: Date) -> [Date] {
+        let weekday = calendar.component(.weekday, from: date)
+        let start = calendar.date(byAdding: .day, value: -(weekday - 1), to: calendar.startOfDay(for: date))
+            ?? calendar.startOfDay(for: date)
+        return (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: start) }
     }
 
     func shiftMonth(_ value: Int) {
@@ -250,8 +262,10 @@ struct CalendarFeatureView: View {
     @StateObject private var viewModel: CalendarViewModel
     @State private var activeSheet: CalendarSheet?
     @State private var showScanner = false
+    @State private var isCalendarCollapsed = false
 
-    private let columns = Array(repeating: GridItem(.flexible()), count: 7)
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
+    private let collapseThreshold: CGFloat = 36
 
     init(container: AppContainer) {
         self.container = container
@@ -261,13 +275,31 @@ struct CalendarFeatureView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: AppSpacing.lg) {
-                    monthHeader
-                    calendarGrid
+                VStack(spacing: AppSpacing.md) {
+                    calendarSliver
                     dayPlansSection
                 }
-                .padding()
+                .padding(.horizontal, AppSpacing.md)
+                .padding(.top, AppSpacing.sm)
                 .padding(.bottom, AppSpacing.lg)
+                .background {
+                    GeometryReader { geo in
+                        Color.clear.preference(
+                            key: CalendarScrollOffsetKey.self,
+                            value: geo.frame(in: .named("calendarScroll")).minY
+                        )
+                    }
+                }
+            }
+            .coordinateSpace(name: "calendarScroll")
+            .onPreferenceChange(CalendarScrollOffsetKey.self) { minY in
+                // Scroll down → content moves up (minY decreases) → collapse calendar.
+                let shouldCollapse = minY < -collapseThreshold
+                if shouldCollapse != isCalendarCollapsed {
+                    withAnimation(.easeInOut(duration: 0.22)) {
+                        isCalendarCollapsed = shouldCollapse
+                    }
+                }
             }
             .nookSafeScreenInsets()
             .nookScreenBackground()
@@ -372,39 +404,101 @@ struct CalendarFeatureView: View {
         }
     }
 
+    private var calendarSliver: some View {
+        VStack(spacing: 8) {
+            monthHeader
+            if isCalendarCollapsed {
+                weekStrip
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            } else {
+                calendarGrid
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+    }
+
     private var monthHeader: some View {
-        HStack {
+        HStack(spacing: 10) {
             Button { viewModel.shiftMonth(-1) } label: {
                 Image(systemName: "chevron.left.circle.fill")
                     .foregroundStyle(AppColors.primaryGradient)
-                    .font(.title2)
+                    .font(.title3)
             }
             Spacer()
-            Text(viewModel.monthTitle)
-                .font(.title3.weight(.semibold))
+            Button {
+                withAnimation(.easeInOut(duration: 0.22)) {
+                    isCalendarCollapsed.toggle()
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Text(viewModel.monthTitle)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(AppColors.textPrimary)
+                    Image(systemName: isCalendarCollapsed ? "chevron.down" : "chevron.up")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(AppColors.textTertiary)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(isCalendarCollapsed ? "Expand calendar" : "Collapse calendar")
             Spacer()
             Button { viewModel.shiftMonth(1) } label: {
                 Image(systemName: "chevron.right.circle.fill")
                     .foregroundStyle(AppColors.primaryGradient)
-                    .font(.title2)
+                    .font(.title3)
             }
         }
-        .padding()
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
         .liquidGlass(cornerRadius: AppRadius.medium)
-        .clipShape(RoundedRectangle(cornerRadius: AppRadius.large, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
     }
 
-    private var calendarGrid: some View {
-        VStack(spacing: 12) {
-            LazyVGrid(columns: columns, spacing: 8) {
+    private var weekStrip: some View {
+        VStack(spacing: 6) {
+            LazyVGrid(columns: columns, spacing: 4) {
                 ForEach(Array(["S", "M", "T", "W", "T", "F", "S"].enumerated()), id: \.offset) { _, day in
                     Text(day)
-                        .font(.caption.weight(.semibold))
+                        .font(.caption2.weight(.semibold))
                         .foregroundColor(.secondary)
                 }
             }
 
-            LazyVGrid(columns: columns, spacing: 10) {
+            LazyVGrid(columns: columns, spacing: 4) {
+                ForEach(viewModel.weekDays(containing: viewModel.selectedDate), id: \.self) { date in
+                    Button {
+                        viewModel.selectedDate = date
+                        activeSheet = .daySummary
+                    } label: {
+                        DayCell(
+                            date: date,
+                            isSelected: Calendar.current.isDate(date, inSameDayAs: viewModel.selectedDate),
+                            isToday: Calendar.current.isDateInToday(date),
+                            hasPlan: viewModel.hasPlan(on: date),
+                            compact: true
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .liquidGlass(cornerRadius: AppRadius.medium)
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
+    }
+
+    private var calendarGrid: some View {
+        VStack(spacing: 6) {
+            LazyVGrid(columns: columns, spacing: 4) {
+                ForEach(Array(["S", "M", "T", "W", "T", "F", "S"].enumerated()), id: \.offset) { _, day in
+                    Text(day)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            LazyVGrid(columns: columns, spacing: 6) {
                 ForEach(Array(viewModel.daysInMonth.enumerated()), id: \.offset) { _, date in
                     if let date {
                         Button {
@@ -415,19 +509,21 @@ struct CalendarFeatureView: View {
                                 date: date,
                                 isSelected: Calendar.current.isDate(date, inSameDayAs: viewModel.selectedDate),
                                 isToday: Calendar.current.isDateInToday(date),
-                                hasPlan: viewModel.hasPlan(on: date)
+                                hasPlan: viewModel.hasPlan(on: date),
+                                compact: true
                             )
                         }
                         .buttonStyle(.plain)
                     } else {
-                        Color.clear.frame(height: 44)
+                        Color.clear.frame(height: 36)
                     }
                 }
             }
         }
-        .padding()
+        .padding(.horizontal, 10)
+        .padding(.vertical, 10)
         .liquidGlass(cornerRadius: AppRadius.medium)
-        .clipShape(RoundedRectangle(cornerRadius: AppRadius.large, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
     }
 
     private var dayPlansSection: some View {
@@ -492,6 +588,13 @@ struct CalendarFeatureView: View {
                 }
             }
         }
+    }
+}
+
+private struct CalendarScrollOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
 
