@@ -13,13 +13,13 @@ struct MainTabView: View {
                     tabRoot(tab)
                 } label: {
                     let isSelected = selectedTab == tab
-                    // TabView forces `.fill` on every tab icon; clear it, then pick outline/fill ourselves.
+                    // TabView can force `.fill`; pin variants off and swap explicit outline/fill glyphs.
                     Label {
                         Text(tab.title)
                     } icon: {
                         Image(systemName: tab.symbolName(selected: isSelected))
                     }
-                    .environment(\.symbolVariants, isSelected ? .fill : .none)
+                    .environment(\.symbolVariants, .none)
                 }
             }
         }
@@ -108,18 +108,19 @@ private enum AppTab: Int, CaseIterable, Identifiable, Hashable {
         }
     }
 
-    /// Base SF Symbol names (no `.fill` suffix). Fill comes from `symbolVariants` when selected.
+    /// Outline when idle, filled when selected (explicit glyph pairs — HIG Tab Bars).
     func symbolName(selected: Bool) -> String {
         switch self {
         case .discover:
-            // No reliable fill pair — denser glyph when selected.
-            return selected ? "sparkles" : "sparkle"
+            // Explore / ideas — clear outline ↔ fill pair (replaces sparkle/sparkles).
+            return selected ? "binoculars.fill" : "binoculars"
         case .wardrobe:
-            return "tshirt"
+            return selected ? "tshirt.fill" : "tshirt"
         case .calendar:
-            return "calendar"
+            // Day planner — circle calendar reads clearer in the tab bar than plain `calendar`.
+            return selected ? "calendar.circle.fill" : "calendar.circle"
         case .profile:
-            return "person"
+            return selected ? "person.fill" : "person"
         }
     }
 }
