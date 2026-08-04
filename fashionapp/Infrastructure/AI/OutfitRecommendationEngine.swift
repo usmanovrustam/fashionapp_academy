@@ -12,7 +12,7 @@ final class RuleBasedOutfitRecommender: OutfitRecommending {
     ) async throws -> [OutfitRecommendation] {
         let available = wardrobe.filter(\.isAvailableToWear)
         let coverage = WardrobeOutfitCoverage.analyze(available)
-        guard coverage.canBuildFullOutfit else { return [] }
+        guard coverage.canBuildFullOutfit(for: context.user.gender) else { return [] }
 
         let occasions: [OutfitOccasion]
         if !context.preferredOccasions.isEmpty {

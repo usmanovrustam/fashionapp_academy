@@ -50,7 +50,7 @@ final class DiscoverViewModel: ObservableObject {
 
     func load(force: Bool = false) async {
         // Keep returning to Discover snappy — skip duplicate network unless forced / empty.
-        if didLoadOnce && !force && !recommendations.isEmpty && wardrobeCoverage.canBuildFullOutfit {
+        if didLoadOnce && !force && !recommendations.isEmpty && wardrobeCoverage.canBuildFullOutfit(for: userGender) {
             return
         }
 
