@@ -375,6 +375,13 @@ struct AuthFeatureView: View {
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(AppColors.textSecondary)
 
+                    Text(NSLocalizedString(
+                        "Required — used for clothing types and outfit ideas.",
+                        comment: "Register gender helper"
+                    ))
+                    .font(.caption)
+                    .foregroundStyle(AppColors.placeholder)
+
                     VStack(spacing: 8) {
                         ForEach(UserGender.allCases) { gender in
                             Button {

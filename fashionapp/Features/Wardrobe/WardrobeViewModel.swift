@@ -10,14 +10,21 @@ final class WardrobeViewModel: ObservableObject {
     @Published var filterCategory: ClothingCategory?
     @Published var showFavoritesOnly = false
     @Published var showLaundryOnly = false
+    @Published var userGender: UserGender = .woman
 
     private let wardrobeRepository: WardrobeRepository
+    private let profileRepository: UserProfileRepository
     private let imageStorage: ImageStorage
     private let analytics: AnalyticsTracking
     let statisticsUseCase: ComputeWardrobeStatisticsUseCase
 
+    var filterCategories: [ClothingCategory] {
+        userGender.wardrobeFilterCategories
+    }
+
     init(container: AppContainer) {
         self.wardrobeRepository = container.wardrobeRepository
+        self.profileRepository = container.profileRepository
         self.imageStorage = container.imageStorage
         self.analytics = container.analytics
         self.statisticsUseCase = container.statisticsUseCase
@@ -47,6 +54,12 @@ final class WardrobeViewModel: ObservableObject {
         if showSpinner { isLoading = true }
         errorMessage = nil
         analytics.track(.screenView, parameters: ["screen_name": "wardrobe"])
+        if let gender = try? await profileRepository.load().gender {
+            userGender = gender
+            if let filterCategory, !filterCategories.contains(filterCategory) {
+                self.filterCategory = nil
+            }
+        }
         do {
             items = try await wardrobeRepository.fetchAll()
         } catch {

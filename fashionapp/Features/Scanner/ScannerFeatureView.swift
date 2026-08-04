@@ -29,6 +29,7 @@ struct ScannerFeatureView: View {
             .nookScreenBackground()
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
+            .task { await viewModel.loadProfileGender() }
             .toolbar {
                 if isPresentedModally {
                     ToolbarItem(placement: .cancellationAction) {
@@ -229,7 +230,7 @@ struct ScannerFeatureView: View {
                     }
 
                     reviewPicker(NSLocalizedString("Category", comment: ""), selection: $viewModel.draftCategory) {
-                        ForEach(ClothingCategory.allCases) { category in
+                        ForEach(viewModel.selectableCategories) { category in
                             Text(category.displayName).tag(category)
                         }
                     }

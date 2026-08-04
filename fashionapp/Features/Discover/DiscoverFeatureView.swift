@@ -195,7 +195,7 @@ struct DiscoverFeatureView: View {
                 .multilineTextAlignment(.center)
 
             VStack(alignment: .leading, spacing: 8) {
-                ForEach(viewModel.wardrobeCoverage.missingMessages, id: \.self) { line in
+                ForEach(viewModel.wardrobeGapMessages, id: \.self) { line in
                     Label(line, systemImage: "plus.circle")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
@@ -205,10 +205,17 @@ struct DiscoverFeatureView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 8)
 
-            Text(NSLocalizedString(
-                "A daily look needs top + bottom + shoes — or a dress + shoes.",
-                comment: "Discover gap rule summary"
-            ))
+            Text(
+                viewModel.userGender == .man
+                    ? NSLocalizedString(
+                        "A daily look needs top + bottom + shoes.",
+                        comment: "Discover gap rule summary men"
+                    )
+                    : NSLocalizedString(
+                        "A daily look needs top + bottom + shoes — or a dress + shoes.",
+                        comment: "Discover gap rule summary"
+                    )
+            )
             .font(.caption)
             .foregroundStyle(AppColors.textTertiary)
             .multilineTextAlignment(.center)

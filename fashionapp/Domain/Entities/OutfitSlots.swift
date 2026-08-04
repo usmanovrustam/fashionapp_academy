@@ -93,10 +93,15 @@ struct WardrobeOutfitCoverage: Equatable {
     var hasDress: Bool { dressCount > 0 }
     var hasShoes: Bool { shoesCount > 0 }
 
-    /// Top+bottom **or** a one-piece dress.
-    var hasBodyCoverage: Bool { (hasTop && hasBottom) || hasDress }
+    /// Top+bottom **or** a one-piece dress (dress path is for women).
+    func hasBodyCoverage(for gender: UserGender? = nil) -> Bool {
+        if gender == .man { return hasTop && hasBottom }
+        return (hasTop && hasBottom) || hasDress
+    }
 
-    var canBuildFullOutfit: Bool { hasBodyCoverage && hasShoes }
+    func canBuildFullOutfit(for gender: UserGender? = nil) -> Bool {
+        hasBodyCoverage(for: gender) && hasShoes
+    }
 
     var canBuildSeparatesLook: Bool { hasTop && hasBottom && hasShoes }
     var canBuildDressLook: Bool { hasDress && hasShoes }
@@ -112,8 +117,8 @@ struct WardrobeOutfitCoverage: Equatable {
     }
 
     /// Localized lines describing what’s still needed for a full look.
-    var missingMessages: [String] {
-        guard !canBuildFullOutfit else { return [] }
+    func missingMessages(for gender: UserGender? = nil) -> [String] {
+        guard !canBuildFullOutfit(for: gender) else { return [] }
 
         if topCount + bottomCount + dressCount + shoesCount == 0 {
             return [NSLocalizedString(
@@ -122,24 +127,40 @@ struct WardrobeOutfitCoverage: Equatable {
             )]
         }
 
+        let allowDress = gender != .man
         var lines: [String] = []
 
-        if !hasBodyCoverage {
-            if hasTop && !hasBottom && !hasDress {
-                lines.append(NSLocalizedString(
-                    "Add a bottom, or a dress, to complete the look.",
-                    comment: "Discover gap bottom or dress"
-                ))
+        if !hasBodyCoverage(for: gender) {
+            if hasTop && !hasBottom && !(gender != .man && hasDress) {
+                lines.append(allowDress
+                    ? NSLocalizedString(
+                        "Add a bottom, or a dress, to complete the look.",
+                        comment: "Discover gap bottom or dress"
+                    )
+                    : NSLocalizedString(
+                        "Add a bottom to complete the look.",
+                        comment: "Discover gap bottom"
+                    ))
             } else if hasBottom && !hasTop && !hasDress {
-                lines.append(NSLocalizedString(
-                    "Add a top, or a dress, to complete the look.",
-                    comment: "Discover gap top or dress"
-                ))
+                lines.append(allowDress
+                    ? NSLocalizedString(
+                        "Add a top, or a dress, to complete the look.",
+                        comment: "Discover gap top or dress"
+                    )
+                    : NSLocalizedString(
+                        "Add a top to complete the look.",
+                        comment: "Discover gap top"
+                    ))
             } else {
-                lines.append(NSLocalizedString(
-                    "Add a top and bottom — or a dress — for a full look.",
-                    comment: "Discover gap body"
-                ))
+                lines.append(allowDress
+                    ? NSLocalizedString(
+                        "Add a top and bottom — or a dress — for a full look.",
+                        comment: "Discover gap body"
+                    )
+                    : NSLocalizedString(
+                        "Add a top and bottom for a full look.",
+                        comment: "Discover gap body separates"
+                    ))
             }
         }
 

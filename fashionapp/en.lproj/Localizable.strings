@@ -407,3 +407,9 @@
 "What’s your gender?" = "What’s your gender?";
 "This helps Nook suggest full outfits — for example when a dress can replace a separate top and bottom." = "This helps Nook suggest full outfits — for example when a dress can replace a separate top and bottom.";
 "Select" = "Select";
+"Required. Nook uses this to show the right clothing types and build full outfits for you." = "Required. Nook uses this to show the right clothing types and build full outfits for you.";
+"Required — used for clothing types and outfit ideas." = "Required — used for clothing types and outfit ideas.";
+"Add a bottom to complete the look." = "Add a bottom to complete the look.";
+"Add a top to complete the look." = "Add a top to complete the look.";
+"Add a top and bottom for a full look." = "Add a top and bottom for a full look.";
+"A daily look needs top + bottom + shoes." = "A daily look needs top + bottom + shoes.";

@@ -5,7 +5,6 @@ struct MainTabView: View {
     @EnvironmentObject private var container: AppContainer
     @Binding var didFinishOnboarding: Bool
     @State private var selectedTab: AppTab = .discover
-    @State private var showGenderPrompt = false
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -26,34 +25,6 @@ struct MainTabView: View {
         }
         .tint(AppColors.olive)
         .onAppear(perform: applyTabBarChrome)
-        .task { await checkGenderIfNeeded() }
-        .sheet(isPresented: $showGenderPrompt) {
-            GenderPromptSheet { gender in
-                try await saveGender(gender)
-                showGenderPrompt = false
-            }
-        }
-    }
-
-    private func checkGenderIfNeeded() async {
-        do {
-            let profile = try await container.profileRepository.load()
-            if !profile.hasGenderSet {
-                showGenderPrompt = true
-            }
-        } catch {
-            // Stay quiet — user can still use the app; retry next launch.
-        }
-    }
-
-    private func saveGender(_ gender: UserGender) async throws {
-        var profile = try await container.profileRepository.load()
-        profile.gender = gender
-        try await container.profileRepository.save(profile)
-        container.analytics.track(.profileUpdated, parameters: [
-            "action": "set_gender",
-            "gender": gender.rawValue
-        ])
     }
 
     @ViewBuilder

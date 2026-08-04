@@ -407,3 +407,9 @@
 "What’s your gender?" = "Qual è il tuo genere?";
 "This helps Nook suggest full outfits — for example when a dress can replace a separate top and bottom." = "Aiuta Nook a suggerire outfit completi — ad esempio quando un vestito può sostituire top e bottom.";
 "Select" = "Seleziona";
+"Required. Nook uses this to show the right clothing types and build full outfits for you." = "Obbligatorio. Nook lo usa per mostrare i tipi di capo giusti e creare outfit completi.";
+"Required — used for clothing types and outfit ideas." = "Obbligatorio — serve per i tipi di capo e le idee outfit.";
+"Add a bottom to complete the look." = "Aggiungi un bottom per completare il look.";
+"Add a top to complete the look." = "Aggiungi un top per completare il look.";
+"Add a top and bottom for a full look." = "Aggiungi top e bottom per un look completo.";
+"A daily look needs top + bottom + shoes." = "Un look giornaliero serve top + bottom + scarpe.";

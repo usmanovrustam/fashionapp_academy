@@ -407,3 +407,9 @@
 "What’s your gender?" = "Укажите ваш пол";
 "This helps Nook suggest full outfits — for example when a dress can replace a separate top and bottom." = "Это помогает Nook предлагать полные образы — например, когда платье заменяет верх и низ.";
 "Select" = "Выбрать";
+"Required. Nook uses this to show the right clothing types and build full outfits for you." = "Обязательно. Nook использует это, чтобы показывать нужные типы одежды и собирать полные образы.";
+"Required — used for clothing types and outfit ideas." = "Обязательно — для типов одежды и идей образов.";
+"Add a bottom to complete the look." = "Добавьте низ, чтобы завершить образ.";
+"Add a top to complete the look." = "Добавьте верх, чтобы завершить образ.";
+"Add a top and bottom for a full look." = "Добавьте верх и низ для полного образа.";
+"A daily look needs top + bottom + shoes." = "Для образа на день нужны верх + низ + обувь.";

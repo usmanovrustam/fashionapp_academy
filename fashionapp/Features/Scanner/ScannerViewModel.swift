@@ -24,11 +24,17 @@ final class ScannerViewModel: ObservableObject {
     @Published var draftColor = ""
     @Published var draftSeason: Season = .allSeason
     @Published var draftFormality: Double = 0.35
+    @Published var userGender: UserGender = .woman
 
     private let scanAndSave: ScanAndSaveClothingUseCase
     private let pipeline: ClothingScanPipeline
+    private let profileRepository: UserProfileRepository
     private let analytics: AnalyticsTracking
     let plannedDate: Date?
+
+    var selectableCategories: [ClothingCategory] {
+        userGender.selectableClothingCategories
+    }
 
     var canSave: Bool {
         selectedImage != nil && scanResult != nil && !isProcessing && !isSaving
@@ -37,8 +43,18 @@ final class ScannerViewModel: ObservableObject {
     init(container: AppContainer, plannedDate: Date? = nil) {
         self.scanAndSave = container.scanAndSaveUseCase
         self.pipeline = container.scanPipeline
+        self.profileRepository = container.profileRepository
         self.analytics = container.analytics
         self.plannedDate = plannedDate
+    }
+
+    func loadProfileGender() async {
+        if let gender = try? await profileRepository.load().gender {
+            userGender = gender
+            if !selectableCategories.contains(draftCategory) {
+                draftCategory = selectableCategories.first ?? .top
+            }
+        }
     }
 
     func openCamera() async {
@@ -154,7 +170,14 @@ final class ScannerViewModel: ObservableObject {
 
     private func applyDraft(from result: ClothingScanResult) {
         draftName = result.suggestedName
-        draftCategory = result.detectedCategory
+        if selectableCategories.contains(result.detectedCategory) {
+            draftCategory = result.detectedCategory
+        } else if result.detectedCategory == .dress, userGender == .man {
+            // Dress isn't offered for men — map to a separates category.
+            draftCategory = .top
+        } else {
+            draftCategory = selectableCategories.first ?? .top
+        }
         draftType = result.subcategory ?? ""
         draftMaterial = result.material
         draftColor = result.dominantColor ?? ""

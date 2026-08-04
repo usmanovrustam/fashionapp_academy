@@ -118,7 +118,7 @@ struct WardrobeFeatureView: View {
                     viewModel.showFavoritesOnly = false
                     viewModel.filterCategory = nil
                 }
-                ForEach([ClothingCategory.top, .bottom, .dress, .shoes, .jacket, .coat, .accessories], id: \.self) { category in
+                ForEach(viewModel.filterCategories, id: \.self) { category in
                     FilterChip(title: category.displayName, selected: viewModel.filterCategory == category) {
                         viewModel.filterCategory = category
                         viewModel.showFavoritesOnly = false

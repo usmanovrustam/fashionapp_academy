@@ -16,10 +16,12 @@ final class DiscoverViewModel: ObservableObject {
         dressCount: 0,
         shoesCount: 0
     )
+    @Published var userGender: UserGender?
 
     private let recommendationsUseCase: GenerateDailyRecommendationsUseCase
     private let weatherProvider: WeatherProviding
     private let wardrobeRepository: WardrobeRepository
+    private let profileRepository: UserProfileRepository
     let imageStorage: ImageStorage
     private let settings: AppSettingsProviding
     private let analytics: AnalyticsTracking
@@ -30,6 +32,7 @@ final class DiscoverViewModel: ObservableObject {
         self.recommendationsUseCase = container.dailyRecommendationsUseCase
         self.weatherProvider = container.weatherProvider
         self.wardrobeRepository = container.wardrobeRepository
+        self.profileRepository = container.profileRepository
         self.imageStorage = container.imageStorage
         self.settings = container.settings
         self.analytics = container.analytics
@@ -38,7 +41,11 @@ final class DiscoverViewModel: ObservableObject {
     var usesCelsius: Bool { settings.usesCelsius }
 
     var needsWardrobePieces: Bool {
-        !wardrobeCoverage.canBuildFullOutfit
+        !wardrobeCoverage.canBuildFullOutfit(for: userGender)
+    }
+
+    var wardrobeGapMessages: [String] {
+        wardrobeCoverage.missingMessages(for: userGender)
     }
 
     func load(force: Bool = false) async {
@@ -62,6 +69,7 @@ final class DiscoverViewModel: ObservableObject {
             )
             wardrobeCount = result.wardrobeItems.count
             wardrobeCoverage = WardrobeOutfitCoverage.analyze(result.wardrobeItems)
+            userGender = try? await profileRepository.load().gender
             if weather == nil { weather = result.weather }
 
             // Only full outfits — never fall back to single pieces.
