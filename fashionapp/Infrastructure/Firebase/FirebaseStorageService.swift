@@ -44,10 +44,19 @@ actor FirebaseImageStorage: ImageStorage {
             return cached
         }
 
+        guard Auth.auth().currentUser != nil else {
+            throw AuthError.notSignedIn
+        }
+
         do {
             let data = try await storage.reference(withPath: path).data(maxSize: 15 * 1024 * 1024)
+            guard !data.isEmpty else {
+                throw DomainError.storageFailed("Empty image from Storage.")
+            }
             _ = try? await localFallback.saveImageData(data, preferredName: localName)
             return data
+        } catch let error as DomainError {
+            throw error
         } catch {
             throw DomainError.storageFailed(error.localizedDescription)
         }

@@ -215,12 +215,16 @@ enum WardrobeImageLoader {
         primaryPath: String?,
         fallbackPath: String? = nil,
         storage: ImageStorage,
-        timeoutSeconds: TimeInterval = 12
+        timeoutSeconds: TimeInterval = 30
     ) async -> UIImage? {
-        let paths = [primaryPath, fallbackPath]
-            .compactMap { $0 }
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
+        // Prefer unique paths; keep order (primary first).
+        var paths: [String] = []
+        for candidate in [primaryPath, fallbackPath] {
+            guard let raw = candidate?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !raw.isEmpty,
+                  !paths.contains(raw) else { continue }
+            paths.append(raw)
+        }
 
         guard !paths.isEmpty else { return nil }
 
@@ -231,16 +235,18 @@ enum WardrobeImageLoader {
         }
 
         for path in paths {
-            guard let data = await loadData(path: path, storage: storage, timeoutSeconds: timeoutSeconds),
-                  !data.isEmpty else {
+            do {
+                let data = try await loadData(path: path, storage: storage, timeoutSeconds: timeoutSeconds)
+                guard !data.isEmpty else { continue }
+                let decoded = await Task.detached(priority: .userInitiated) {
+                    UIImage(data: data)
+                }.value
+                if let decoded {
+                    ImageMemoryCache.store(decoded, for: path)
+                    return decoded
+                }
+            } catch {
                 continue
-            }
-            let decoded = await Task.detached(priority: .userInitiated) {
-                UIImage(data: data)
-            }.value
-            if let decoded {
-                ImageMemoryCache.store(decoded, for: path)
-                return decoded
             }
         }
         return nil
@@ -250,19 +256,19 @@ enum WardrobeImageLoader {
         path: String,
         storage: ImageStorage,
         timeoutSeconds: TimeInterval
-    ) async -> Data? {
-        await withTaskGroup(of: Data?.self) { group in
+    ) async throws -> Data {
+        try await withThrowingTaskGroup(of: Data.self) { group in
             group.addTask {
-                try? await storage.loadImageData(at: path)
+                try await storage.loadImageData(at: path)
             }
             group.addTask {
                 let nanos = UInt64(timeoutSeconds * 1_000_000_000)
-                try? await Task.sleep(nanoseconds: nanos)
-                return nil
+                try await Task.sleep(nanoseconds: nanos)
+                throw DomainError.storageFailed("Image load timed out.")
             }
-            let first = await group.next() ?? nil
+            let data = try await group.next()!
             group.cancelAll()
-            return first ?? nil
+            return data
         }
     }
 }

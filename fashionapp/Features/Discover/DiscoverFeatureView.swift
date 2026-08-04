@@ -300,8 +300,8 @@ private struct RecommendationCardView: View {
             isLoadingImage = true
             let item = recommendation.items.first
             image = await WardrobeImageLoader.load(
-                primaryPath: item?.transparentImagePath,
-                fallbackPath: item?.originalImagePath,
+                primaryPath: item?.originalImagePath,
+                fallbackPath: item?.transparentImagePath,
                 storage: storage
             )
             isLoadingImage = false
@@ -331,8 +331,8 @@ struct RecommendationDetailView: View {
                     ForEach(recommendation.items) { item in
                         HStack(spacing: 12) {
                             StoredImageView(
-                                path: item.transparentImagePath,
-                                fallbackPath: item.originalImagePath,
+                                path: item.originalImagePath,
+                                fallbackPath: item.transparentImagePath,
                                 storage: storage,
                                 width: 72,
                                 height: 90,
