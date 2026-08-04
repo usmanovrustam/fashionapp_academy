@@ -156,16 +156,21 @@ enum ImageProcessing {
         ) else {
             throw ImageProcessingError.maskFailed
         }
-        maskCtx.interpolationQuality = .high
+        // Nearest + hard threshold avoids soft speckles from resized grayscale masks.
+        maskCtx.interpolationQuality = .none
         maskCtx.draw(maskCG, in: CGRect(x: 0, y: 0, width: width, height: height))
 
         for i in 0..<(width * height) {
-            let alpha = maskPixels[i]
+            let alpha: UInt8 = maskPixels[i] >= 128 ? 255 : 0
             let o = i * 4
-            pixels[o + 0] = UInt8((Int(pixels[o + 0]) * Int(alpha)) / 255)
-            pixels[o + 1] = UInt8((Int(pixels[o + 1]) * Int(alpha)) / 255)
-            pixels[o + 2] = UInt8((Int(pixels[o + 2]) * Int(alpha)) / 255)
-            pixels[o + 3] = alpha
+            if alpha == 0 {
+                pixels[o + 0] = 0
+                pixels[o + 1] = 0
+                pixels[o + 2] = 0
+                pixels[o + 3] = 0
+            } else {
+                pixels[o + 3] = 255
+            }
         }
 
         guard let out = ctx.makeImage() else { throw ImageProcessingError.maskFailed }
@@ -231,7 +236,7 @@ enum ImageProcessing {
         var found = false
         for y in 0..<height {
             let row = y * width
-            for x in 0..<width where pixels[row + x] > 24 {
+            for x in 0..<width where pixels[row + x] >= 128 {
                 found = true
                 if x < minX { minX = x }
                 if y < minY { minY = y }
