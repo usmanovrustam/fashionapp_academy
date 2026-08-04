@@ -343,11 +343,17 @@ struct ProfileFeatureView: View {
                 }
             }
             .sheet(isPresented: $viewModel.showGenderPicker) {
-                GenderPromptSheet { gender in
-                    viewModel.profile.gender = gender
-                    await viewModel.saveProfile()
-                    viewModel.showGenderPicker = false
+                ZStack {
+                    Color.clear
+                    GenderPromptSheet { gender in
+                        viewModel.profile.gender = gender
+                        await viewModel.saveProfile()
+                        viewModel.showGenderPicker = false
+                    }
                 }
+                .presentationDetents([.height(380)])
+                .presentationDragIndicator(.hidden)
+                .presentationBackground(.clear)
             }
             .sheet(isPresented: $viewModel.showPrivacy) {
                 infoSheet(
