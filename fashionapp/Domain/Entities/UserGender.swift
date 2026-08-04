@@ -4,7 +4,6 @@ import Foundation
 enum UserGender: String, Codable, CaseIterable, Identifiable, Hashable {
     case woman
     case man
-    case preferNotToSay
 
     var id: String { rawValue }
 
@@ -12,7 +11,6 @@ enum UserGender: String, Codable, CaseIterable, Identifiable, Hashable {
         switch self {
         case .woman: return NSLocalizedString("Woman", comment: "Gender option")
         case .man: return NSLocalizedString("Man", comment: "Gender option")
-        case .preferNotToSay: return NSLocalizedString("Prefer not to say", comment: "Gender option")
         }
     }
 }

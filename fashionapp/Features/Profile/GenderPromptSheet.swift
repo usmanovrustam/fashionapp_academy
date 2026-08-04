@@ -39,7 +39,7 @@ struct GenderPromptSheet: View {
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(LiquidGlassButtonStyle(
-                            prominent: gender != .preferNotToSay,
+                            prominent: true,
                             isDisabled: isSaving
                         ))
                         .disabled(isSaving)

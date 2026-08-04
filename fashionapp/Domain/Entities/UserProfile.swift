@@ -73,7 +73,12 @@ struct UserProfile: Identifiable, Codable, Equatable, Hashable {
         favoriteColors = try container.decodeIfPresent([String].self, forKey: .favoriteColors) ?? []
         avoidCategories = try container.decodeIfPresent([ClothingCategory].self, forKey: .avoidCategories) ?? []
         genderNeutralPreferred = try container.decodeIfPresent(Bool.self, forKey: .genderNeutralPreferred) ?? false
-        gender = try container.decodeIfPresent(UserGender.self, forKey: .gender)
+        // Unknown legacy values (e.g. preferNotToSay) → unset so the app prompts again.
+        if let raw = try container.decodeIfPresent(String.self, forKey: .gender) {
+            gender = UserGender(rawValue: raw)
+        } else {
+            gender = nil
+        }
         avatarImagePath = try container.decodeIfPresent(String.self, forKey: .avatarImagePath)
         createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
         updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt) ?? Date()

@@ -77,7 +77,7 @@ final class RuleBasedOutfitRecommender: OutfitRecommending {
             return true
         case .man:
             return false
-        case .preferNotToSay, .none:
+        case .none:
             guard let weather = context.weather else { return false }
             switch weather.temperatureBand {
             case .hot, .warm: return true
