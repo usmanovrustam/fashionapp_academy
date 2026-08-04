@@ -93,7 +93,7 @@ enum AppTypography {
 
 struct SoftBackground: View {
     var body: some View {
-        Color.white
+        Color(.systemBackground)
             .ignoresSafeArea()
     }
 }

@@ -125,12 +125,6 @@ final class ProfileViewModel: ObservableObject {
         }
     }
 
-    var weatherUnitLabel: String {
-        usesCelsius
-            ? NSLocalizedString("Celsius (°C)", comment: "Weather unit")
-            : NSLocalizedString("Fahrenheit (°F)", comment: "Weather unit")
-    }
-
     var appVersionLabel: String {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"
