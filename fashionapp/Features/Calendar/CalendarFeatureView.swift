@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 struct DayCell: View {
     let date: Date
@@ -289,7 +288,6 @@ struct CalendarFeatureView: View {
                         events: viewModel.events(on: viewModel.selectedDate),
                         wardrobeItems: viewModel.items,
                         packingListsByID: $viewModel.packingListsByID,
-                        imageStorage: viewModel.imageStorage,
                         onAdd: {
                             activeSheet = .addPlan
                         },
@@ -467,8 +465,7 @@ struct CalendarFeatureView: View {
                         } label: {
                             DayPlanRow(
                                 event: event,
-                                linkedItems: viewModel.wardrobeItems(for: event),
-                                storage: viewModel.imageStorage
+                                linkedItems: viewModel.wardrobeItems(for: event)
                             )
                         }
                         .buttonStyle(.plain)
@@ -501,91 +498,51 @@ struct CalendarFeatureView: View {
 private struct DayPlanRow: View {
     let event: CalendarEvent
     let linkedItems: [WardrobeItem]
-    let storage: ImageStorage
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: event.kind.systemImage)
-                    .font(.title3)
-                    .foregroundStyle(AppColors.olive)
-                    .frame(width: 28)
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: event.kind.systemImage)
+                .font(.title3)
+                .foregroundStyle(AppColors.olive)
+                .frame(width: 28)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(event.title)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(AppColors.textPrimary)
-                    if let summary = event.weatherSummary, !summary.isEmpty {
-                        Text(summary)
-                            .font(.caption)
-                            .foregroundStyle(AppColors.textSecondary)
-                    } else if let dress = event.dressCode, !dress.isEmpty {
-                        Text(dress)
-                            .font(.caption)
-                            .foregroundStyle(AppColors.textSecondary)
-                    } else if let notes = event.notes, !notes.isEmpty {
-                        Text(notes)
-                            .font(.caption)
-                            .foregroundStyle(AppColors.textSecondary)
-                            .lineLimit(2)
-                    } else {
-                        Text(event.kind.title)
-                            .font(.caption)
-                            .foregroundStyle(AppColors.textSecondary)
-                    }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(event.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppColors.textPrimary)
+                if let summary = event.weatherSummary, !summary.isEmpty {
+                    Text(summary)
+                        .font(.caption)
+                        .foregroundStyle(AppColors.textSecondary)
+                } else if let dress = event.dressCode, !dress.isEmpty {
+                    Text(dress)
+                        .font(.caption)
+                        .foregroundStyle(AppColors.textSecondary)
+                } else if let notes = event.notes, !notes.isEmpty {
+                    Text(notes)
+                        .font(.caption)
+                        .foregroundStyle(AppColors.textSecondary)
+                        .lineLimit(2)
+                } else {
+                    Text(event.kind.title)
+                        .font(.caption)
+                        .foregroundStyle(AppColors.textSecondary)
                 }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(AppColors.textTertiary)
-            }
 
-            if !linkedItems.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        ForEach(linkedItems) { item in
-                            StoredWardrobeThumb(item: item, storage: storage)
-                        }
-                    }
+                if !linkedItems.isEmpty {
+                    Text(linkedItems.map(\.name).joined(separator: " · "))
+                        .font(.caption)
+                        .foregroundStyle(AppColors.textSecondary)
+                        .lineLimit(2)
                 }
             }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(AppColors.textTertiary)
         }
         .padding()
         .liquidGlass(cornerRadius: AppRadius.medium)
         .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
-    }
-}
-
-private struct StoredWardrobeThumb: View {
-    let item: WardrobeItem
-    let storage: ImageStorage
-    @State private var image: UIImage?
-
-    var body: some View {
-        VStack(spacing: 6) {
-            Group {
-                if let image {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    AppColors.brand.opacity(0.35)
-                        .overlay(ProgressView().tint(AppColors.olive))
-                }
-            }
-            .frame(width: 72, height: 90)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-            Text(item.name)
-                .font(.caption2)
-                .foregroundStyle(AppColors.textSecondary)
-                .lineLimit(1)
-                .frame(width: 72)
-        }
-        .task {
-            let path = item.transparentImagePath ?? item.originalImagePath
-            guard !path.isEmpty else { return }
-            image = UIImage(data: (try? await storage.loadImageData(at: path)) ?? Data())
-        }
     }
 }

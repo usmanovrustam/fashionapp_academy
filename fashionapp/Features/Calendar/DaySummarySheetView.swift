@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 /// First sheet when tapping a date: review plans, then add / edit / delete.
 struct DaySummarySheetView: View {
@@ -7,7 +6,6 @@ struct DaySummarySheetView: View {
     let events: [CalendarEvent]
     let wardrobeItems: [WardrobeItem]
     @Binding var packingListsByID: [UUID: PackingList]
-    let imageStorage: ImageStorage
     let onAdd: () -> Void
     let onEdit: (CalendarEvent) -> Void
     let onDelete: (CalendarEvent) -> Void
@@ -41,7 +39,6 @@ struct DaySummarySheetView: View {
                                 event: event,
                                 linkedItems: linkedItems(for: event),
                                 packingList: event.packingListID.flatMap { packingListsByID[$0] },
-                                storage: imageStorage,
                                 onEdit: { onEdit(event) },
                                 onDelete: { onDelete(event) },
                                 onMarkWashed: event.kind == .laundry ? { onMarkWashed(event) } : nil,
@@ -86,7 +83,6 @@ private struct DaySummaryPlanCard: View {
     let event: CalendarEvent
     let linkedItems: [WardrobeItem]
     let packingList: PackingList?
-    let storage: ImageStorage
     let onEdit: () -> Void
     let onDelete: () -> Void
     let onMarkWashed: (() -> Void)?
@@ -147,13 +143,10 @@ private struct DaySummaryPlanCard: View {
                     }
                 }
             } else if !linkedItems.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        ForEach(linkedItems) { item in
-                            DaySummaryThumb(item: item, storage: storage)
-                        }
-                    }
-                }
+                Text(linkedItems.map(\.name).joined(separator: " · "))
+                    .font(.caption)
+                    .foregroundStyle(AppColors.textSecondary)
+                    .lineLimit(2)
             }
 
             HStack(spacing: 10) {
@@ -213,39 +206,6 @@ private struct DaySummaryPlanCard: View {
             return "This removes the look from this day."
         default:
             return "This removes the plan from your calendar."
-        }
-    }
-}
-
-private struct DaySummaryThumb: View {
-    let item: WardrobeItem
-    let storage: ImageStorage
-    @State private var image: UIImage?
-
-    var body: some View {
-        VStack(spacing: 6) {
-            Group {
-                if let image {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    AppColors.brand.opacity(0.35)
-                }
-            }
-            .frame(width: 64, height: 80)
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-
-            Text(item.name)
-                .font(.caption2)
-                .foregroundStyle(AppColors.textSecondary)
-                .lineLimit(1)
-                .frame(width: 64)
-        }
-        .task {
-            let path = item.transparentImagePath ?? item.originalImagePath
-            guard !path.isEmpty else { return }
-            image = UIImage(data: (try? await storage.loadImageData(at: path)) ?? Data())
         }
     }
 }
