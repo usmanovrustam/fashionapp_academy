@@ -230,7 +230,8 @@ struct ProfileFeatureView: View {
                 accountSection
                 preferencesSection
                 aboutSection
-                dataSection
+                dangerZoneSection
+                logOutSection
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
@@ -359,6 +360,8 @@ struct ProfileFeatureView: View {
             }
             .padding(.vertical, 4)
             .accessibilityElement(children: .combine)
+        } header: {
+            Text(NSLocalizedString("Profile", comment: ""))
         }
     }
 
@@ -473,12 +476,6 @@ struct ProfileFeatureView: View {
                         .textSelection(.enabled)
                 }
             }
-
-            Button(role: .destructive) {
-                viewModel.showSignOutAlert = true
-            } label: {
-                Text(NSLocalizedString("Log Out", comment: ""))
-            }
         } header: {
             Text(NSLocalizedString("Account", comment: ""))
         } footer: {
@@ -566,7 +563,7 @@ struct ProfileFeatureView: View {
         }
     }
 
-    private var dataSection: some View {
+    private var dangerZoneSection: some View {
         Section {
             Button(role: .destructive) {
                 viewModel.showResetAlert = true
@@ -580,12 +577,23 @@ struct ProfileFeatureView: View {
                 Label(NSLocalizedString("Clear All Data", comment: ""), systemImage: "trash")
             }
         } header: {
-            Text(NSLocalizedString("Data", comment: ""))
+            Text(NSLocalizedString("Danger Zone", comment: ""))
         } footer: {
             Text(NSLocalizedString(
                 "Clearing data permanently removes wardrobe items stored for this account on this device.",
-                comment: "Data section footer"
+                comment: "Danger zone section footer"
             ))
+        }
+    }
+
+    private var logOutSection: some View {
+        Section {
+            Button(role: .destructive) {
+                viewModel.showSignOutAlert = true
+            } label: {
+                Text(NSLocalizedString("Log Out", comment: ""))
+                    .frame(maxWidth: .infinity)
+            }
         }
     }
 
