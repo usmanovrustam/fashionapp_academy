@@ -71,7 +71,7 @@ struct DiscoverFeatureView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(NSLocalizedString("Loading weather...", comment: ""))
                             .font(.subheadline.weight(.medium))
-                        Text("Using your current location")
+                        Text(NSLocalizedString("Using your current location", comment: ""))
                             .font(.caption)
                             .foregroundStyle(AppColors.textTertiary)
                     }
@@ -111,7 +111,11 @@ struct DiscoverFeatureView: View {
                 .font(.system(size: 36, weight: .bold, design: .rounded))
                 .foregroundStyle(AppColors.primaryGradient)
                 .accessibilityLabel(
-                    "\(viewModel.formattedTemperatureValue(weather.temperatureCelsius)) degrees \(viewModel.temperatureUnitLabel())"
+                    String(
+                        format: NSLocalizedString("%@ degrees %@", comment: "Weather temperature accessibility"),
+                        viewModel.formattedTemperatureValue(weather.temperatureCelsius),
+                        viewModel.temperatureUnitLabel()
+                    )
                 )
         }
         .accessibilityElement(children: .combine)
@@ -123,7 +127,7 @@ struct DiscoverFeatureView: View {
                 .font(.title2)
                 .foregroundStyle(AppColors.textTertiary)
             VStack(alignment: .leading, spacing: 4) {
-                Text("Weather unavailable")
+                Text(NSLocalizedString("Weather unavailable", comment: ""))
                     .font(.headline)
                 Text(message)
                     .font(.caption)
@@ -131,7 +135,7 @@ struct DiscoverFeatureView: View {
                     .lineLimit(3)
             }
             Spacer(minLength: 0)
-            Button("Retry") {
+            Button(NSLocalizedString("Retry", comment: "")) {
                 Task { await viewModel.refreshWeather() }
             }
             .font(.subheadline.weight(.semibold))
@@ -185,10 +189,10 @@ struct DiscoverFeatureView: View {
                 .foregroundStyle(AppColors.primaryGradient)
             Text(NSLocalizedString("Your wardrobe is empty!", comment: ""))
                 .font(AppTypography.title2)
-            Text("Scan a few clothing items to get personalized outfit ideas.")
+            Text(NSLocalizedString("Scan a few clothing items to get personalized outfit ideas.", comment: ""))
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
-            Button("Refresh") {
+            Button(NSLocalizedString("Refresh", comment: "")) {
                 Task { await viewModel.load(force: true) }
             }
             .nookGlassProminent()
@@ -201,9 +205,9 @@ struct DiscoverFeatureView: View {
             Image(systemName: "arrow.clockwise.circle.fill")
                 .font(.system(size: 48))
                 .foregroundStyle(AppColors.primaryGradient)
-            Text("You're all caught up")
+            Text(NSLocalizedString("You're all caught up", comment: ""))
                 .font(AppTypography.title2)
-            Button("Refresh") {
+            Button(NSLocalizedString("Refresh", comment: "")) {
                 Task { await viewModel.load(force: true) }
             }
             .nookGlassProminent()
@@ -269,7 +273,11 @@ private struct RecommendationCardView: View {
                 .multilineTextAlignment(.center)
                 .lineLimit(3)
 
-            Text("\(Int(recommendation.confidence * 100))% match · \(recommendation.occasion.displayName)")
+            Text(String(
+                format: NSLocalizedString("%d%% match · %@", comment: "Outfit card confidence and occasion"),
+                Int(recommendation.confidence * 100),
+                recommendation.occasion.displayName
+            ))
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(AppColors.primaryGradient)
 
@@ -277,7 +285,7 @@ private struct RecommendationCardView: View {
                 Button(action: onNope) {
                     HStack {
                         Image(systemName: "xmark")
-                        Text("Nope")
+                        Text(NSLocalizedString("Nope", comment: ""))
                     }
                     .frame(maxWidth: .infinity)
                 }
@@ -286,7 +294,7 @@ private struct RecommendationCardView: View {
                 Button(action: onYeah) {
                     HStack {
                         Image(systemName: "checkmark")
-                        Text("Yeah")
+                        Text(NSLocalizedString("Yeah", comment: ""))
                     }
                     .frame(maxWidth: .infinity)
                 }
@@ -325,7 +333,10 @@ struct RecommendationDetailView: View {
                         Label(weather, systemImage: "cloud.sun.fill")
                             .foregroundStyle(AppColors.primaryGradient)
                     }
-                    Text("Confidence \(Int(recommendation.confidence * 100))%")
+                    Text(String(
+                        format: NSLocalizedString("Confidence %d%%", comment: ""),
+                        Int(recommendation.confidence * 100)
+                    ))
                         .font(.headline)
 
                     ForEach(recommendation.items) { item in

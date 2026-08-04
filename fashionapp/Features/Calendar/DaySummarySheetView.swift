@@ -24,14 +24,14 @@ struct DaySummarySheetView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: AppSpacing.md) {
                     if events.isEmpty {
-                        Text("Nothing planned yet for this day.")
+                        Text(NSLocalizedString("Nothing planned yet for this day.", comment: ""))
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding()
                             .liquidGlass(cornerRadius: AppRadius.medium)
                             .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
                     } else {
-                        Text("Plans")
+                        Text(NSLocalizedString("Plans", comment: ""))
                             .font(AppTypography.headline)
 
                         ForEach(events) { event in
@@ -50,7 +50,7 @@ struct DaySummarySheetView: View {
                     }
 
                     Button(action: onAdd) {
-                        Label("Add plan", systemImage: "plus")
+                        Label(NSLocalizedString("Add plan", comment: ""), systemImage: "plus")
                             .font(.body.weight(.semibold))
                             .foregroundStyle(AppColors.brand)
                             .frame(maxWidth: .infinity)
@@ -67,7 +67,7 @@ struct DaySummarySheetView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close", action: onClose)
+                    Button(NSLocalizedString("Close", comment: ""), action: onClose)
                 }
             }
         }
@@ -107,7 +107,7 @@ private struct DaySummaryPlanCard: View {
                             .font(.caption)
                             .foregroundStyle(AppColors.textSecondary)
                             .lineLimit(2)
-                        Text("Tap to edit")
+                        Text(NSLocalizedString("Tap to edit", comment: ""))
                             .font(.caption2.weight(.medium))
                             .foregroundStyle(AppColors.olive)
                     }
@@ -121,7 +121,7 @@ private struct DaySummaryPlanCard: View {
 
             if let onTogglePacked, !linkedItems.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Packing checklist")
+                    Text(NSLocalizedString("Packing checklist", comment: ""))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(AppColors.textSecondary)
                     ForEach(linkedItems) { item in
@@ -152,7 +152,7 @@ private struct DaySummaryPlanCard: View {
             HStack(spacing: 10) {
                 if let onMarkWashed {
                     Button(action: onMarkWashed) {
-                        Label("Mark washed", systemImage: "checkmark.circle")
+                        Label(NSLocalizedString("Mark washed", comment: ""), systemImage: "checkmark.circle")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(AppColors.olive)
                             .padding(.horizontal, 12)
@@ -168,7 +168,7 @@ private struct DaySummaryPlanCard: View {
                 Button(role: .destructive) {
                     confirmDelete = true
                 } label: {
-                    Label("Delete", systemImage: "trash")
+                    Label(NSLocalizedString("Delete", comment: ""), systemImage: "trash")
                         .font(.caption.weight(.semibold))
                 }
                 .buttonStyle(.plain)
@@ -178,12 +178,12 @@ private struct DaySummaryPlanCard: View {
         .liquidGlass(cornerRadius: AppRadius.medium)
         .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
         .confirmationDialog(
-            "Delete this plan?",
+            NSLocalizedString("Delete this plan?", comment: ""),
             isPresented: $confirmDelete,
             titleVisibility: .visible
         ) {
-            Button("Delete plan", role: .destructive, action: onDelete)
-            Button("Cancel", role: .cancel) {}
+            Button(NSLocalizedString("Delete plan", comment: ""), role: .destructive, action: onDelete)
+            Button(NSLocalizedString("Cancel", comment: ""), role: .cancel) {}
         } message: {
             Text(deleteMessage)
         }
@@ -199,13 +199,13 @@ private struct DaySummaryPlanCard: View {
     private var deleteMessage: String {
         switch event.kind {
         case .laundry:
-            return "This also clears the need-to-wash mark on the linked pieces."
+            return NSLocalizedString("This also clears the need-to-wash mark on the linked pieces.", comment: "")
         case .donate:
-            return "This also removes the donate mark from the linked pieces."
+            return NSLocalizedString("This also removes the donate mark from the linked pieces.", comment: "")
         case .knownOutfit:
-            return "This removes the look from this day."
+            return NSLocalizedString("This removes the look from this day.", comment: "")
         default:
-            return "This removes the plan from your calendar."
+            return NSLocalizedString("This removes the plan from your calendar.", comment: "")
         }
     }
 }

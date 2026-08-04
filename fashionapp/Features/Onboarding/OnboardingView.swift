@@ -6,12 +6,14 @@ struct OnboardingView: View {
     @Namespace private var glassNamespace
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private let pages: [(icon: String, title: String, subtitle: String)] = [
-        ("sparkles", "Nook: Private wardrobe", "Help choosing what to wear, based on your clothes and the weather."),
-        ("camera.viewfinder", "Add Your Clothes", "Take a photo or pick one from your library. Nook tags type, color, and season for you."),
-        ("tshirt.fill", "Your Wardrobe", "Keep everything in one place — favorites, wear history, and simple style notes."),
-        ("cloud.sun.fill", "Daily Ideas", "See outfit ideas that match today’s weather and what you already own.")
-    ]
+    private var pages: [(icon: String, title: String, subtitle: String)] {
+        [
+            ("sparkles", NSLocalizedString("Nook: Private wardrobe", comment: "Onboarding brand title"), NSLocalizedString("Help choosing what to wear, based on your clothes and the weather.", comment: "")),
+            ("camera.viewfinder", NSLocalizedString("Add Your Clothes", comment: ""), NSLocalizedString("Take a photo or pick one from your library. Nook tags type, color, and season for you.", comment: "")),
+            ("tshirt.fill", NSLocalizedString("Your Wardrobe", comment: ""), NSLocalizedString("Keep everything in one place — favorites, wear history, and simple style notes.", comment: "")),
+            ("cloud.sun.fill", NSLocalizedString("Daily Ideas", comment: ""), NSLocalizedString("See outfit ideas that match today’s weather and what you already own.", comment: ""))
+        ]
+    }
 
     private var isLastPage: Bool { page == pages.count - 1 }
 
@@ -117,7 +119,11 @@ struct OnboardingView: View {
             .padding(.vertical, 10)
             .liquidGlassCapsule(interactive: false)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Page \(page + 1) of \(pages.count)")
+            .accessibilityLabel(String(
+                format: NSLocalizedString("Page %d of %d", comment: "Onboarding page indicator"),
+                page + 1,
+                pages.count
+            ))
         }
     }
 

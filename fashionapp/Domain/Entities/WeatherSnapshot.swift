@@ -115,11 +115,11 @@ enum DayEventType: String, Codable, CaseIterable, Identifiable, Hashable {
 
     var suggestedDressCode: String? {
         switch self {
-        case .wedding: return "Formal / elegant"
-        case .work, .interview: return "Smart / business"
-        case .dinner: return "Smart casual"
-        case .party: return "Evening out"
-        case .religious, .family: return "Modest & polished"
+        case .wedding: return NSLocalizedString("Formal / elegant", comment: "Dress code")
+        case .work, .interview: return NSLocalizedString("Smart / business", comment: "Dress code")
+        case .dinner: return NSLocalizedString("Smart casual", comment: "Dress code")
+        case .party: return NSLocalizedString("Evening out", comment: "Dress code")
+        case .religious, .family: return NSLocalizedString("Modest & polished", comment: "Dress code")
         case .other: return nil
         }
     }

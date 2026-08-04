@@ -656,15 +656,24 @@ struct ProfileFeatureView: View {
     // MARK: - Copy
 
     private var privacyPolicyText: String {
-        "Nook stores your account and wardrobe securely in your cloud project. Photos you add are processed on this device to remove backgrounds and suggest clothing details, then saved to your account storage. Anonymous usage events help improve the app. Location is used only while Nook is open to show local weather for outfit ideas — never for ads."
+        NSLocalizedString(
+            "Nook stores your account and wardrobe securely in your cloud project. Photos you add are processed on this device to remove backgrounds and suggest clothing details, then saved to your account storage. Anonymous usage events help improve the app. Location is used only while Nook is open to show local weather for outfit ideas — never for ads.",
+            comment: "Privacy policy body"
+        )
     }
 
     private var termsOfUseText: String {
-        "Nook: Private wardrobe is provided for personal, non-commercial use. You are responsible for the photos and content you add. Do not upload images you do not have rights to. Outfit suggestions are informational and may be imperfect. We may update these terms; continued use means you accept the current version. Nook is not a marketplace or public social network."
+        NSLocalizedString(
+            "Nook: Private wardrobe is provided for personal, non-commercial use. You are responsible for the photos and content you add. Do not upload images you do not have rights to. Outfit suggestions are informational and may be imperfect. We may update these terms; continued use means you accept the current version. Nook is not a marketplace or public social network.",
+            comment: "Terms of use body"
+        )
     }
 
     private var aboutUsText: String {
-        "Nook: Private wardrobe helps you manage your closet and choose modest, practical outfits. Add clothes from photos, organize what you own, and get ideas that match the weather — without a public social feed."
+        NSLocalizedString(
+            "Nook: Private wardrobe helps you manage your closet and choose modest, practical outfits. Add clothes from photos, organize what you own, and get ideas that match the weather — without a public social feed.",
+            comment: "About us body"
+        )
     }
 
     // MARK: - Sheets

@@ -88,7 +88,7 @@ struct TodayOutfitWidgetView: View {
                     if let temp = entry.snapshot.temperatureText {
                         Text(temp).font(.caption.weight(.semibold))
                     }
-                    Text("\(Int(entry.snapshot.confidence * 100))% match")
+                    Text(String(format: NSLocalizedString("%d%% match", comment: "Widget confidence"), Int(entry.snapshot.confidence * 100)))
                         .font(.caption)
                         .widgetAccentable()
                 }
@@ -133,10 +133,10 @@ struct TodayOutfitWidgetView: View {
             Spacer(minLength: 0)
 
             HStack {
-                Text("\(Int(entry.snapshot.confidence * 100))% confidence")
+                Text(String(format: NSLocalizedString("%d%% confidence", comment: "Widget confidence"), Int(entry.snapshot.confidence * 100)))
                     .font(.headline)
                 Spacer()
-                Text("\(entry.snapshot.wardrobeCount) items")
+                Text(String(format: NSLocalizedString("%d items", comment: "Widget wardrobe count"), entry.snapshot.wardrobeCount))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }

@@ -3,7 +3,7 @@ import SwiftUI
 @MainActor
 final class AssistantViewModel: ObservableObject {
     @Published var messages: [ChatMessage] = [
-        .assistant("Hi — I'm your AI stylist. Ask me what to wear for a meeting, dinner, cold weather, or a black-only look.")
+        .assistant(NSLocalizedString("Hi — I'm your AI stylist. Ask me what to wear for a meeting, dinner, cold weather, or a black-only look.", comment: ""))
     ]
     @Published var input = ""
     @Published var isThinking = false
@@ -41,7 +41,10 @@ final class AssistantViewModel: ObservableObject {
                 "recommendation_count": "\(response.recommendations.count)"
             ])
         } catch {
-            messages.append(.assistant("I hit a snag: \(error.localizedDescription)"))
+            messages.append(.assistant(String(
+                format: NSLocalizedString("I hit a snag: %@", comment: ""),
+                error.localizedDescription
+            )))
         }
 
         isThinking = false
@@ -69,7 +72,7 @@ struct AssistantFeatureView: View {
                             if viewModel.isThinking {
                                 HStack {
                                     ProgressView()
-                                    Text("Styling…")
+                                    Text(NSLocalizedString("Styling…", comment: ""))
                                         .foregroundColor(.secondary)
                                     Spacer()
                                 }
@@ -78,7 +81,7 @@ struct AssistantFeatureView: View {
 
                             if !viewModel.latestRecommendations.isEmpty {
                                 VStack(alignment: .leading, spacing: 10) {
-                                    Text("Suggested looks")
+                                    Text(NSLocalizedString("Suggested looks", comment: ""))
                                         .font(.headline)
                                         .padding(.horizontal)
                                     ForEach(viewModel.latestRecommendations) { rec in
@@ -104,7 +107,7 @@ struct AssistantFeatureView: View {
             }
             .nookSafeScreenInsets()
             .nookScreenBackground()
-            .navigationTitle("AI Stylist")
+            .navigationTitle(NSLocalizedString("AI Stylist", comment: ""))
             .navigationBarTitleDisplayMode(.inline)
         }
     }
@@ -112,7 +115,7 @@ struct AssistantFeatureView: View {
     private var composer: some View {
         NookGlassContainer(spacing: 10) {
             HStack(spacing: 10) {
-                TextField("What should I wear today?", text: $viewModel.input, axis: .vertical)
+                TextField(NSLocalizedString("What should I wear today?", comment: ""), text: $viewModel.input, axis: .vertical)
                     .lineLimit(1...4)
                     .padding(12)
                     .liquidGlass(cornerRadius: AppRadius.medium, interactive: true)
@@ -163,7 +166,11 @@ private struct RecommendationMiniCard: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .lineLimit(3)
-            Text("\(Int(recommendation.confidence * 100))% · \(recommendation.occasion.displayName)")
+            Text(String(
+                format: NSLocalizedString("%d%% · %@", comment: "Assistant recommendation confidence"),
+                Int(recommendation.confidence * 100),
+                recommendation.occasion.displayName
+            ))
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(AppColors.primaryGradient)
         }

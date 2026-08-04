@@ -65,11 +65,11 @@ struct ScannerFeatureView: View {
                 }
                 .ignoresSafeArea()
             }
-            .alert("Camera", isPresented: Binding(
+            .alert(NSLocalizedString("Camera", comment: ""), isPresented: Binding(
                 get: { viewModel.errorMessage != nil },
                 set: { if !$0 { viewModel.errorMessage = nil } }
             )) {
-                Button("OK", role: .cancel) { viewModel.errorMessage = nil }
+                Button(NSLocalizedString("OK", comment: ""), role: .cancel) { viewModel.errorMessage = nil }
             } message: {
                 Text(viewModel.errorMessage ?? "")
             }
@@ -97,22 +97,22 @@ struct ScannerFeatureView: View {
                 )
             }
             .alert(NSLocalizedString("Saved", comment: ""), isPresented: $viewModel.didSave) {
-                Button("OK") {
+                Button(NSLocalizedString("OK", comment: "")) {
                     if isPresentedModally { dismiss() }
                 }
             } message: {
-                Text("Your item was added to your wardrobe.")
+                Text(NSLocalizedString("Your item was added to your wardrobe.", comment: ""))
             }
         }
     }
 
     private var header: some View {
         VStack(spacing: 8) {
-            Text("Add clothing")
+            Text(NSLocalizedString("Add clothing", comment: ""))
                 .font(AppTypography.title)
                 .foregroundStyle(AppColors.textPrimary)
                 .accessibilityAddTraits(.isHeader)
-            Text("Take a photo or choose one from your library. Nook finds the garment, crops it to a centered square, and suggests details for you to review.")
+            Text(NSLocalizedString("Take a photo or choose one from your library. Nook finds the garment, crops it to a centered square, and suggests details for you to review.", comment: ""))
                 .font(AppTypography.body)
                 .foregroundStyle(AppColors.textSecondary)
                 .multilineTextAlignment(.center)
@@ -133,7 +133,7 @@ struct ScannerFeatureView: View {
                             RoundedRectangle(cornerRadius: AppRadius.photo, style: .continuous)
                                 .stroke(AppColors.primaryGradient, lineWidth: 2)
                         )
-                        .accessibilityLabel("Selected clothing photo")
+                        .accessibilityLabel(NSLocalizedString("Selected clothing photo", comment: ""))
                         .overlay(alignment: .topTrailing) {
                             if !viewModel.isProcessing {
                                 Button {
@@ -145,7 +145,7 @@ struct ScannerFeatureView: View {
                                         .foregroundStyle(.white, AppColors.brand)
                                         .padding(12)
                                 }
-                                .accessibilityLabel("Retake or choose another photo")
+                                .accessibilityLabel(NSLocalizedString("Retake or choose another photo", comment: ""))
                             }
                         }
                         .overlay {
@@ -153,7 +153,7 @@ struct ScannerFeatureView: View {
                                 ScanningShimmerOverlay(reduceMotion: reduceMotion)
                                     .clipShape(RoundedRectangle(cornerRadius: AppRadius.photo, style: .continuous))
                                     .accessibilityElement(children: .combine)
-                                    .accessibilityLabel("Analyzing outfit")
+                                    .accessibilityLabel(NSLocalizedString("Analyzing outfit", comment: ""))
                             }
                         }
                 } else {
@@ -178,7 +178,7 @@ struct ScannerFeatureView: View {
                             }
                         }
                         .accessibilityElement(children: .combine)
-                        .accessibilityLabel("Add a clothing photo")
+                        .accessibilityLabel(NSLocalizedString("Add a clothing photo", comment: ""))
                         .accessibilityAddTraits(.isButton)
                         .onTapGesture {
                             Task { await viewModel.openCamera() }
@@ -191,7 +191,7 @@ struct ScannerFeatureView: View {
                     Button {
                         Task { await viewModel.openCamera() }
                     } label: {
-                        Label("Camera", systemImage: "camera.fill")
+                        Label(NSLocalizedString("Camera", comment: ""), systemImage: "camera.fill")
                             .frame(maxWidth: .infinity)
                     }
                     .nookGlassProminent()
@@ -200,7 +200,7 @@ struct ScannerFeatureView: View {
                     Button {
                         viewModel.showLibrary = true
                     } label: {
-                        Label("Library", systemImage: "photo.on.rectangle")
+                        Label(NSLocalizedString("Library", comment: ""), systemImage: "photo.on.rectangle")
                             .frame(maxWidth: .infinity)
                     }
                     .nookGlass()
@@ -213,44 +213,44 @@ struct ScannerFeatureView: View {
     private var reviewSection: some View {
         VStack(alignment: .leading, spacing: AppSpacing.md) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Review details")
+                Text(NSLocalizedString("Review details", comment: ""))
                     .font(AppTypography.headline)
                     .foregroundStyle(AppColors.textPrimary)
-                Text("Check every suggested value before saving. Nothing is added until you confirm.")
+                Text(NSLocalizedString("Check every suggested value before saving. Nothing is added until you confirm.", comment: ""))
                     .font(AppTypography.caption)
                     .foregroundStyle(AppColors.textSecondary)
             }
 
             GlassCard {
                 VStack(alignment: .leading, spacing: 14) {
-                    reviewField("Name") {
-                        TextField("Item name", text: $viewModel.draftName)
+                    reviewField(NSLocalizedString("Name", comment: "")) {
+                        TextField(NSLocalizedString("Item name", comment: ""), text: $viewModel.draftName)
                             .textInputAutocapitalization(.words)
                     }
 
-                    reviewPicker("Category", selection: $viewModel.draftCategory) {
+                    reviewPicker(NSLocalizedString("Category", comment: ""), selection: $viewModel.draftCategory) {
                         ForEach(ClothingCategory.allCases) { category in
                             Text(category.displayName).tag(category)
                         }
                     }
 
-                    reviewField("Type") {
-                        TextField("e.g. T-Shirt, Midi Dress", text: $viewModel.draftType)
+                    reviewField(NSLocalizedString("Type", comment: "")) {
+                        TextField(NSLocalizedString("e.g. T-Shirt, Midi Dress", comment: ""), text: $viewModel.draftType)
                             .textInputAutocapitalization(.words)
                     }
 
-                    reviewPicker("Material", selection: $viewModel.draftMaterial) {
+                    reviewPicker(NSLocalizedString("Material", comment: ""), selection: $viewModel.draftMaterial) {
                         ForEach(Material.allCases, id: \.self) { material in
                             Text(material.displayName).tag(material)
                         }
                     }
 
-                    reviewField("Color") {
-                        TextField("e.g. Navy", text: $viewModel.draftColor)
+                    reviewField(NSLocalizedString("Color", comment: "")) {
+                        TextField(NSLocalizedString("e.g. Navy", comment: ""), text: $viewModel.draftColor)
                             .textInputAutocapitalization(.words)
                     }
 
-                    reviewPicker("Season", selection: $viewModel.draftSeason) {
+                    reviewPicker(NSLocalizedString("Season", comment: ""), selection: $viewModel.draftSeason) {
                         ForEach(Season.allCases, id: \.self) { season in
                             Text(season.displayName).tag(season)
                         }
@@ -258,7 +258,7 @@ struct ScannerFeatureView: View {
 
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Text("Formality")
+                            Text(NSLocalizedString("Formality", comment: ""))
                                 .font(AppTypography.caption)
                                 .foregroundStyle(AppColors.textSecondary)
                             Spacer()
@@ -268,15 +268,15 @@ struct ScannerFeatureView: View {
                         }
                         Slider(value: $viewModel.draftFormality, in: 0...1, step: 0.05)
                             .tint(AppColors.accent)
-                            .accessibilityLabel("Formality")
+                            .accessibilityLabel(NSLocalizedString("Formality", comment: ""))
                     }
 
                     if let confidence = viewModel.scanResult?.confidence {
                         HStack {
-                            Text("Match score")
+                            Text(NSLocalizedString("Match score", comment: ""))
                                 .foregroundStyle(AppColors.textSecondary)
                             Spacer()
-                            Text("\(Int(confidence * 100))%")
+                            Text(String(format: NSLocalizedString("%d%%", comment: "Percentage value"), Int(confidence * 100)))
                                 .foregroundStyle(AppColors.textPrimary)
                         }
                         .font(.subheadline)
@@ -321,10 +321,10 @@ struct ScannerFeatureView: View {
 
     private func formalityLabel(_ value: Double) -> String {
         switch value {
-        case ..<0.25: return "Casual"
-        case ..<0.5: return "Relaxed"
-        case ..<0.75: return "Smart"
-        default: return "Formal"
+        case ..<0.25: return NSLocalizedString("Casual", comment: "Formality")
+        case ..<0.5: return NSLocalizedString("Relaxed", comment: "Formality")
+        case ..<0.75: return NSLocalizedString("Smart", comment: "Formality")
+        default: return NSLocalizedString("Formal", comment: "Formality")
         }
     }
 
@@ -368,7 +368,7 @@ struct ScanningShimmerOverlay: View {
                         .font(.title2.weight(.semibold))
                         .foregroundStyle(.white)
                         .symbolEffect(.pulse, isActive: !reduceMotion)
-                    Text("Analyzing outfit…")
+                    Text(NSLocalizedString("Analyzing outfit…", comment: ""))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.white)
                 }

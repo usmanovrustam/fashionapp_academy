@@ -9,7 +9,7 @@ struct WardrobeGlanceEntry: TimelineEntry {
 
 struct WardrobeGlanceProvider: TimelineProvider {
     func placeholder(in context: Context) -> WardrobeGlanceEntry {
-        WardrobeGlanceEntry(date: Date(), count: 24, outfitName: "Capsule ready")
+        WardrobeGlanceEntry(date: Date(), count: 24, outfitName: NSLocalizedString("Capsule ready", comment: "Widget placeholder"))
     }
 
     func getSnapshot(in context: Context, completion: @escaping (WardrobeGlanceEntry) -> Void) {
@@ -27,7 +27,7 @@ struct WardrobeGlanceProvider: TimelineProvider {
         return WardrobeGlanceEntry(
             date: Date(),
             count: snapshot?.wardrobeCount ?? 0,
-            outfitName: snapshot?.outfitName ?? "Open Nook to sync"
+            outfitName: snapshot?.outfitName ?? NSLocalizedString("Open Nook to sync", comment: "Widget empty state")
         )
     }
 }
@@ -37,13 +37,13 @@ struct WardrobeGlanceWidgetView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label("Wardrobe", systemImage: "tshirt.fill")
+            Label(NSLocalizedString("Wardrobe", comment: ""), systemImage: "tshirt.fill")
                 .font(.caption.weight(.semibold))
                 .widgetAccentable()
             Text("\(entry.count)")
                 .font(.system(size: 44, weight: .bold, design: .rounded))
                 .widgetAccentable()
-            Text("pieces ready")
+            Text(NSLocalizedString("pieces ready", comment: "Widget subtitle"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Spacer(minLength: 0)

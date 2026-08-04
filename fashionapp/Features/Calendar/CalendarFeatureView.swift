@@ -393,11 +393,11 @@ struct CalendarFeatureView: View {
                 }
             }
             .task { await viewModel.load() }
-            .alert("Couldn’t update", isPresented: Binding(
+            .alert(NSLocalizedString("Couldn’t update", comment: ""), isPresented: Binding(
                 get: { viewModel.errorMessage != nil },
                 set: { if !$0 { viewModel.errorMessage = nil } }
             )) {
-                Button("OK", role: .cancel) { viewModel.errorMessage = nil }
+                Button(NSLocalizedString("OK", comment: ""), role: .cancel) { viewModel.errorMessage = nil }
             } message: {
                 Text(viewModel.errorMessage ?? "")
             }
@@ -440,7 +440,9 @@ struct CalendarFeatureView: View {
                 }
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(isCalendarCollapsed ? "Expand calendar" : "Collapse calendar")
+            .accessibilityLabel(isCalendarCollapsed
+                ? NSLocalizedString("Expand calendar", comment: "")
+                : NSLocalizedString("Collapse calendar", comment: ""))
             Spacer()
             Button { viewModel.shiftMonth(1) } label: {
                 Image(systemName: "chevron.right.circle.fill")
@@ -457,7 +459,7 @@ struct CalendarFeatureView: View {
     private var weekStrip: some View {
         VStack(spacing: 6) {
             LazyVGrid(columns: columns, spacing: 4) {
-                ForEach(Array(["S", "M", "T", "W", "T", "F", "S"].enumerated()), id: \.offset) { _, day in
+                ForEach(Array(Calendar.current.veryShortWeekdaySymbols.enumerated()), id: \.offset) { _, day in
                     Text(day)
                         .font(.caption2.weight(.semibold))
                         .foregroundColor(.secondary)
@@ -491,7 +493,7 @@ struct CalendarFeatureView: View {
     private var calendarGrid: some View {
         VStack(spacing: 6) {
             LazyVGrid(columns: columns, spacing: 4) {
-                ForEach(Array(["S", "M", "T", "W", "T", "F", "S"].enumerated()), id: \.offset) { _, day in
+                ForEach(Array(Calendar.current.veryShortWeekdaySymbols.enumerated()), id: \.offset) { _, day in
                     Text(day)
                         .font(.caption2.weight(.semibold))
                         .foregroundColor(.secondary)
@@ -529,13 +531,13 @@ struct CalendarFeatureView: View {
     private var dayPlansSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("This day")
+                Text(NSLocalizedString("This day", comment: ""))
                     .font(AppTypography.headline)
                 Spacer()
                 Button {
                     activeSheet = .daySummary
                 } label: {
-                    Label("Open", systemImage: "calendar")
+                    Label(NSLocalizedString("Open", comment: ""), systemImage: "calendar")
                         .font(.subheadline.weight(.semibold))
                         .foregroundColor(AppColors.brand)
                         .padding(.horizontal, 14)
@@ -547,7 +549,7 @@ struct CalendarFeatureView: View {
 
             let dayEvents = viewModel.events(on: viewModel.selectedDate)
             if dayEvents.isEmpty {
-                Text("Tap a date to review plans or add an outfit, event, trip, laundry, or donate.")
+                Text(NSLocalizedString("Tap a date to review plans or add an outfit, event, trip, laundry, or donate.", comment: ""))
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding()
@@ -569,19 +571,19 @@ struct CalendarFeatureView: View {
                             Button {
                                 activeSheet = .editPlan(event)
                             } label: {
-                                Label("Edit", systemImage: "pencil")
+                                Label(NSLocalizedString("Edit", comment: ""), systemImage: "pencil")
                             }
                             if event.kind == .laundry {
                                 Button {
                                     Task { await viewModel.markLaundryWashed(event) }
                                 } label: {
-                                    Label("Mark washed", systemImage: "checkmark.circle")
+                                    Label(NSLocalizedString("Mark washed", comment: ""), systemImage: "checkmark.circle")
                                 }
                             }
                             Button(role: .destructive) {
                                 Task { await viewModel.deleteDayPlan(event) }
                             } label: {
-                                Label("Delete", systemImage: "trash")
+                                Label(NSLocalizedString("Delete", comment: ""), systemImage: "trash")
                             }
                         }
                     }

@@ -10,12 +10,12 @@ final class AuthViewModel: ObservableObject {
         var id: String { rawValue }
 
         /// Verb-led primary action (HIG Buttons).
-        var ctaTitle: String { rawValue }
+        var ctaTitle: String { NSLocalizedString(rawValue, comment: "Auth primary CTA") }
 
         var loadingTitle: String {
             switch self {
-            case .signIn: return "Signing In…"
-            case .signUp: return "Registering…"
+            case .signIn: return NSLocalizedString("Signing In…", comment: "")
+            case .signUp: return NSLocalizedString("Registering…", comment: "")
             }
         }
 
@@ -76,7 +76,7 @@ final class AuthViewModel: ObservableObject {
                 let idToken = String(data: tokenData, encoding: .utf8),
                 let rawNonce = currentAppleNonce
             else {
-                errorMessage = "Unable to complete Sign in with Apple."
+                errorMessage = NSLocalizedString("Unable to complete Sign in with Apple.", comment: "")
                 return
             }
 
@@ -139,7 +139,7 @@ final class AuthViewModel: ObservableObject {
     func resetPassword() async {
         let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            errorMessage = "Enter your email to reset your password."
+            errorMessage = NSLocalizedString("Enter your email to reset your password.", comment: "")
             return
         }
         isLoading = true
@@ -147,7 +147,7 @@ final class AuthViewModel: ObservableObject {
         defer { isLoading = false }
         do {
             try await auth.sendPasswordReset(email: trimmed)
-            infoMessage = "Password reset email sent."
+            infoMessage = NSLocalizedString("Password reset email sent.", comment: "")
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -185,11 +185,11 @@ struct AuthFeatureView: View {
                             .foregroundStyle(AppColors.textPrimary)
                             .accessibilityAddTraits(.isHeader)
 
-                        Text("Private wardrobe")
+                        Text(NSLocalizedString("Private wardrobe", comment: ""))
                             .font(AppTypography.title2)
                             .foregroundStyle(AppColors.textSecondary)
 
-                        Text("Sign in to open your wardrobe and get outfit ideas for today.")
+                        Text(NSLocalizedString("Sign in to open your wardrobe and get outfit ideas for today.", comment: ""))
                             .font(AppTypography.body)
                             .foregroundStyle(AppColors.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -205,7 +205,7 @@ struct AuthFeatureView: View {
                     modeSwitchLink
                         .padding(.top, 4)
 
-                    dividerLabel("or")
+                    dividerLabel(NSLocalizedString("or", comment: "Auth divider between email and Apple"))
                         .padding(.vertical, 4)
 
                     // Apple under email path; privacy note sits with the button.
@@ -224,7 +224,7 @@ struct AuthFeatureView: View {
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
-                    Button("Done") { focusedField = nil }
+                    Button(NSLocalizedString("Done", comment: "")) { focusedField = nil }
                         .fontWeight(.semibold)
                 }
             }
@@ -248,9 +248,9 @@ struct AuthFeatureView: View {
             .clipShape(Capsule())
             .disabled(viewModel.isLoading)
             .opacity(viewModel.isLoading ? 0.6 : 1)
-            .accessibilityHint("Uses your Apple Account with Face ID or Touch ID when available")
+            .accessibilityHint(NSLocalizedString("Uses your Apple Account with Face ID or Touch ID when available", comment: ""))
 
-            Text("Sign in with Apple shares only the name and email you choose.")
+            Text(NSLocalizedString("Sign in with Apple shares only the name and email you choose.", comment: ""))
                 .font(.caption)
                 .foregroundStyle(AppColors.placeholder)
                 .multilineTextAlignment(.center)
@@ -280,9 +280,9 @@ struct AuthFeatureView: View {
     private var modeSwitchLink: some View {
         HStack(spacing: 4) {
             if viewModel.mode == .signIn {
-                Text("Don't have an account?")
+                Text(NSLocalizedString("Don't have an account?", comment: ""))
                     .foregroundStyle(AppColors.placeholder)
-                Button("Register") {
+                Button(NSLocalizedString("Register", comment: "")) {
                     withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
                         viewModel.mode = .signUp
                         viewModel.errorMessage = nil
@@ -293,9 +293,9 @@ struct AuthFeatureView: View {
                 .fontWeight(.semibold)
                 .foregroundStyle(AppColors.accent)
             } else {
-                Text("Already have an account?")
+                Text(NSLocalizedString("Already have an account?", comment: ""))
                     .foregroundStyle(AppColors.placeholder)
-                Button("Sign In") {
+                Button(NSLocalizedString("Sign In", comment: "")) {
                     withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
                         viewModel.mode = .signIn
                         viewModel.errorMessage = nil
@@ -319,12 +319,12 @@ struct AuthFeatureView: View {
         // Even vertical spacing + consistent full widths (HIG: stack fields, same width).
         VStack(alignment: .leading, spacing: 16) {
             if viewModel.mode == .signUp {
-                labeledField(title: "Name") {
+                labeledField(title: NSLocalizedString("Name", comment: "")) {
                     HStack(spacing: 8) {
                         TextField(
                             "",
                             text: $viewModel.displayName,
-                            prompt: Text("Name").foregroundStyle(AppColors.placeholder)
+                            prompt: Text(NSLocalizedString("Name", comment: "")).foregroundStyle(AppColors.placeholder)
                         )
                         .font(.body)
                         .multilineTextAlignment(.leading)
@@ -341,12 +341,12 @@ struct AuthFeatureView: View {
                 .transition(.opacity)
             }
 
-            labeledField(title: "Email") {
+            labeledField(title: NSLocalizedString("Email", comment: "")) {
                 HStack(spacing: 8) {
                     TextField(
                         "",
                         text: $viewModel.email,
-                        prompt: Text("Email").foregroundStyle(AppColors.placeholder)
+                        prompt: Text(NSLocalizedString("Email", comment: "")).foregroundStyle(AppColors.placeholder)
                     )
                     .font(.body)
                     .multilineTextAlignment(.leading)
@@ -363,14 +363,14 @@ struct AuthFeatureView: View {
             }
 
             VStack(alignment: .leading, spacing: 10) {
-                labeledField(title: "Password") {
+                labeledField(title: NSLocalizedString("Password", comment: "")) {
                     HStack(spacing: 8) {
                         Group {
                             if viewModel.isPasswordVisible {
                                 TextField(
                                     "",
                                     text: $viewModel.password,
-                                    prompt: Text("Password").foregroundStyle(AppColors.placeholder)
+                                    prompt: Text(NSLocalizedString("Password", comment: "")).foregroundStyle(AppColors.placeholder)
                                 )
                                 .textContentType(viewModel.mode == .signUp ? .newPassword : .password)
                             } else {
@@ -378,7 +378,7 @@ struct AuthFeatureView: View {
                                 SecureField(
                                     "",
                                     text: $viewModel.password,
-                                    prompt: Text("Password").foregroundStyle(AppColors.placeholder)
+                                    prompt: Text(NSLocalizedString("Password", comment: "")).foregroundStyle(AppColors.placeholder)
                                 )
                                 .textContentType(viewModel.mode == .signUp ? .newPassword : .password)
                             }
@@ -410,14 +410,16 @@ struct AuthFeatureView: View {
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel(viewModel.isPasswordVisible ? "Hide password" : "Show password")
+                        .accessibilityLabel(viewModel.isPasswordVisible
+                            ? NSLocalizedString("Hide password", comment: "")
+                            : NSLocalizedString("Show password", comment: ""))
                     }
                 }
 
                 if viewModel.mode == .signIn {
                     HStack {
                         Spacer(minLength: 0)
-                        Button("Forgot Password?") {
+                        Button(NSLocalizedString("Forgot Password?", comment: "")) {
                             Task { await viewModel.resetPassword() }
                         }
                         .font(.footnote.weight(.medium))
@@ -467,7 +469,7 @@ struct AuthFeatureView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Clear text")
+            .accessibilityLabel(NSLocalizedString("Clear text", comment: ""))
         }
     }
 
@@ -522,8 +524,8 @@ struct AuthFeatureView: View {
         .disabled(!viewModel.canSubmit)
         .accessibilityHint(
             viewModel.mode == .signIn
-                ? "Signs in with email and password"
-                : "Creates a new account with email and password"
+                ? NSLocalizedString("Signs in with email and password", comment: "")
+                : NSLocalizedString("Creates a new account with email and password", comment: "")
         )
     }
 }

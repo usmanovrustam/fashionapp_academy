@@ -25,24 +25,24 @@ enum ClothingCategory: String, Codable, CaseIterable, Identifiable, Hashable {
 
     var displayName: String {
         switch self {
-        case .top: return "Top"
-        case .bottom: return "Bottom"
-        case .shoes: return "Shoes"
-        case .dress: return "Dress"
-        case .jacket: return "Jacket"
-        case .coat: return "Coat"
-        case .accessories: return "Accessories"
-        case .hat: return "Hat"
-        case .scarf: return "Scarf"
-        case .jewelry: return "Jewelry"
-        case .bag: return "Bag"
-        case .watch: return "Watch"
-        case .belt: return "Belt"
-        case .sportswear: return "Sportswear"
-        case .formalwear: return "Formalwear"
-        case .sleepwear: return "Sleepwear"
-        case .swimwear: return "Swimwear"
-        case .other: return "Other"
+        case .top: return NSLocalizedString("Top", comment: "")
+        case .bottom: return NSLocalizedString("Bottom", comment: "")
+        case .shoes: return NSLocalizedString("Shoes", comment: "")
+        case .dress: return NSLocalizedString("Dress", comment: "")
+        case .jacket: return NSLocalizedString("Jacket", comment: "")
+        case .coat: return NSLocalizedString("Coat", comment: "")
+        case .accessories: return NSLocalizedString("Accessories", comment: "")
+        case .hat: return NSLocalizedString("Hat", comment: "")
+        case .scarf: return NSLocalizedString("Scarf", comment: "")
+        case .jewelry: return NSLocalizedString("Jewelry", comment: "")
+        case .bag: return NSLocalizedString("Bag", comment: "")
+        case .watch: return NSLocalizedString("Watch", comment: "")
+        case .belt: return NSLocalizedString("Belt", comment: "")
+        case .sportswear: return NSLocalizedString("Sportswear", comment: "")
+        case .formalwear: return NSLocalizedString("Formalwear", comment: "")
+        case .sleepwear: return NSLocalizedString("Sleepwear", comment: "")
+        case .swimwear: return NSLocalizedString("Swimwear", comment: "")
+        case .other: return NSLocalizedString("Other", comment: "")
         }
     }
 }
@@ -52,11 +52,11 @@ enum Season: String, Codable, CaseIterable, Hashable {
 
     var displayName: String {
         switch self {
-        case .spring: return "Spring"
-        case .summer: return "Summer"
-        case .autumn: return "Autumn"
-        case .winter: return "Winter"
-        case .allSeason: return "All Season"
+        case .spring: return NSLocalizedString("Spring", comment: "")
+        case .summer: return NSLocalizedString("Summer", comment: "")
+        case .autumn: return NSLocalizedString("Autumn", comment: "")
+        case .winter: return NSLocalizedString("Winter", comment: "")
+        case .allSeason: return NSLocalizedString("All Season", comment: "")
         }
     }
 }
@@ -65,7 +65,23 @@ enum Material: String, Codable, CaseIterable, Hashable {
     case cotton, linen, wool, silk, leather, denim, polyester, nylon
     case cashmere, velvet, suede, knit, unknown
 
-    var displayName: String { rawValue.capitalized }
+    var displayName: String {
+        switch self {
+        case .cotton: return NSLocalizedString("Cotton", comment: "Material")
+        case .linen: return NSLocalizedString("Linen", comment: "Material")
+        case .wool: return NSLocalizedString("Wool", comment: "Material")
+        case .silk: return NSLocalizedString("Silk", comment: "Material")
+        case .leather: return NSLocalizedString("Leather", comment: "Material")
+        case .denim: return NSLocalizedString("Denim", comment: "Material")
+        case .polyester: return NSLocalizedString("Polyester", comment: "Material")
+        case .nylon: return NSLocalizedString("Nylon", comment: "Material")
+        case .cashmere: return NSLocalizedString("Cashmere", comment: "Material")
+        case .velvet: return NSLocalizedString("Velvet", comment: "Material")
+        case .suede: return NSLocalizedString("Suede", comment: "Material")
+        case .knit: return NSLocalizedString("Knit", comment: "Material")
+        case .unknown: return NSLocalizedString("Unknown", comment: "Material")
+        }
+    }
 }
 
 enum StyleTag: String, Codable, CaseIterable, Hashable {
@@ -76,13 +92,13 @@ enum StyleTag: String, Codable, CaseIterable, Hashable {
 
     var displayName: String {
         switch self {
-        case .oldMoney: return "Classic tailored"
-        case .quietLuxury: return "Understated"
-        case .luxury: return "Refined"
-        case .preppy: return "Neat casual"
-        case .nightOut: return "Evening out"
-        case .weddingGuest: return "Formal event"
-        default: return rawValue.prefix(1).uppercased() + rawValue.dropFirst()
+        case .oldMoney: return NSLocalizedString("Classic tailored", comment: "")
+        case .quietLuxury: return NSLocalizedString("Understated", comment: "")
+        case .luxury: return NSLocalizedString("Refined", comment: "")
+        case .preppy: return NSLocalizedString("Neat casual", comment: "")
+        case .nightOut: return NSLocalizedString("Evening out", comment: "")
+        case .weddingGuest: return NSLocalizedString("Formal event", comment: "")
+        default: return NSLocalizedString(rawValue.prefix(1).uppercased() + rawValue.dropFirst(), comment: "Style tag")
         }
     }
 }

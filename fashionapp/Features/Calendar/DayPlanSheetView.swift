@@ -103,10 +103,10 @@ struct DayPlanSheetView: View {
                     kindList
                 case .knownOutfit:
                     itemPickerForm(
-                        title: "Select what you’re wearing",
-                        emptyMessage: "Your wardrobe is empty. Scan a piece first, then come back.",
+                        title: NSLocalizedString("Select what you’re wearing", comment: ""),
+                        emptyMessage: NSLocalizedString("Your wardrobe is empty. Scan a piece first, then come back.", comment: ""),
                         items: wardrobeItems.filter { $0.isAvailableToWear || selectedItemIDs.contains($0.id) },
-                        saveTitle: "Save to calendar",
+                        saveTitle: NSLocalizedString("Save to calendar", comment: ""),
                         showScanCTA: wardrobeItems.filter(\.isAvailableToWear).isEmpty,
                         onSave: saveKnownOutfit
                     )
@@ -116,18 +116,18 @@ struct DayPlanSheetView: View {
                     travelForm
                 case .laundry:
                     itemPickerForm(
-                        title: "Mark what needs a wash",
-                        emptyMessage: "Nothing left to mark — everything is already in laundry.",
+                        title: NSLocalizedString("Mark what needs a wash", comment: ""),
+                        emptyMessage: NSLocalizedString("Nothing left to mark — everything is already in laundry.", comment: ""),
                         items: wardrobeItems.filter { !$0.isInLaundry || selectedItemIDs.contains($0.id) },
-                        saveTitle: "Mark as need to wash",
+                        saveTitle: NSLocalizedString("Mark as need to wash", comment: ""),
                         onSave: saveLaundry
                     )
                 case .donate:
                     itemPickerForm(
-                        title: "Choose pieces to donate",
-                        emptyMessage: "No pieces available to mark for donate right now.",
+                        title: NSLocalizedString("Choose pieces to donate", comment: ""),
+                        emptyMessage: NSLocalizedString("No pieces available to mark for donate right now.", comment: ""),
                         items: wardrobeItems.filter { !$0.isListedForDonate || selectedItemIDs.contains($0.id) },
-                        saveTitle: "Mark for donate",
+                        saveTitle: NSLocalizedString("Mark for donate", comment: ""),
                         onSave: saveDonate
                     )
                 }
@@ -142,11 +142,11 @@ struct DayPlanSheetView: View {
                     }
                 }
             }
-            .alert("Something went wrong", isPresented: Binding(
+            .alert(NSLocalizedString("Something went wrong", comment: ""), isPresented: Binding(
                 get: { errorMessage != nil },
                 set: { if !$0 { errorMessage = nil } }
             )) {
-                Button("OK", role: .cancel) { errorMessage = nil }
+                Button(NSLocalizedString("OK", comment: ""), role: .cancel) { errorMessage = nil }
             } message: {
                 Text(errorMessage ?? "")
             }
@@ -157,12 +157,12 @@ struct DayPlanSheetView: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEE, MMM d"
         let day = formatter.string(from: date)
-        return isEditing ? "Edit · \(day)" : day
+        return isEditing ? String(format: NSLocalizedString("Edit · %@", comment: ""), day) : day
     }
 
     private var backButtonTitle: String {
-        if step == .chooseKind || isEditing { return "Close" }
-        return "Back"
+        if step == .chooseKind || isEditing { return NSLocalizedString("Close", comment: "") }
+        return NSLocalizedString("Back", comment: "")
     }
 
     private func handleBack() {
@@ -190,7 +190,7 @@ struct DayPlanSheetView: View {
     private var kindList: some View {
         ScrollView {
             VStack(spacing: AppSpacing.md) {
-                Text("What do you have this day?")
+                Text(NSLocalizedString("What do you have this day?", comment: ""))
                     .font(AppTypography.headline)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, AppSpacing.sm)
@@ -264,7 +264,7 @@ struct DayPlanSheetView: View {
                         .foregroundStyle(.secondary)
                     if showScanCTA, let onScanWardrobe {
                         Button(action: onScanWardrobe) {
-                            Label("Scan a piece", systemImage: "camera.fill")
+                            Label(NSLocalizedString("Scan a piece", comment: ""), systemImage: "camera.fill")
                                 .font(.body.weight(.semibold))
                                 .foregroundStyle(AppColors.brand)
                                 .frame(maxWidth: .infinity)
@@ -306,7 +306,7 @@ struct DayPlanSheetView: View {
         let ids = Array(selectedItemIDs)
         let names = wardrobeItems.filter { ids.contains($0.id) }.map(\.name)
         let title = names.isEmpty
-            ? "Planned look"
+            ? NSLocalizedString("Planned look", comment: "")
             : names.prefix(2).joined(separator: " · ")
 
         let previousIDs = Set(existingEvent?.wardrobeItemIDs ?? [])
@@ -343,13 +343,13 @@ struct DayPlanSheetView: View {
 
         let event = CalendarEvent(
             id: planID,
-            title: "Laundry",
+            title: NSLocalizedString("Laundry", comment: ""),
             startDate: calendar.startOfDay(for: date),
             endDate: calendar.startOfDay(for: date),
             isAllDay: true,
             kind: .laundry,
             wardrobeItemIDs: ids,
-            notes: "\(ids.count) piece(s) marked as need to wash"
+            notes: String(format: NSLocalizedString("%d piece(s) marked as need to wash", comment: ""), ids.count)
         )
         onSave(event, nil, updatedItems)
     }
@@ -369,13 +369,13 @@ struct DayPlanSheetView: View {
 
         let event = CalendarEvent(
             id: planID,
-            title: "Donate",
+            title: NSLocalizedString("Donate", comment: ""),
             startDate: calendar.startOfDay(for: date),
             endDate: calendar.startOfDay(for: date),
             isAllDay: true,
             kind: .donate,
             wardrobeItemIDs: ids,
-            notes: "\(ids.count) piece(s) marked for donate"
+            notes: String(format: NSLocalizedString("%d piece(s) marked for donate", comment: ""), ids.count)
         )
         onSave(event, nil, updatedItems)
     }
@@ -386,7 +386,7 @@ struct DayPlanSheetView: View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: AppSpacing.md) {
-                    Text("What type of event?")
+                    Text(NSLocalizedString("What type of event?", comment: ""))
                         .font(AppTypography.headline)
 
                     ForEach(DayEventType.allCases) { type in
@@ -415,7 +415,7 @@ struct DayPlanSheetView: View {
                         .buttonStyle(.plain)
                     }
 
-                    TextField("Optional note (dress code, venue…)", text: $customEventNote, axis: .vertical)
+                    TextField(NSLocalizedString("Optional note (dress code, venue…)", comment: ""), text: $customEventNote, axis: .vertical)
                         .lineLimit(2...4)
                         .padding()
                         .liquidGlass(cornerRadius: AppRadius.medium)
@@ -425,16 +425,16 @@ struct DayPlanSheetView: View {
                     if suggestions.isEmpty {
                         if wardrobeItems.filter(\.isAvailableToWear).isEmpty, let onScanWardrobe {
                             Button(action: onScanWardrobe) {
-                                Label("Scan pieces for this event", systemImage: "camera.fill")
+                                Label(NSLocalizedString("Scan pieces for this event", comment: ""), systemImage: "camera.fill")
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(AppColors.olive)
                             }
                         }
                     } else {
-                        Text("Suggested from your wardrobe")
+                        Text(NSLocalizedString("Suggested from your wardrobe", comment: ""))
                             .font(AppTypography.headline)
                             .padding(.top, 8)
-                        Text("Optional — tap to include with this event.")
+                        Text(NSLocalizedString("Optional — tap to include with this event.", comment: ""))
                             .font(.caption)
                             .foregroundStyle(.secondary)
 
@@ -459,7 +459,7 @@ struct DayPlanSheetView: View {
                 .padding(.bottom, 100)
             }
 
-            saveBar(title: "Save to calendar", enabled: true) {
+            saveBar(title: NSLocalizedString("Save to calendar", comment: ""), enabled: true) {
                 saveEvent()
             }
         }
@@ -490,17 +490,17 @@ struct DayPlanSheetView: View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: AppSpacing.md) {
-                    Text("Where are you going?")
+                    Text(NSLocalizedString("Where are you going?", comment: ""))
                         .font(AppTypography.headline)
 
-                    TextField("City or place", text: $destination)
+                    TextField(NSLocalizedString("City or place", comment: ""), text: $destination)
                         .textInputAutocapitalization(.words)
                         .padding()
                         .liquidGlass(cornerRadius: AppRadius.medium)
                         .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
 
                     DatePicker(
-                        "Trip ends",
+                        NSLocalizedString("Trip ends", comment: ""),
                         selection: $tripEndDate,
                         in: date...,
                         displayedComponents: .date
@@ -516,7 +516,7 @@ struct DayPlanSheetView: View {
                             if isWorking {
                                 ProgressView().tint(AppColors.brand)
                             }
-                            Text(isWorking ? "Checking weather…" : "Analyze season & weather")
+                            Text(isWorking ? NSLocalizedString("Checking weather…", comment: "") : NSLocalizedString("Analyze season & weather", comment: ""))
                                 .font(.body.weight(.semibold))
                         }
                         .foregroundStyle(AppColors.brand)
@@ -553,12 +553,12 @@ struct DayPlanSheetView: View {
                         .liquidGlass(cornerRadius: AppRadius.medium)
                         .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
 
-                        Text("Suggested outfits to take")
+                        Text(NSLocalizedString("Suggested outfits to take", comment: ""))
                             .font(AppTypography.headline)
                             .padding(.top, 8)
 
                         if analysis.suggestedItems.isEmpty {
-                            Text("No strong wardrobe matches yet — add more pieces for better packing lists.")
+                            Text(NSLocalizedString("No strong wardrobe matches yet — add more pieces for better packing lists.", comment: ""))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         } else {
@@ -581,7 +581,7 @@ struct DayPlanSheetView: View {
                     } else if !suggestedIDs.isEmpty {
                         let selected = wardrobeItems.filter { suggestedIDs.contains($0.id) }
                         if !selected.isEmpty {
-                            Text("Packed pieces")
+                            Text(NSLocalizedString("Packed pieces", comment: ""))
                                 .font(AppTypography.headline)
                                 .padding(.top, 8)
                             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
@@ -607,7 +607,7 @@ struct DayPlanSheetView: View {
             }
 
             saveBar(
-                title: "Save to calendar",
+                title: NSLocalizedString("Save to calendar", comment: ""),
                 enabled: travelPlace != nil || !destination.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ) {
                 saveTravel()
@@ -667,7 +667,7 @@ struct DayPlanSheetView: View {
         packingListID = listID
         let packing = PackingList(
             id: listID,
-            title: "Trip to \(placeName)",
+            title: String(format: NSLocalizedString("Trip to %@", comment: ""), placeName),
             destination: placeName,
             startDate: calendar.startOfDay(for: date),
             endDate: calendar.startOfDay(for: tripEndDate),
@@ -676,7 +676,7 @@ struct DayPlanSheetView: View {
         )
         let event = CalendarEvent(
             id: planID,
-            title: "Trip · \(placeName)",
+            title: String(format: NSLocalizedString("Trip · %@", comment: ""), placeName),
             startDate: calendar.startOfDay(for: date),
             endDate: calendar.startOfDay(for: tripEndDate),
             location: placeName,

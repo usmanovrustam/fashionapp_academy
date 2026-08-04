@@ -1,0 +1,8 @@
+/* NookWidgets Localizable.strings */
+"Wardrobe" = "Гардероб";
+"pieces ready" = "вещей готово";
+"Open Nook to sync" = "Откройте Nook для синхронизации";
+"Capsule ready" = "Капсула готова";
+"%d%% match" = "%d%% совпадение";
+"%d%% confidence" = "%d%% уверенность";
+"%d items" = "%d вещей";

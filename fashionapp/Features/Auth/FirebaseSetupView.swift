@@ -11,18 +11,21 @@ struct FirebaseSetupView: View {
                     .padding(28)
                     .liquidGlass(cornerRadius: 40)
 
-                Text("Connect Firebase")
+                Text(NSLocalizedString("Connect Firebase", comment: ""))
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundStyle(AppColors.primaryGradient)
 
-                Text("Nook uses Firebase Authentication for sign-in. Add your project plist to continue.")
+                Text(NSLocalizedString(
+                    "Nook uses Firebase Authentication for sign-in. Add your project plist to continue.",
+                    comment: ""
+                ))
                     .font(AppTypography.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
 
                 GlassCard {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Configuration place")
+                        Text(NSLocalizedString("Configuration place", comment: ""))
                             .font(AppTypography.headline)
                         Text(FirebaseConfig.relativePathInRepo)
                             .font(.system(.footnote, design: .monospaced))
@@ -31,7 +34,13 @@ struct FirebaseSetupView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .liquidGlass(cornerRadius: 10)
 
-                        Text("Download GoogleService-Info.plist from Firebase Console → Project settings → Your apps (bundle id \(FirebaseConfig.expectedBundleID)), then put it at the path above and rebuild.")
+                        Text(String(
+                            format: NSLocalizedString(
+                                "Download GoogleService-Info.plist from Firebase Console → Project settings → Your apps (bundle id %@), then put it at the path above and rebuild.",
+                                comment: ""
+                            ),
+                            FirebaseConfig.expectedBundleID
+                        ))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -39,16 +48,16 @@ struct FirebaseSetupView: View {
 
                 GlassCard {
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("Where data lives")
+                        Text(NSLocalizedString("Where data lives", comment: ""))
                             .font(AppTypography.headline)
-                        labeled("Auth", "Firebase Authentication")
-                        labeled("Wardrobe", "Firestore users/{uid}/wardrobeItems")
-                        labeled("Images", "Storage users/{uid}/images")
-                        labeled("Analytics", "Firebase Analytics → BigQuery")
+                        labeled(NSLocalizedString("Auth", comment: "Firebase setup row"), "Firebase Authentication")
+                        labeled(NSLocalizedString("Wardrobe", comment: ""), "Firestore users/{uid}/wardrobeItems")
+                        labeled(NSLocalizedString("Images", comment: "Firebase setup row"), "Storage users/{uid}/images")
+                        labeled(NSLocalizedString("Analytics", comment: "Firebase setup row"), "Firebase Analytics → BigQuery")
                     }
                 }
 
-                Text("Details: FIREBASE_SETUP.md")
+                Text(NSLocalizedString("Details: FIREBASE_SETUP.md", comment: ""))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }

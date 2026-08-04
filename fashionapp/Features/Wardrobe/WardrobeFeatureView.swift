@@ -17,7 +17,7 @@ struct WardrobeFeatureView: View {
                     filterBar
 
                     if viewModel.isLoading && viewModel.items.isEmpty {
-                        LoadingRingsView(message: "Loading your wardrobe...")
+                        LoadingRingsView(message: NSLocalizedString("Loading your wardrobe...", comment: ""))
                             .padding(.top, 80)
                     } else if let error = viewModel.errorMessage, viewModel.items.isEmpty {
                         errorCard(error)
@@ -96,22 +96,22 @@ struct WardrobeFeatureView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 10) {
                 FilterChip(
-                    title: "All",
+                    title: NSLocalizedString("All", comment: ""),
                     selected: viewModel.filterCategory == nil && !viewModel.showFavoritesOnly && !viewModel.showLaundryOnly
                 ) {
                     viewModel.filterCategory = nil
                     viewModel.showFavoritesOnly = false
                     viewModel.showLaundryOnly = false
                 }
-                FilterChip(title: "Favorites", selected: viewModel.showFavoritesOnly) {
+                FilterChip(title: NSLocalizedString("Favorites", comment: ""), selected: viewModel.showFavoritesOnly) {
                     viewModel.showFavoritesOnly = true
                     viewModel.showLaundryOnly = false
                     viewModel.filterCategory = nil
                 }
                 FilterChip(
                     title: viewModel.laundryCount > 0
-                        ? "Needs wash (\(viewModel.laundryCount))"
-                        : "Needs wash",
+                        ? String(format: NSLocalizedString("Needs wash (%d)", comment: ""), viewModel.laundryCount)
+                        : NSLocalizedString("Needs wash", comment: ""),
                     selected: viewModel.showLaundryOnly
                 ) {
                     viewModel.showLaundryOnly = true
@@ -135,13 +135,13 @@ struct WardrobeFeatureView: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 40))
                     .foregroundColor(.orange)
-                Text("Error Loading Wardrobe")
+                Text(NSLocalizedString("Error Loading Wardrobe", comment: ""))
                     .font(AppTypography.title2)
                 Text(message)
                     .font(AppTypography.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
-                Button("Try Again") {
+                Button(NSLocalizedString("Try Again", comment: "")) {
                     Task { await viewModel.load() }
                 }
                 .nookGlassProminent()
@@ -238,7 +238,7 @@ struct WardrobeItemDetailView: View {
                     Button {
                         Task { await viewModel.markWashed(liveItem) }
                     } label: {
-                        Label("Mark washed", systemImage: "checkmark.circle.fill")
+                        Label(NSLocalizedString("Mark washed", comment: ""), systemImage: "checkmark.circle.fill")
                             .frame(maxWidth: .infinity)
                     }
                     .nookGlassProminent()
@@ -249,7 +249,9 @@ struct WardrobeItemDetailView: View {
                         Task { await viewModel.toggleFavorite(liveItem) }
                     } label: {
                         Label(
-                            liveItem.isFavorite ? "Unfavorite" : "Favorite",
+                            liveItem.isFavorite
+                                ? NSLocalizedString("Unfavorite", comment: "")
+                                : NSLocalizedString("Favorite", comment: ""),
                             systemImage: liveItem.isFavorite ? "heart.fill" : "heart"
                         )
                         .frame(maxWidth: .infinity)
@@ -277,20 +279,20 @@ struct WardrobeItemDetailView: View {
     private var metadataGrid: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 10) {
-                metaRow("Category", liveItem.category.displayName)
-                if let sub = liveItem.subcategory { metaRow("Type", sub) }
-                metaRow("Material", liveItem.material.displayName)
-                metaRow("Colors", ([liveItem.dominantColor].compactMap { $0 } + liveItem.colorPalette).prefix(4).joined(separator: ", "))
-                metaRow("Season", liveItem.seasons.map(\.displayName).joined(separator: ", "))
-                metaRow("Style", liveItem.styleTags.prefix(4).map(\.displayName).joined(separator: ", "))
-                metaRow("Formality", "\(Int(liveItem.formalityScore * 100))%")
-                metaRow("AI Confidence", "\(Int(liveItem.aiConfidence * 100))%")
-                metaRow("Worn", "\(liveItem.wornCount)×")
+                metaRow(NSLocalizedString("Category", comment: ""), liveItem.category.displayName)
+                if let sub = liveItem.subcategory { metaRow(NSLocalizedString("Type", comment: ""), sub) }
+                metaRow(NSLocalizedString("Material", comment: ""), liveItem.material.displayName)
+                metaRow(NSLocalizedString("Colors", comment: ""), ([liveItem.dominantColor].compactMap { $0 } + liveItem.colorPalette).prefix(4).joined(separator: ", "))
+                metaRow(NSLocalizedString("Season", comment: ""), liveItem.seasons.map(\.displayName).joined(separator: ", "))
+                metaRow(NSLocalizedString("Style", comment: ""), liveItem.styleTags.prefix(4).map(\.displayName).joined(separator: ", "))
+                metaRow(NSLocalizedString("Formality", comment: ""), String(format: NSLocalizedString("%d%%", comment: "Percentage value"), Int(liveItem.formalityScore * 100)))
+                metaRow(NSLocalizedString("AI Confidence", comment: ""), String(format: NSLocalizedString("%d%%", comment: "Percentage value"), Int(liveItem.aiConfidence * 100)))
+                metaRow(NSLocalizedString("Worn", comment: ""), String(format: NSLocalizedString("%d×", comment: "Worn count"), liveItem.wornCount))
                 if liveItem.isInLaundry {
-                    metaRow("Status", "Needs wash")
+                    metaRow(NSLocalizedString("Status", comment: ""), NSLocalizedString("Needs wash", comment: ""))
                 }
                 if liveItem.isListedForDonate {
-                    metaRow("Status", "Marked for donate")
+                    metaRow(NSLocalizedString("Status", comment: ""), NSLocalizedString("Marked for donate", comment: ""))
                 }
             }
         }

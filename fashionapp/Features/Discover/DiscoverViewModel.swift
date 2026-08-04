@@ -74,7 +74,7 @@ final class DiscoverViewModel: ObservableObject {
                         items: [item],
                         occasion: .casual,
                         confidence: item.aiConfidence,
-                        rationale: "From your wardrobe.",
+                        rationale: NSLocalizedString("From your wardrobe.", comment: ""),
                         weatherSummary: nil,
                         generatedAt: Date()
                     )
@@ -137,13 +137,13 @@ final class DiscoverViewModel: ObservableObject {
         let value = Int(speed.rounded())
         switch kmh {
         case ..<12:
-            return "Light wind · \(value) \(unit)"
+            return String(format: NSLocalizedString("Light wind · %d %@", comment: ""), value, unit)
         case 12..<25:
-            return "Breezy · \(value) \(unit)"
+            return String(format: NSLocalizedString("Breezy · %d %@", comment: ""), value, unit)
         case 25..<40:
-            return "Windy · \(value) \(unit)"
+            return String(format: NSLocalizedString("Windy · %d %@", comment: ""), value, unit)
         default:
-            return "Strong wind · \(value) \(unit)"
+            return String(format: NSLocalizedString("Strong wind · %d %@", comment: ""), value, unit)
         }
     }
 
