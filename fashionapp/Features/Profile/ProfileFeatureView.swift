@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import StoreKit
 
 @MainActor
 final class ProfileViewModel: ObservableObject {
@@ -15,14 +16,20 @@ final class ProfileViewModel: ObservableObject {
     )
     @Published var showLanguage = false
     @Published var showPrivacy = false
+    @Published var showTerms = false
     @Published var showAbout = false
-    @Published var showClearAlert = false
-    @Published var showResetAlert = false
+    @Published var showFavorites = false
+    @Published var showNeeds = false
     @Published var showSignOutAlert = false
     @Published var showMarkAllWashedAlert = false
+    @Published var showExportShare = false
+    @Published var showShareApp = false
+    @Published var exportShareURL: URL?
+    @Published var exportErrorMessage: String?
     @Published var avatarImage: UIImage?
     @Published var authUser: AuthUser?
     @Published var laundryItems: [WardrobeItem] = []
+    @Published var favoriteItems: [WardrobeItem] = []
 
     private let profileRepository: UserProfileRepository
     private let wardrobeRepository: WardrobeRepository
@@ -46,12 +53,22 @@ final class ProfileViewModel: ObservableObject {
     }
 
     var laundryCount: Int { laundryItems.count }
+    var favoritesCount: Int { favoriteItems.count }
 
     var usesCelsius: Bool {
         get { settings.usesCelsius }
         set {
             objectWillChange.send()
             settings.usesCelsius = newValue
+        }
+    }
+
+    var appearanceMode: AppAppearanceMode {
+        get { AppAppearanceMode.from(stored: settings.appearanceMode) }
+        set {
+            objectWillChange.send()
+            settings.appearanceMode = newValue.rawValue
+            UserDefaults.standard.set(newValue.rawValue, forKey: "appearanceMode")
         }
     }
 
@@ -75,18 +92,12 @@ final class ProfileViewModel: ObservableObject {
         }
     }
 
-    var reminderTimeLabel: String {
-        let hour = dailyOutfitReminderHour
-        let period = hour >= 12 ? "PM" : "AM"
-        let display = hour % 12 == 0 ? 12 : hour % 12
-        return "\(display):00 \(period)"
-    }
-
     var selectedLanguage: String {
         get { settings.selectedLanguage }
         set {
             objectWillChange.send()
             settings.selectedLanguage = newValue
+            UserDefaults.standard.set(newValue, forKey: "selectedLanguage")
         }
     }
 
@@ -114,11 +125,34 @@ final class ProfileViewModel: ObservableObject {
         }
     }
 
+    var weatherUnitLabel: String {
+        usesCelsius
+            ? NSLocalizedString("Celsius (°C)", comment: "Weather unit")
+            : NSLocalizedString("Fahrenheit (°F)", comment: "Weather unit")
+    }
+
+    var appVersionLabel: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"
+        return "\(version) (\(build))"
+    }
+
+    var shareAppItems: [Any] {
+        let text = NSLocalizedString(
+            "Nook: Private wardrobe — manage your closet and pick outfits privately.",
+            comment: "Share app message"
+        )
+        // App Store page when published; marketing site fallback meanwhile.
+        if let url = URL(string: "https://apps.apple.com/app/id0000000000") {
+            return [text, url]
+        }
+        return [text]
+    }
+
     func load() async {
         analytics.track(.screenView, parameters: ["screen_name": "profile"])
         do {
             profile = try await profileRepository.load()
-            // Gender-preference flags are not used — keep wardrobe styling modest and practical.
             profile.genderNeutralPreferred = false
             if let authName = authUser?.displayName, profile.displayName == UserProfile.default.displayName {
                 profile.displayName = authName
@@ -127,6 +161,9 @@ final class ProfileViewModel: ObservableObject {
             statistics = statisticsUseCase.execute(items: items)
             laundryItems = items
                 .filter(\.isInLaundry)
+                .sorted { $0.updatedAt > $1.updatedAt }
+            favoriteItems = items
+                .filter(\.isFavorite)
                 .sorted { $0.updatedAt > $1.updatedAt }
             if let path = profile.avatarImagePath {
                 avatarImage = UIImage(data: (try? await imageStorage.loadImageData(at: path)) ?? Data())
@@ -196,17 +233,72 @@ final class ProfileViewModel: ObservableObject {
         }
     }
 
-    func clearAllData() async {
-        try? await wardrobeRepository.deleteAll()
-        settings.clearLocalPreferences()
-        profile = .default
-        statistics = statisticsUseCase.execute(items: [])
-        laundryItems = []
-        avatarImage = nil
+    func exportMyData() async {
+        exportErrorMessage = nil
+        do {
+            let items = try await wardrobeRepository.fetchAll()
+            let payload = ProfileDataExport(
+                exportedAt: ISO8601DateFormatter().string(from: Date()),
+                profile: ExportProfileSnapshot(
+                    displayName: profile.displayName,
+                    preferredLanguage: profile.preferredLanguage,
+                    usesCelsius: settings.usesCelsius
+                ),
+                wardrobe: items.map { ExportWardrobeSnapshot(from: $0) }
+            )
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let data = try encoder.encode(payload)
+            let url = FileManager.default.temporaryDirectory
+                .appendingPathComponent("nook-export-\(Int(Date().timeIntervalSince1970)).json")
+            try data.write(to: url, options: .atomic)
+            exportShareURL = url
+            showExportShare = true
+            analytics.track(.profileUpdated, parameters: ["action": "export_data"])
+        } catch {
+            exportErrorMessage = NSLocalizedString(
+                "Couldn’t export your data. Try again.",
+                comment: "Export failure"
+            )
+        }
     }
+}
 
-    func resetOnboarding() {
-        settings.didFinishOnboarding = false
+// MARK: - Export models
+
+private struct ProfileDataExport: Encodable {
+    var exportedAt: String
+    var profile: ExportProfileSnapshot
+    var wardrobe: [ExportWardrobeSnapshot]
+}
+
+private struct ExportProfileSnapshot: Encodable {
+    var displayName: String
+    var preferredLanguage: String
+    var usesCelsius: Bool
+}
+
+private struct ExportWardrobeSnapshot: Encodable {
+    var id: String
+    var name: String
+    var category: String
+    var subcategory: String?
+    var material: String
+    var isFavorite: Bool
+    var isInLaundry: Bool
+    var wornCount: Int
+    var notes: String?
+
+    init(from item: WardrobeItem) {
+        id = item.id.uuidString
+        name = item.name
+        category = item.category.rawValue
+        subcategory = item.subcategory
+        material = item.material.rawValue
+        isFavorite = item.isFavorite
+        isInLaundry = item.isInLaundry
+        wornCount = item.wornCount
+        notes = item.notes
     }
 }
 
@@ -214,6 +306,7 @@ struct ProfileFeatureView: View {
     @StateObject private var viewModel: ProfileViewModel
     @State private var selectedPhoto: PhotosPickerItem?
     @Binding var didFinishOnboarding: Bool
+    @Environment(\.requestReview) private var requestReview
 
     init(container: AppContainer, didFinishOnboarding: Binding<Bool>) {
         _viewModel = StateObject(wrappedValue: ProfileViewModel(container: container))
@@ -222,15 +315,11 @@ struct ProfileFeatureView: View {
 
     var body: some View {
         NavigationStack {
-            // Apple HIG: Settings-style inset grouped list — sections, succinct rows, clear hierarchy.
             List {
                 profileSection
-                wardrobeSection
-                laundrySection
-                accountSection
                 preferencesSection
+                legalSection
                 aboutSection
-                dangerZoneSection
                 logOutSection
             }
             .listStyle(.insetGrouped)
@@ -255,31 +344,37 @@ struct ProfileFeatureView: View {
             .sheet(isPresented: $viewModel.showPrivacy) {
                 infoSheet(
                     title: NSLocalizedString("Privacy Policy", comment: ""),
-                    bodyText: "Nook stores your account and wardrobe securely in your cloud project. Photos you add are processed on this device to remove backgrounds and suggest clothing details, then saved to your account storage. Anonymous usage events help improve the app. Location is used only while Nook is open to show local weather for outfit ideas — never for ads."
+                    bodyText: privacyPolicyText,
+                    dismiss: { viewModel.showPrivacy = false }
+                )
+            }
+            .sheet(isPresented: $viewModel.showTerms) {
+                infoSheet(
+                    title: NSLocalizedString("Terms of Use", comment: ""),
+                    bodyText: termsOfUseText,
+                    dismiss: { viewModel.showTerms = false }
                 )
             }
             .sheet(isPresented: $viewModel.showAbout) {
                 infoSheet(
                     title: NSLocalizedString("About Us", comment: ""),
-                    bodyText: "Nook: Private wardrobe helps you manage your closet and choose modest, practical outfits. Add clothes from photos, organize what you own, and get ideas that match the weather — without a public social feed."
+                    bodyText: aboutUsText,
+                    dismiss: { viewModel.showAbout = false }
                 )
             }
-            .alert(NSLocalizedString("Clear All Data?", comment: ""), isPresented: $viewModel.showClearAlert) {
-                Button(NSLocalizedString("Delete", comment: ""), role: .destructive) {
-                    Task { await viewModel.clearAllData() }
-                }
-                Button(NSLocalizedString("Cancel", comment: ""), role: .cancel) {}
-            } message: {
-                Text(NSLocalizedString("This will remove all app data. This action cannot be undone.", comment: ""))
+            .sheet(isPresented: $viewModel.showFavorites) {
+                favoritesSheet
             }
-            .alert(NSLocalizedString("Reset Onboarding?", comment: ""), isPresented: $viewModel.showResetAlert) {
-                Button(NSLocalizedString("Reset", comment: ""), role: .destructive) {
-                    viewModel.resetOnboarding()
-                    didFinishOnboarding = false
+            .sheet(isPresented: $viewModel.showNeeds) {
+                needsSheet
+            }
+            .sheet(isPresented: $viewModel.showExportShare) {
+                if let url = viewModel.exportShareURL {
+                    ProfileActivityView(activityItems: [url])
                 }
-                Button(NSLocalizedString("Cancel", comment: ""), role: .cancel) {}
-            } message: {
-                Text(NSLocalizedString("You will see the onboarding screens again on next launch.", comment: ""))
+            }
+            .sheet(isPresented: $viewModel.showShareApp) {
+                ProfileActivityView(activityItems: viewModel.shareAppItems)
             }
             .alert(NSLocalizedString("Log Out", comment: ""), isPresented: $viewModel.showSignOutAlert) {
                 Button(NSLocalizedString("Log Out", comment: ""), role: .destructive) {
@@ -303,11 +398,24 @@ struct ProfileFeatureView: View {
                     comment: "Confirm mark all laundry washed"
                 ))
             }
+            .alert(
+                NSLocalizedString("Export", comment: ""),
+                isPresented: Binding(
+                    get: { viewModel.exportErrorMessage != nil },
+                    set: { if !$0 { viewModel.exportErrorMessage = nil } }
+                )
+            ) {
+                Button(NSLocalizedString("OK", comment: ""), role: .cancel) {
+                    viewModel.exportErrorMessage = nil
+                }
+            } message: {
+                Text(viewModel.exportErrorMessage ?? "")
+            }
             .refreshable { await viewModel.load() }
         }
     }
 
-    // MARK: - Sections (HIG grouped list)
+    // MARK: - Sections
 
     private var profileSection: some View {
         Section {
@@ -360,130 +468,24 @@ struct ProfileFeatureView: View {
             }
             .padding(.vertical, 4)
             .accessibilityElement(children: .combine)
-        } header: {
-            Text(NSLocalizedString("Profile", comment: ""))
-        }
-    }
 
-    private var wardrobeSection: some View {
-        Section {
-            labeledValueRow(
-                title: NSLocalizedString("Items", comment: ""),
-                value: "\(viewModel.statistics.totalItems)",
-                systemImage: "tshirt"
-            )
-            labeledValueRow(
+            disclosureValueButton(
                 title: NSLocalizedString("Favorites", comment: ""),
-                value: "\(viewModel.statistics.favoritesCount)",
+                value: "\(viewModel.favoritesCount)",
                 systemImage: "heart"
-            )
-            labeledValueRow(
-                title: NSLocalizedString("Worn this week", comment: ""),
-                value: "\(viewModel.statistics.wornThisWeek)",
-                systemImage: "calendar"
-            )
-        } header: {
-            Text(NSLocalizedString("Wardrobe", comment: ""))
-        }
-    }
+            ) {
+                viewModel.showFavorites = true
+            }
 
-    private var laundrySection: some View {
-        Section {
-            labeledValueRow(
-                title: NSLocalizedString("Needs wash", comment: ""),
+            disclosureValueButton(
+                title: NSLocalizedString("Needs", comment: "Laundry / needs wash"),
                 value: "\(viewModel.laundryCount)",
                 systemImage: "washer"
-            )
-
-            if viewModel.laundryItems.isEmpty {
-                Text(NSLocalizedString(
-                    "Nothing in laundry. Mark pieces from the calendar when they need a wash.",
-                    comment: "Empty laundry footer-style row"
-                ))
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            } else {
-                ForEach(viewModel.laundryItems.prefix(8)) { item in
-                    HStack(spacing: 12) {
-                        ProfileLaundryThumb(item: item, storage: viewModel.imageStorage)
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(item.name)
-                                .font(.body)
-                                .lineLimit(1)
-                            Text(item.category.displayName)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        Spacer(minLength: 8)
-
-                        Button {
-                            Task { await viewModel.markWashed(item) }
-                        } label: {
-                            Text(NSLocalizedString("Washed", comment: "Mark single laundry item washed"))
-                                .font(.subheadline.weight(.semibold))
-                        }
-                        .buttonStyle(.bordered)
-                        .tint(AppColors.olive)
-                    }
-                    .padding(.vertical, 2)
-                }
-
-                if viewModel.laundryCount > 8 {
-                    Text(
-                        String(
-                            format: NSLocalizedString("+%d more in laundry", comment: ""),
-                            viewModel.laundryCount - 8
-                        )
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                }
-
-                Button {
-                    viewModel.showMarkAllWashedAlert = true
-                } label: {
-                    Label(
-                        NSLocalizedString("Mark all washed", comment: ""),
-                        systemImage: "checkmark.circle"
-                    )
-                }
-                .tint(AppColors.olive)
+            ) {
+                viewModel.showNeeds = true
             }
         } header: {
-            Text(NSLocalizedString("Laundry", comment: ""))
-        } footer: {
-            Text(NSLocalizedString(
-                "Pieces marked on the calendar stay here until you mark them washed.",
-                comment: "Laundry section footer"
-            ))
-        }
-    }
-
-    private var accountSection: some View {
-        Section {
-            LabeledContent(NSLocalizedString("Sign-in", comment: "")) {
-                Text(accountStatusText)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.trailing)
-            }
-
-            if let email = viewModel.authUser?.email, !email.isEmpty {
-                LabeledContent(NSLocalizedString("Email", comment: "")) {
-                    Text(email)
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
-                }
-            }
-        } header: {
-            Text(NSLocalizedString("Account", comment: ""))
-        } footer: {
-            if let id = viewModel.authUser?.id, !id.isEmpty {
-                Text("UID \(id)")
-                    .font(.caption2)
-                    .textSelection(.enabled)
-            }
+            Text(NSLocalizedString("Profile", comment: ""))
         }
     }
 
@@ -492,7 +494,6 @@ struct ProfileFeatureView: View {
             Button {
                 viewModel.showLanguage = true
             } label: {
-                // HIG: succinct primary label + secondary value + disclosure cue.
                 HStack {
                     Label(NSLocalizedString("Language", comment: ""), systemImage: "globe")
                     Spacer()
@@ -506,17 +507,10 @@ struct ProfileFeatureView: View {
             .foregroundStyle(.primary)
 
             Toggle(isOn: Binding(
-                get: { viewModel.usesCelsius },
-                set: { viewModel.usesCelsius = $0 }
-            )) {
-                Label(NSLocalizedString("Use Celsius", comment: ""), systemImage: "thermometer.medium")
-            }
-
-            Toggle(isOn: Binding(
                 get: { viewModel.dailyOutfitReminderEnabled },
                 set: { viewModel.dailyOutfitReminderEnabled = $0 }
             )) {
-                Label(NSLocalizedString("Daily reminder", comment: ""), systemImage: "bell")
+                Label(NSLocalizedString("Notifications", comment: ""), systemImage: "bell")
             }
 
             if viewModel.dailyOutfitReminderEnabled {
@@ -534,17 +528,42 @@ struct ProfileFeatureView: View {
                     }
                 }
             }
+
+            Picker(
+                selection: Binding(
+                    get: { viewModel.usesCelsius },
+                    set: { viewModel.usesCelsius = $0 }
+                )
+            ) {
+                Text(NSLocalizedString("Celsius (°C)", comment: "")).tag(true)
+                Text(NSLocalizedString("Fahrenheit (°F)", comment: "")).tag(false)
+            } label: {
+                Label(NSLocalizedString("Weather degree", comment: ""), systemImage: "thermometer.medium")
+            }
+
+            Picker(
+                selection: Binding(
+                    get: { viewModel.appearanceMode },
+                    set: { viewModel.appearanceMode = $0 }
+                )
+            ) {
+                ForEach(AppAppearanceMode.allCases) { mode in
+                    Text(mode.displayName).tag(mode)
+                }
+            } label: {
+                Label(NSLocalizedString("Theme", comment: ""), systemImage: "circle.lefthalf.filled")
+            }
         } header: {
             Text(NSLocalizedString("Preferences", comment: ""))
         } footer: {
             Text(NSLocalizedString(
-                "Daily reminder nudges you to check today’s outfit, events, or laundry. Nook stays private — no public social feed.",
+                "Notifications nudge you to check today’s outfit, events, or laundry.",
                 comment: "Preferences footer"
             ))
         }
     }
 
-    private var aboutSection: some View {
+    private var legalSection: some View {
         Section {
             disclosureButton(
                 title: NSLocalizedString("Privacy Policy", comment: ""),
@@ -553,36 +572,52 @@ struct ProfileFeatureView: View {
                 viewModel.showPrivacy = true
             }
             disclosureButton(
+                title: NSLocalizedString("Terms of Use", comment: ""),
+                systemImage: "doc.text"
+            ) {
+                viewModel.showTerms = true
+            }
+            disclosureButton(
+                title: NSLocalizedString("Export my data", comment: ""),
+                systemImage: "square.and.arrow.up.on.square"
+            ) {
+                Task { await viewModel.exportMyData() }
+            }
+        } header: {
+            Text(NSLocalizedString("Legal", comment: ""))
+        }
+    }
+
+    private var aboutSection: some View {
+        Section {
+            disclosureButton(
+                title: NSLocalizedString("Rate us", comment: ""),
+                systemImage: "star"
+            ) {
+                requestReview()
+            }
+            disclosureButton(
                 title: NSLocalizedString("About Us", comment: ""),
                 systemImage: "info.circle"
             ) {
                 viewModel.showAbout = true
             }
+            disclosureButton(
+                title: NSLocalizedString("Share", comment: ""),
+                systemImage: "square.and.arrow.up"
+            ) {
+                viewModel.showShareApp = true
+            }
         } header: {
             Text(NSLocalizedString("About", comment: ""))
-        }
-    }
-
-    private var dangerZoneSection: some View {
-        Section {
-            Button(role: .destructive) {
-                viewModel.showResetAlert = true
-            } label: {
-                Label(NSLocalizedString("Reset Onboarding", comment: ""), systemImage: "arrow.counterclockwise")
-            }
-
-            Button(role: .destructive) {
-                viewModel.showClearAlert = true
-            } label: {
-                Label(NSLocalizedString("Clear All Data", comment: ""), systemImage: "trash")
-            }
-        } header: {
-            Text(NSLocalizedString("Danger Zone", comment: ""))
         } footer: {
-            Text(NSLocalizedString(
-                "Clearing data permanently removes wardrobe items stored for this account on this device.",
-                comment: "Danger zone section footer"
-            ))
+            Text(
+                String(
+                    format: NSLocalizedString("Version %@", comment: "App version footer"),
+                    viewModel.appVersionLabel
+                )
+            )
+            .font(.caption2)
         }
     }
 
@@ -598,30 +633,6 @@ struct ProfileFeatureView: View {
     }
 
     // MARK: - Rows
-
-    private var accountStatusText: String {
-        if viewModel.authUser?.usesSignInWithApple == true {
-            return NSLocalizedString("Sign in with Apple", comment: "")
-        }
-        if viewModel.authUser?.isAnonymous == true {
-            return NSLocalizedString("Anonymous", comment: "")
-        }
-        if viewModel.authUser != nil {
-            return NSLocalizedString("Signed in", comment: "")
-        }
-        return NSLocalizedString("Not signed in", comment: "")
-    }
-
-    private func labeledValueRow(title: String, value: String, systemImage: String) -> some View {
-        LabeledContent {
-            Text(value)
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
-        } label: {
-            Label(title, systemImage: systemImage)
-        }
-        .accessibilityElement(children: .combine)
-    }
 
     private func disclosureButton(
         title: String,
@@ -640,6 +651,41 @@ struct ProfileFeatureView: View {
         .foregroundStyle(.primary)
     }
 
+    private func disclosureValueButton(
+        title: String,
+        value: String,
+        systemImage: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack {
+                Label(title, systemImage: systemImage)
+                Spacer()
+                Text(value)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .foregroundStyle(.primary)
+    }
+
+    // MARK: - Copy
+
+    private var privacyPolicyText: String {
+        "Nook stores your account and wardrobe securely in your cloud project. Photos you add are processed on this device to remove backgrounds and suggest clothing details, then saved to your account storage. Anonymous usage events help improve the app. Location is used only while Nook is open to show local weather for outfit ideas — never for ads."
+    }
+
+    private var termsOfUseText: String {
+        "Nook: Private wardrobe is provided for personal, non-commercial use. You are responsible for the photos and content you add. Do not upload images you do not have rights to. Outfit suggestions are informational and may be imperfect. We may update these terms; continued use means you accept the current version. Nook is not a marketplace or public social network."
+    }
+
+    private var aboutUsText: String {
+        "Nook: Private wardrobe helps you manage your closet and choose modest, practical outfits. Add clothes from photos, organize what you own, and get ideas that match the weather — without a public social feed."
+    }
+
     // MARK: - Sheets
 
     private var languageSheet: some View {
@@ -655,6 +701,105 @@ struct ProfileFeatureView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(NSLocalizedString("Close", comment: "")) {
                         viewModel.showLanguage = false
+                    }
+                }
+            }
+        }
+    }
+
+    private var favoritesSheet: some View {
+        NavigationStack {
+            List {
+                if viewModel.favoriteItems.isEmpty {
+                    Text(NSLocalizedString(
+                        "No favorites yet. Heart pieces in your wardrobe to see them here.",
+                        comment: "Empty favorites"
+                    ))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                } else {
+                    ForEach(viewModel.favoriteItems) { item in
+                        HStack(spacing: 12) {
+                            ProfileLaundryThumb(item: item, storage: viewModel.imageStorage)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.name)
+                                    .font(.body)
+                                    .lineLimit(1)
+                                Text(item.category.displayName)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+            }
+            .listStyle(.insetGrouped)
+            .navigationTitle(NSLocalizedString("Favorites", comment: ""))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(NSLocalizedString("Close", comment: "")) {
+                        viewModel.showFavorites = false
+                    }
+                }
+            }
+        }
+    }
+
+    private var needsSheet: some View {
+        NavigationStack {
+            List {
+                if viewModel.laundryItems.isEmpty {
+                    Text(NSLocalizedString(
+                        "Nothing needs a wash. Mark pieces from the calendar when they do.",
+                        comment: "Empty needs"
+                    ))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                } else {
+                    ForEach(viewModel.laundryItems) { item in
+                        HStack(spacing: 12) {
+                            ProfileLaundryThumb(item: item, storage: viewModel.imageStorage)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.name)
+                                    .font(.body)
+                                    .lineLimit(1)
+                                Text(item.category.displayName)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer(minLength: 8)
+                            Button {
+                                Task { await viewModel.markWashed(item) }
+                            } label: {
+                                Text(NSLocalizedString("Washed", comment: ""))
+                                    .font(.subheadline.weight(.semibold))
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(AppColors.olive)
+                        }
+                        .padding(.vertical, 2)
+                    }
+
+                    Button {
+                        viewModel.showMarkAllWashedAlert = true
+                    } label: {
+                        Label(
+                            NSLocalizedString("Mark all washed", comment: ""),
+                            systemImage: "checkmark.circle"
+                        )
+                    }
+                    .tint(AppColors.olive)
+                }
+            }
+            .listStyle(.insetGrouped)
+            .navigationTitle(NSLocalizedString("Needs", comment: ""))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(NSLocalizedString("Close", comment: "")) {
+                        viewModel.showNeeds = false
                     }
                 }
             }
@@ -682,7 +827,7 @@ struct ProfileFeatureView: View {
         }
     }
 
-    private func infoSheet(title: String, bodyText: String) -> some View {
+    private func infoSheet(title: String, bodyText: String, dismiss: @escaping () -> Void) -> some View {
         NavigationStack {
             List {
                 Section {
@@ -698,13 +843,24 @@ struct ProfileFeatureView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(NSLocalizedString("Close", comment: "")) {
-                        viewModel.showPrivacy = false
-                        viewModel.showAbout = false
+                        dismiss()
                     }
                 }
             }
         }
     }
+}
+
+// MARK: - Share sheet
+
+private struct ProfileActivityView: UIViewControllerRepresentable {
+    var activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 private struct ProfileLaundryThumb: View {

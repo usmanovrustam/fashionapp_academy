@@ -314,3 +314,32 @@ enum AppGroupConfig {
         UserDefaults(suiteName: identifier) ?? .standard
     }
 }
+
+/// User-facing appearance preference for `preferredColorScheme`.
+enum AppAppearanceMode: String, CaseIterable, Identifiable {
+    case system
+    case light
+    case dark
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .system: return NSLocalizedString("System", comment: "Theme follows device")
+        case .light: return NSLocalizedString("Light", comment: "Light theme")
+        case .dark: return NSLocalizedString("Dark", comment: "Dark theme")
+        }
+    }
+
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: return nil
+        case .light: return .light
+        case .dark: return .dark
+        }
+    }
+
+    static func from(stored: String) -> AppAppearanceMode {
+        AppAppearanceMode(rawValue: stored) ?? .light
+    }
+}

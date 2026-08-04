@@ -24,7 +24,6 @@ struct MainTabView: View {
             }
         }
         .tint(AppColors.olive)
-        .preferredColorScheme(.light)
         .onAppear(perform: applyTabBarChrome)
     }
 

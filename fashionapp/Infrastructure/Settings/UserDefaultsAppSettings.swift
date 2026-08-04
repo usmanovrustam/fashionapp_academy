@@ -40,6 +40,11 @@ final class UserDefaultsAppSettings: AppSettingsProviding {
         set { defaults.set(min(23, max(0, newValue)), forKey: "dailyOutfitReminderHour") }
     }
 
+    var appearanceMode: String {
+        get { defaults.string(forKey: "appearanceMode") ?? AppAppearanceMode.light.rawValue }
+        set { defaults.set(newValue, forKey: "appearanceMode") }
+    }
+
     func clearLocalPreferences() {
         guard let domain = Bundle.main.bundleIdentifier else { return }
         defaults.removePersistentDomain(forName: domain)

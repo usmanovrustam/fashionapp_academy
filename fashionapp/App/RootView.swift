@@ -4,6 +4,11 @@ struct RootView: View {
     @EnvironmentObject private var container: AppContainer
     @AppStorage("didFinishOnboarding") private var didFinishOnboarding = false
     @AppStorage("selectedLanguage") private var selectedLanguage: String = Locale.current.language.languageCode?.identifier ?? "en"
+    @AppStorage("appearanceMode") private var appearanceModeRaw: String = AppAppearanceMode.light.rawValue
+
+    private var preferredScheme: ColorScheme? {
+        AppAppearanceMode.from(stored: appearanceModeRaw).colorScheme
+    }
 
     var body: some View {
         Group {
@@ -23,7 +28,7 @@ struct RootView: View {
             }
         }
         .environment(\.locale, Locale(identifier: selectedLanguage))
-        .preferredColorScheme(.light)
+        .preferredColorScheme(preferredScheme)
         .task {
             _ = await container.authService.refreshSession()
         }

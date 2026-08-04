@@ -96,5 +96,7 @@ protocol AppSettingsProviding: AnyObject {
     var dailyOutfitReminderEnabled: Bool { get set }
     /// Hour of day (0–23) for the daily outfit reminder. Default 8.
     var dailyOutfitReminderHour: Int { get set }
+    /// `system` | `light` | `dark`. Default `light` to match Nook’s gold palette.
+    var appearanceMode: String { get set }
     func clearLocalPreferences()
 }

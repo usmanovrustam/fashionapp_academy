@@ -14,7 +14,6 @@ struct fashionappApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(appDelegate.sharedContainer)
-                .preferredColorScheme(.light)
         }
     }
 }
