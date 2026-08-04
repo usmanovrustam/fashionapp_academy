@@ -40,6 +40,9 @@ fastlane/test_output
 .env.*
 *.pem
 
+# Local ML build cache (HF downloads / distilled student)
+scripts/.clothes_model_cache/
+
 # Firebase admin secrets (client GoogleService-Info.plist is committed for this app)
 *-firebase-adminsdk-*.json
 serviceAccount*.json
