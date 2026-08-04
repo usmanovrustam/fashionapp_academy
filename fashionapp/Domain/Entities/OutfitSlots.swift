@@ -56,6 +56,82 @@ struct OutfitSlotAssignment: Equatable, Hashable {
 
     var itemIDs: [UUID] { orderedItems.map(\.id) }
 
+    /// Human-readable title from selected wears.
+    var displayTitle: String {
+        let names = orderedItems.map(\.name)
+        if names.isEmpty {
+            return NSLocalizedString("Planned look", comment: "")
+        }
+        return names.prefix(2).joined(separator: " · ")
+    }
+
+    mutating func assign(_ item: WardrobeItem, to slot: OutfitWearSlot) {
+        switch slot {
+        case .top:
+            top = item
+            body = nil
+        case .bottom:
+            bottom = item
+            body = nil
+        case .body:
+            body = item
+            top = nil
+            bottom = nil
+        case .shoes:
+            shoes = item
+        }
+    }
+
+    mutating func clear(_ slot: OutfitWearSlot) {
+        switch slot {
+        case .top: top = nil
+        case .bottom: bottom = nil
+        case .body: body = nil
+        case .shoes: shoes = nil
+        }
+    }
+
+    func item(for slot: OutfitWearSlot) -> WardrobeItem? {
+        switch slot {
+        case .top: return top
+        case .bottom: return bottom
+        case .body: return body
+        case .shoes: return shoes
+        }
+    }
+
+    /// What’s still required for a complete look (gender-aware for dress path).
+    func missingWearMessages(for gender: UserGender? = nil) -> [String] {
+        guard !isComplete else { return [] }
+        let allowDress = gender != .man
+        if isDressLook {
+            return shoes == nil
+                ? [NSLocalizedString("Add shoes to finish this look.", comment: "Missing shoes for dress look")]
+                : []
+        }
+        var lines: [String] = []
+        if top == nil {
+            lines.append(allowDress
+                ? NSLocalizedString("Choose a top — or a dress — for this look.", comment: "Missing top or dress")
+                : NSLocalizedString("Choose a top for this look.", comment: "Missing top"))
+        }
+        if bottom == nil, body == nil {
+            lines.append(allowDress
+                ? NSLocalizedString("Choose a bottom — or a dress — for this look.", comment: "Missing bottom or dress")
+                : NSLocalizedString("Choose a bottom for this look.", comment: "Missing bottom"))
+        }
+        if shoes == nil {
+            lines.append(NSLocalizedString("Add shoes to finish this look.", comment: "Missing shoes"))
+        }
+        if lines.isEmpty {
+            lines.append(NSLocalizedString(
+                "A daily look needs top + bottom + shoes — or a dress + shoes.",
+                comment: "Missing wears generic"
+            ))
+        }
+        return lines
+    }
+
     static func from(items: [WardrobeItem]) -> OutfitSlotAssignment {
         var assignment = OutfitSlotAssignment()
         for item in items {
