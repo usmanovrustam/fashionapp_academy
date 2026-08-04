@@ -1,5 +1,5 @@
 {
-  "model": "mattmdjaga/segformer_b2_clothes",
+  "model": "distilled:student_strong_b2",
   "coreml_package": "ClothesSegFormer.mlpackage",
   "input_size": 512,
   "input": "pixel_values",
@@ -24,6 +24,39 @@
     "Bag",
     "Scarf"
   ],
-  "garment_class_ids": [1, 3, 4, 5, 6, 7, 8, 9, 10, 16, 17],
-  "notes": "Baseline model for Nook. Replace later with a fine-tuned model trained on user wardrobe photos."
+  "garment_class_ids": [
+    1,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    16,
+    17
+  ],
+  "teachers": [
+    {
+      "repo": "mattmdjaga/segformer_b0_clothes",
+      "weight": 0.1875,
+      "schema": "atr",
+      "role": "fast ATR prior"
+    },
+    {
+      "repo": "mattmdjaga/segformer_b2_clothes",
+      "weight": 0.375,
+      "schema": "atr",
+      "role": "current Nook baseline"
+    },
+    {
+      "repo": "sayeed99/segformer_b3_clothes",
+      "weight": 0.4375,
+      "schema": "atr",
+      "role": "stronger ATR teacher"
+    }
+  ],
+  "version": "2.0.0",
+  "notes": "Strong Core ML clothes parser for Nook. Built by collecting multiple Hugging Face teachers (ATR SegFormers + optional FASHN) into one on-device model."
 }
