@@ -5,8 +5,10 @@ struct DaySummarySheetView: View {
     let date: Date
     let events: [CalendarEvent]
     let wardrobeItems: [WardrobeItem]
+    let imageStorage: ImageStorage
     @Binding var packingListsByID: [UUID: PackingList]
     let onAdd: () -> Void
+    let onAddOutfit: () -> Void
     let onEdit: (CalendarEvent) -> Void
     let onDelete: (CalendarEvent) -> Void
     let onMarkWashed: (CalendarEvent) -> Void
@@ -19,22 +21,25 @@ struct DaySummarySheetView: View {
         return formatter.string(from: date)
     }
 
+    private var outfitEvents: [CalendarEvent] {
+        events.filter { $0.kind == .knownOutfit }
+    }
+
+    private var otherEvents: [CalendarEvent] {
+        events.filter { $0.kind != .knownOutfit }
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: AppSpacing.md) {
-                    if events.isEmpty {
-                        Text(NSLocalizedString("Nothing planned yet for this day.", comment: ""))
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding()
-                            .liquidGlass(cornerRadius: AppRadius.medium)
-                            .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
-                    } else {
+                    outfitCollectionSection
+
+                    if !otherEvents.isEmpty {
                         Text(NSLocalizedString("Plans", comment: ""))
                             .font(AppTypography.headline)
 
-                        ForEach(events) { event in
+                        ForEach(otherEvents) { event in
                             DaySummaryPlanCard(
                                 event: event,
                                 linkedItems: linkedItems(for: event),
@@ -73,9 +78,126 @@ struct DaySummarySheetView: View {
         }
     }
 
+    private var outfitCollectionSection: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+            HStack {
+                Text(NSLocalizedString("Plan set of outfits", comment: "Day outfit collection header"))
+                    .font(AppTypography.headline)
+                Spacer()
+                Text(String(
+                    format: NSLocalizedString("%d look(s)", comment: "Outfit count for day"),
+                    outfitEvents.count
+                ))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(AppColors.textSecondary)
+            }
+
+            Text(NSLocalizedString(
+                "Build a collection of full looks for this day. Every look needs its wears filled.",
+                comment: "Day outfit collection subtitle"
+            ))
+            .font(.caption)
+            .foregroundStyle(.secondary)
+
+            if outfitEvents.isEmpty {
+                Text(NSLocalizedString(
+                    "No outfits yet — select wears to add the first look.",
+                    comment: "Empty day outfit collection"
+                ))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .liquidGlass(cornerRadius: AppRadius.medium)
+                .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
+            } else {
+                ForEach(outfitEvents) { event in
+                    DayOutfitCollectionCard(
+                        event: event,
+                        slots: OutfitSlotAssignment.from(items: linkedItems(for: event)),
+                        storage: imageStorage,
+                        onEdit: { onEdit(event) },
+                        onNotAMatch: { onDelete(event) }
+                    )
+                }
+            }
+
+            Button(action: onAddOutfit) {
+                Label(NSLocalizedString("Select Another +", comment: "Add another outfit look"), systemImage: "plus")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(AppColors.brand)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(AppColors.olive)
+                    .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
+            }
+        }
+    }
+
     private func linkedItems(for event: CalendarEvent) -> [WardrobeItem] {
         let ids = Set(event.wardrobeItemIDs + event.suggestedItemIDs)
         return wardrobeItems.filter { ids.contains($0.id) }
+    }
+}
+
+private struct DayOutfitCollectionCard: View {
+    let event: CalendarEvent
+    let slots: OutfitSlotAssignment
+    let storage: ImageStorage
+    let onEdit: () -> Void
+    let onNotAMatch: () -> Void
+
+    @State private var confirmReject = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button(action: onEdit) {
+                VStack(alignment: .leading, spacing: 10) {
+                    FullOutfitPreview(slots: slots, storage: storage)
+                        .frame(height: 160)
+
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(event.title)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(AppColors.textPrimary)
+                            OutfitWearChipRow(slots: slots)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(AppColors.textTertiary)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                confirmReject = true
+            } label: {
+                Text(NSLocalizedString("Not a Match", comment: "Reject day outfit look"))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppColors.textSecondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(Color(.systemGray5))
+                    .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding()
+        .liquidGlass(cornerRadius: AppRadius.medium)
+        .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
+        .confirmationDialog(
+            NSLocalizedString("Remove this look?", comment: ""),
+            isPresented: $confirmReject,
+            titleVisibility: .visible
+        ) {
+            Button(NSLocalizedString("Not a Match", comment: ""), role: .destructive, action: onNotAMatch)
+            Button(NSLocalizedString("Cancel", comment: ""), role: .cancel) {}
+        } message: {
+            Text(NSLocalizedString("This removes the look from this day’s collection.", comment: ""))
+        }
     }
 }
 

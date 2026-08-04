@@ -2,8 +2,9 @@ import Foundation
 import UIKit
 import CoreML
 
-/// On-device clothes parser powered by Hugging Face `mattmdjaga/segformer_b2_clothes`
-/// exported as `ClothesSegFormer.mlpackage`.
+/// On-device clothes parser powered by `ClothesSegFormer.mlpackage`
+/// (ATR 18-class SegFormer; built via `scripts/build_strong_clothes_coreml.py`
+/// from multiple Hugging Face teachers — see `ClothesSegFormerLabels.json`).
 ///
 /// Detects garment classes (hat, shoes, pants, dress, bag, …), builds a mask,
 /// and returns a centered square crop ready for Firebase Storage.
@@ -50,7 +51,7 @@ final class ClothesSegFormerParser: @unchecked Sendable {
         var confidence: Double
         /// Centered square crop (JPEG bytes) — primary asset for Storage.
         var squareCropJPEG: Data
-        /// Soft garment mask matching the square crop size (PNG grayscale).
+        /// Hard garment mask matching the square crop size (PNG grayscale, 0/255).
         var squareMaskPNG: Data
     }
 
@@ -266,6 +267,10 @@ final class ClothesSegFormerParser: @unchecked Sendable {
         for i in 0..<classMap.count where keep.contains(classMap[i]) {
             pixels[i] = 255
         }
+        // Open (erode→dilate) kills salt-and-pepper false positives before growing edges.
+        erodeMask(&pixels, width: width, height: height, radius: 1)
+        dilateMask(&pixels, width: width, height: height, radius: 1)
+        keepLargestForegroundComponents(&pixels, width: width, height: height, minFractionOfLargest: 0.12)
         fillMaskHoles(&pixels, width: width, height: height)
         dilateMask(&pixels, width: width, height: height, radius: 1)
 
@@ -286,25 +291,79 @@ final class ClothesSegFormerParser: @unchecked Sendable {
         ) else {
             return nil
         }
-        ctx.interpolationQuality = .high
+        // Nearest avoids soft fringe that becomes speckles after thresholding.
+        ctx.interpolationQuality = .none
         ctx.draw(smallCG, in: CGRect(x: 0, y: 0, width: outW, height: outH))
-        // Harden soft upscale edges so cutouts are not blocky / holey.
         for i in 0..<gray.count {
-            gray[i] = gray[i] >= 96 ? 255 : 0
+            gray[i] = gray[i] >= 128 ? 255 : 0
         }
+        keepLargestForegroundComponents(&gray, width: outW, height: outH, minFractionOfLargest: 0.12)
         fillMaskHoles(&gray, width: outW, height: outH)
         return ImageProcessing.grayImage(from: gray, width: outW, height: outH)
     }
 
-    /// Related ATR classes to include so sleeves / torso are not Swiss-cheesed.
+    /// Outfit fabric classes only — arms / legs / skin stay out of the cutout.
     private static func maskClasses(for targetClass: Int) -> Set<UInt8> {
         switch targetClass {
-        case 4: return [4, 8, 14, 15, 17] // Upper-clothes + belt/arms/scarf
-        case 7: return [7, 14, 15]         // Dress + arms
-        case 5: return [5]                // Skirt
-        case 6: return [6, 12, 13]         // Pants + legs
+        case 4: return [4, 8, 17] // Upper-clothes + belt/scarf (no arms)
+        case 7: return [7]        // Dress fabric only
+        case 5: return [5]        // Skirt
+        case 6: return [6]        // Pants fabric only (no legs)
         case 9, 10: return [9, 10]
         default: return [UInt8(targetClass)]
+        }
+    }
+
+    /// Keep the dominant garment blob(s); drop tiny false-positive islands.
+    private func keepLargestForegroundComponents(
+        _ pixels: inout [UInt8],
+        width: Int,
+        height: Int,
+        minFractionOfLargest: Float
+    ) {
+        let count = width * height
+        guard count == pixels.count, count > 0 else { return }
+
+        var labels = [Int](repeating: -1, count: count)
+        var sizes: [Int] = []
+        var nextLabel = 0
+
+        for start in 0..<count where pixels[start] >= 128 && labels[start] < 0 {
+            var size = 0
+            var queue = [start]
+            labels[start] = nextLabel
+            var head = 0
+            while head < queue.count {
+                let i = queue[head]
+                head += 1
+                size += 1
+                let x = i % width
+                let y = i / width
+                let neighbors = [i - 1, i + 1, i - width, i + width]
+                for n in neighbors {
+                    guard n >= 0, n < count, labels[n] < 0, pixels[n] >= 128 else { continue }
+                    let nx = n % width
+                    let ny = n / width
+                    // Reject wrap-around from left/right edges.
+                    if abs(nx - x) + abs(ny - y) != 1 { continue }
+                    labels[n] = nextLabel
+                    queue.append(n)
+                }
+            }
+            sizes.append(size)
+            nextLabel += 1
+        }
+
+        guard let largest = sizes.max(), largest > 0 else { return }
+        let minKeep = max(1, Int(Float(largest) * minFractionOfLargest))
+        var keepLabels = Set<Int>()
+        for (label, size) in sizes.enumerated() where size >= minKeep {
+            keepLabels.insert(label)
+        }
+        for i in 0..<count where pixels[i] >= 128 {
+            if !keepLabels.contains(labels[i]) {
+                pixels[i] = 0
+            }
         }
     }
 
@@ -364,6 +423,26 @@ final class ClothesSegFormerParser: @unchecked Sendable {
                     }
                 }
                 if hit { pixels[y * width + x] = 255 }
+            }
+        }
+    }
+
+    private func erodeMask(_ pixels: inout [UInt8], width: Int, height: Int, radius: Int) {
+        guard radius > 0 else { return }
+        let src = pixels
+        for y in 0..<height {
+            for x in 0..<width {
+                if src[y * width + x] < 128 { continue }
+                var keep = true
+                let y0 = max(0, y - radius), y1 = min(height - 1, y + radius)
+                let x0 = max(0, x - radius), x1 = min(width - 1, x + radius)
+                outer: for yy in y0...y1 {
+                    for xx in x0...x1 where src[yy * width + xx] < 128 {
+                        keep = false
+                        break outer
+                    }
+                }
+                if !keep { pixels[y * width + x] = 0 }
             }
         }
     }

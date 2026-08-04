@@ -49,6 +49,7 @@ final class CalendarViewModel: ObservableObject {
     @Published var items: [WardrobeItem] = []
     @Published var events: [CalendarEvent] = []
     @Published var packingListsByID: [UUID: PackingList] = [:]
+    @Published var userGender: UserGender?
     @Published var isLoading = false
     @Published var isSaving = false
     @Published var errorMessage: String?
@@ -56,6 +57,7 @@ final class CalendarViewModel: ObservableObject {
     private let wardrobeRepository: WardrobeRepository
     private let eventRepository: EventRepository
     private let packingListRepository: PackingListRepository
+    private let profileRepository: UserProfileRepository
     let imageStorage: ImageStorage
     private let calendar = Calendar.current
 
@@ -63,6 +65,7 @@ final class CalendarViewModel: ObservableObject {
         self.wardrobeRepository = container.wardrobeRepository
         self.eventRepository = container.eventRepository
         self.packingListRepository = container.packingListRepository
+        self.profileRepository = container.profileRepository
         self.imageStorage = container.imageStorage
     }
 
@@ -118,6 +121,7 @@ final class CalendarViewModel: ObservableObject {
         items = (try? await wardrobeRepository.fetchAll()) ?? []
         let lists = (try? await packingListRepository.fetchAll()) ?? []
         packingListsByID = Dictionary(uniqueKeysWithValues: lists.map { ($0.id, $0) })
+        userGender = try? await profileRepository.load().gender
         await loadEventsForVisibleMonth()
         isLoading = false
     }
@@ -246,12 +250,14 @@ final class CalendarViewModel: ObservableObject {
 private enum CalendarSheet: Identifiable, Equatable {
     case daySummary
     case addPlan
+    case addOutfit
     case editPlan(CalendarEvent)
 
     var id: String {
         switch self {
         case .daySummary: return "summary"
         case .addPlan: return "add"
+        case .addOutfit: return "add-outfit"
         case .editPlan(let event): return "edit-\(event.id.uuidString)"
         }
     }
@@ -319,16 +325,23 @@ struct CalendarFeatureView: View {
                         date: viewModel.selectedDate,
                         events: viewModel.events(on: viewModel.selectedDate),
                         wardrobeItems: viewModel.items,
+                        imageStorage: viewModel.imageStorage,
                         packingListsByID: $viewModel.packingListsByID,
                         onAdd: {
                             activeSheet = .addPlan
+                        },
+                        onAddOutfit: {
+                            activeSheet = .addOutfit
                         },
                         onEdit: { event in
                             activeSheet = .editPlan(event)
                         },
                         onDelete: { event in
-                            activeSheet = nil
-                            Task { await viewModel.deleteDayPlan(event) }
+                            Task {
+                                await viewModel.deleteDayPlan(event)
+                                activeSheet = nil
+                                activeSheet = .daySummary
+                            }
                         },
                         onMarkWashed: { event in
                             activeSheet = nil
@@ -346,14 +359,44 @@ struct CalendarFeatureView: View {
                         date: viewModel.selectedDate,
                         wardrobeItems: viewModel.items,
                         imageStorage: viewModel.imageStorage,
+                        userGender: viewModel.userGender,
                         onSave: { event, packing, wardrobeUpdates in
-                            activeSheet = nil
                             Task {
                                 await viewModel.saveDayPlan(
                                     event: event,
                                     packingList: packing,
                                     wardrobeUpdates: wardrobeUpdates
                                 )
+                                activeSheet = nil
+                                activeSheet = .daySummary
+                            }
+                        },
+                        onCancel: {
+                            activeSheet = .daySummary
+                        },
+                        onScanWardrobe: {
+                            activeSheet = nil
+                            showScanner = true
+                        }
+                    )
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+                case .addOutfit:
+                    DayPlanSheetView(
+                        date: viewModel.selectedDate,
+                        wardrobeItems: viewModel.items,
+                        imageStorage: viewModel.imageStorage,
+                        userGender: viewModel.userGender,
+                        initialStep: .knownOutfit,
+                        onSave: { event, packing, wardrobeUpdates in
+                            Task {
+                                await viewModel.saveDayPlan(
+                                    event: event,
+                                    packingList: packing,
+                                    wardrobeUpdates: wardrobeUpdates
+                                )
+                                activeSheet = nil
+                                activeSheet = .daySummary
                             }
                         },
                         onCancel: {
@@ -372,14 +415,16 @@ struct CalendarFeatureView: View {
                         wardrobeItems: viewModel.items,
                         imageStorage: viewModel.imageStorage,
                         existingEvent: event,
+                        userGender: viewModel.userGender,
                         onSave: { updated, packing, wardrobeUpdates in
-                            activeSheet = nil
                             Task {
                                 await viewModel.saveDayPlan(
                                     event: updated,
                                     packingList: packing,
                                     wardrobeUpdates: wardrobeUpdates
                                 )
+                                activeSheet = nil
+                                activeSheet = .daySummary
                             }
                         },
                         onCancel: { activeSheet = .daySummary },

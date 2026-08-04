@@ -51,7 +51,7 @@ enum DayPlanKind: String, Codable, CaseIterable, Identifiable, Hashable {
 
     var title: String {
         switch self {
-        case .knownOutfit: return NSLocalizedString("I know what to wear", comment: "Day plan option")
+        case .knownOutfit: return NSLocalizedString("Plan set of outfits", comment: "Day plan option")
         case .event: return NSLocalizedString("I have an event", comment: "Day plan option")
         case .travel: return NSLocalizedString("I'm going on a trip", comment: "Day plan option")
         case .laundry: return NSLocalizedString("Laundry", comment: "Day plan option")
@@ -64,7 +64,7 @@ enum DayPlanKind: String, Codable, CaseIterable, Identifiable, Hashable {
 
     var subtitle: String {
         switch self {
-        case .knownOutfit: return NSLocalizedString("Pick pieces from your wardrobe for this day.", comment: "")
+        case .knownOutfit: return NSLocalizedString("Select wears for a full look — top, bottom, and shoes (or a dress + shoes).", comment: "")
         case .event: return NSLocalizedString("Tell us the occasion so Nook can dress for it.", comment: "")
         case .travel: return NSLocalizedString("Destination, season, and packing suggestions.", comment: "")
         case .laundry: return NSLocalizedString("Mark pieces that need a wash.", comment: "")

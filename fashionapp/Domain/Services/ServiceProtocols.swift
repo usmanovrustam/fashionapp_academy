@@ -21,7 +21,7 @@ protocol ClothingDetector: AnyObject {
 }
 
 protocol ClothingSegmenter: AnyObject {
-    /// Returns a soft mask (alpha channel) as PNG/JPEG-compatible image data.
+    /// Returns a binary garment mask (grayscale PNG, hard 0/255) matching the source framing.
     func segment(imageData: Data) async throws -> Data
 }
 

@@ -16,6 +16,10 @@ struct DayPlanSheetView: View {
     let wardrobeItems: [WardrobeItem]
     let imageStorage: ImageStorage
     let existingEvent: CalendarEvent?
+    /// Used to require dress vs separates for known outfits.
+    let userGender: UserGender?
+    /// When set, skip the kind list (e.g. “Select Another” outfit).
+    let initialStep: Step?
     let onSave: (CalendarEvent, PackingList?, [WardrobeItem]) -> Void
     let onCancel: () -> Void
     /// Opens wardrobe Scan when the closet is empty.
@@ -25,6 +29,9 @@ struct DayPlanSheetView: View {
     @State private var planID: UUID
     @State private var packingListID: UUID?
     @State private var selectedItemIDs: Set<UUID>
+    @State private var wearSlots: OutfitSlotAssignment
+    @State private var preferDressLook: Bool
+    @State private var pickingSlot: OutfitWearSlot?
     @State private var eventType: DayEventType
     @State private var customEventNote: String
     @State private var destination: String
@@ -40,12 +47,15 @@ struct DayPlanSheetView: View {
     private let weatherClient = OpenMeteoWeatherClient()
     private let calendar = Calendar.current
     private var isEditing: Bool { existingEvent != nil }
+    private var allowsDress: Bool { userGender != .man }
 
     init(
         date: Date,
         wardrobeItems: [WardrobeItem],
         imageStorage: ImageStorage,
         existingEvent: CalendarEvent? = nil,
+        userGender: UserGender? = nil,
+        initialStep: Step? = nil,
         onSave: @escaping (CalendarEvent, PackingList?, [WardrobeItem]) -> Void,
         onCancel: @escaping () -> Void,
         onScanWardrobe: (() -> Void)? = nil
@@ -54,6 +64,8 @@ struct DayPlanSheetView: View {
         self.wardrobeItems = wardrobeItems
         self.imageStorage = imageStorage
         self.existingEvent = existingEvent
+        self.userGender = userGender
+        self.initialStep = initialStep
         self.onSave = onSave
         self.onCancel = onCancel
         self.onScanWardrobe = onScanWardrobe
@@ -62,10 +74,14 @@ struct DayPlanSheetView: View {
         let defaultEnd = calendar.date(byAdding: .day, value: 3, to: date) ?? date
 
         if let existing = existingEvent {
+            let linked = wardrobeItems.filter { existing.wardrobeItemIDs.contains($0.id) }
+            let slots = OutfitSlotAssignment.from(items: linked)
             _step = State(initialValue: Self.step(for: existing.kind))
             _planID = State(initialValue: existing.id)
             _packingListID = State(initialValue: existing.packingListID)
             _selectedItemIDs = State(initialValue: Set(existing.wardrobeItemIDs))
+            _wearSlots = State(initialValue: slots)
+            _preferDressLook = State(initialValue: slots.isDressLook)
             _eventType = State(initialValue: DayEventType(rawValue: existing.eventType ?? "") ?? .work)
             _customEventNote = State(initialValue: existing.notes ?? existing.dressCode ?? "")
             _destination = State(initialValue: existing.location ?? "")
@@ -79,10 +95,12 @@ struct DayPlanSheetView: View {
                 _travelPlace = State(initialValue: nil)
             }
         } else {
-            _step = State(initialValue: .chooseKind)
+            _step = State(initialValue: initialStep ?? .chooseKind)
             _planID = State(initialValue: UUID())
             _packingListID = State(initialValue: nil)
             _selectedItemIDs = State(initialValue: [])
+            _wearSlots = State(initialValue: OutfitSlotAssignment())
+            _preferDressLook = State(initialValue: false)
             _eventType = State(initialValue: .work)
             _customEventNote = State(initialValue: "")
             _destination = State(initialValue: "")
@@ -102,14 +120,7 @@ struct DayPlanSheetView: View {
                 case .chooseKind:
                     kindList
                 case .knownOutfit:
-                    itemPickerForm(
-                        title: NSLocalizedString("Select what you’re wearing", comment: ""),
-                        emptyMessage: NSLocalizedString("Your wardrobe is empty. Scan a piece first, then come back.", comment: ""),
-                        items: wardrobeItems.filter { $0.isAvailableToWear || selectedItemIDs.contains($0.id) },
-                        saveTitle: NSLocalizedString("Save to calendar", comment: ""),
-                        showScanCTA: wardrobeItems.filter(\.isAvailableToWear).isEmpty,
-                        onSave: saveKnownOutfit
-                    )
+                    knownOutfitForm
                 case .eventDetails:
                     eventForm
                 case .travelDetails:
@@ -150,6 +161,26 @@ struct DayPlanSheetView: View {
             } message: {
                 Text(errorMessage ?? "")
             }
+            .sheet(item: $pickingSlot) { slot in
+                WearSlotPickerSheet(
+                    slot: slot,
+                    items: candidates(for: slot),
+                    storage: imageStorage,
+                    selectedID: wearSlots.item(for: slot)?.id,
+                    onSelect: { item in
+                        wearSlots.assign(item, to: slot)
+                        if slot == .body { preferDressLook = true }
+                        if slot == .top || slot == .bottom { preferDressLook = false }
+                        pickingSlot = nil
+                    },
+                    onClear: {
+                        wearSlots.clear(slot)
+                        pickingSlot = nil
+                    },
+                    onClose: { pickingSlot = nil }
+                )
+                .presentationDetents([.medium, .large])
+            }
         }
     }
 
@@ -166,11 +197,13 @@ struct DayPlanSheetView: View {
     }
 
     private func handleBack() {
-        if isEditing || step == .chooseKind {
+        if isEditing || step == .chooseKind || (initialStep != nil && step == initialStep) {
             onCancel()
             return
         }
         selectedItemIDs = []
+        wearSlots = OutfitSlotAssignment()
+        preferDressLook = false
         step = .chooseKind
     }
 
@@ -242,6 +275,109 @@ struct DayPlanSheetView: View {
         }
     }
 
+    // MARK: - Known outfit (required wears)
+
+    private var knownOutfitForm: some View {
+        let available = wardrobeItems.filter { $0.isAvailableToWear || wearSlots.itemIDs.contains($0.id) }
+        return VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: AppSpacing.md) {
+                    Text(NSLocalizedString("Select the wears", comment: "Known outfit slot picker title"))
+                        .font(AppTypography.headline)
+
+                    Text(NSLocalizedString(
+                        "A full look needs every wear filled before you can save it to this day.",
+                        comment: "Known outfit requirement copy"
+                    ))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                    if available.isEmpty {
+                        Text(NSLocalizedString("Your wardrobe is empty. Scan a piece first, then come back.", comment: ""))
+                            .foregroundStyle(.secondary)
+                        if let onScanWardrobe {
+                            Button(action: onScanWardrobe) {
+                                Label(NSLocalizedString("Scan a piece", comment: ""), systemImage: "camera.fill")
+                                    .font(.body.weight(.semibold))
+                                    .foregroundStyle(AppColors.brand)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(AppColors.olive)
+                                    .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
+                            }
+                        }
+                    } else {
+                        if allowsDress {
+                            Picker(
+                                NSLocalizedString("Look type", comment: ""),
+                                selection: $preferDressLook
+                            ) {
+                                Text(NSLocalizedString("Top + bottom", comment: "Separates look type")).tag(false)
+                                Text(NSLocalizedString("Dress", comment: "Dress look type")).tag(true)
+                            }
+                            .pickerStyle(.segmented)
+                            .onChange(of: preferDressLook) { _, useDress in
+                                if useDress {
+                                    wearSlots.top = nil
+                                    wearSlots.bottom = nil
+                                } else {
+                                    wearSlots.body = nil
+                                }
+                            }
+                        }
+
+                        FullOutfitPreview(
+                            slots: wearSlots,
+                            storage: imageStorage,
+                            onTapSlot: { slot in
+                                pickingSlot = slot
+                            },
+                            highlightsMissing: true,
+                            preferDressLayout: preferDressLook && allowsDress
+                        )
+                        .frame(height: preferDressLook && allowsDress ? 230 : 220)
+
+                        OutfitWearChipRow(slots: wearSlots)
+
+                        if !wearSlots.isComplete {
+                            VStack(alignment: .leading, spacing: 6) {
+                                ForEach(wearSlots.missingWearMessages(for: userGender), id: \.self) { line in
+                                    Label(line, systemImage: "circle.dotted")
+                                        .font(.caption)
+                                        .foregroundStyle(AppColors.textSecondary)
+                                }
+                            }
+                            .padding()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .liquidGlass(cornerRadius: AppRadius.medium)
+                            .clipShape(RoundedRectangle(cornerRadius: AppRadius.medium, style: .continuous))
+                        }
+                    }
+                }
+                .padding()
+                .padding(.bottom, 100)
+            }
+
+            saveBar(
+                title: NSLocalizedString("Save to calendar", comment: ""),
+                enabled: wearSlots.isComplete,
+                action: saveKnownOutfit
+            )
+        }
+    }
+
+    private func candidates(for slot: OutfitWearSlot) -> [WardrobeItem] {
+        wardrobeItems.filter { item in
+            guard item.isAvailableToWear || wearSlots.item(for: slot)?.id == item.id else { return false }
+            switch slot {
+            case .top: return item.category == .top
+            case .bottom: return item.category == .bottom
+            case .body: return item.category == .dress && allowsDress
+            case .shoes: return item.category == .shoes
+            }
+        }
+    }
+
     // MARK: - Shared item picker
 
     private func itemPickerForm(
@@ -303,11 +439,9 @@ struct DayPlanSheetView: View {
     }
 
     private func saveKnownOutfit() {
-        let ids = Array(selectedItemIDs)
-        let names = wardrobeItems.filter { ids.contains($0.id) }.map(\.name)
-        let title = names.isEmpty
-            ? NSLocalizedString("Planned look", comment: "")
-            : names.prefix(2).joined(separator: " · ")
+        guard wearSlots.isComplete else { return }
+        let ids = wearSlots.itemIDs
+        let title = wearSlots.displayTitle
 
         let previousIDs = Set(existingEvent?.wardrobeItemIDs ?? [])
         var updatedItems = wardrobeItems.filter { ids.contains($0.id) || previousIDs.contains($0.id) }
@@ -706,6 +840,61 @@ struct DayPlanSheetView: View {
         .disabled(!enabled)
         .padding()
         .background(Color.white.opacity(0.95))
+    }
+}
+
+private struct WearSlotPickerSheet: View {
+    let slot: OutfitWearSlot
+    let items: [WardrobeItem]
+    let storage: ImageStorage
+    let selectedID: UUID?
+    let onSelect: (WardrobeItem) -> Void
+    let onClear: () -> Void
+    let onClose: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if items.isEmpty {
+                    ContentUnavailableView(
+                        NSLocalizedString("No pieces for this wear", comment: ""),
+                        systemImage: "tshirt",
+                        description: Text(NSLocalizedString(
+                            "Scan or add a matching wardrobe piece first.",
+                            comment: ""
+                        ))
+                    )
+                } else {
+                    ScrollView {
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                            ForEach(items) { item in
+                                SelectableWardrobeCell(
+                                    item: item,
+                                    storage: storage,
+                                    isSelected: selectedID == item.id
+                                ) {
+                                    onSelect(item)
+                                }
+                            }
+                        }
+                        .padding()
+                    }
+                }
+            }
+            .nookScreenBackground()
+            .navigationTitle(slot.displayName)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(NSLocalizedString("Close", comment: ""), action: onClose)
+                }
+                if selectedID != nil {
+                    ToolbarItem(placement: .destructiveAction) {
+                        Button(NSLocalizedString("Clear", comment: ""), action: onClear)
+                    }
+                }
+            }
+        }
     }
 }
 
