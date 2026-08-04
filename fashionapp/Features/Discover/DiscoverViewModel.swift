@@ -10,6 +10,12 @@ final class DiscoverViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var topIndex = 0
+    @Published var wardrobeCoverage: WardrobeOutfitCoverage = WardrobeOutfitCoverage(
+        topCount: 0,
+        bottomCount: 0,
+        dressCount: 0,
+        shoesCount: 0
+    )
 
     private let recommendationsUseCase: GenerateDailyRecommendationsUseCase
     private let weatherProvider: WeatherProviding
@@ -31,9 +37,13 @@ final class DiscoverViewModel: ObservableObject {
 
     var usesCelsius: Bool { settings.usesCelsius }
 
+    var needsWardrobePieces: Bool {
+        !wardrobeCoverage.canBuildFullOutfit
+    }
+
     func load(force: Bool = false) async {
         // Keep returning to Discover snappy — skip duplicate network unless forced / empty.
-        if didLoadOnce && !force && !recommendations.isEmpty {
+        if didLoadOnce && !force && !recommendations.isEmpty && wardrobeCoverage.canBuildFullOutfit {
             return
         }
 
@@ -51,37 +61,11 @@ final class DiscoverViewModel: ObservableObject {
                 prefetchedWeather: weather
             )
             wardrobeCount = result.wardrobeItems.count
+            wardrobeCoverage = WardrobeOutfitCoverage.analyze(result.wardrobeItems)
             if weather == nil { weather = result.weather }
 
-            if result.recommendations.isEmpty {
-                recommendations = result.wardrobeItems.prefix(8).map { item in
-                    OutfitRecommendation(
-                        id: UUID(),
-                        outfit: Outfit(
-                            id: UUID(),
-                            name: item.name,
-                            itemIDs: [item.id],
-                            occasion: .casual,
-                            styleTags: item.styleTags,
-                            isFavorite: item.isFavorite,
-                            wornCount: 0,
-                            lastWornAt: nil,
-                            plannedDate: nil,
-                            notes: nil,
-                            createdAt: Date(),
-                            updatedAt: Date()
-                        ),
-                        items: [item],
-                        occasion: .casual,
-                        confidence: item.aiConfidence,
-                        rationale: NSLocalizedString("From your wardrobe.", comment: ""),
-                        weatherSummary: nil,
-                        generatedAt: Date()
-                    )
-                }
-            } else {
-                recommendations = result.recommendations
-            }
+            // Only full outfits — never fall back to single pieces.
+            recommendations = result.recommendations.filter(\.isFullOutfit)
             didLoadOnce = true
         } catch {
             errorMessage = error.localizedDescription
@@ -158,7 +142,8 @@ final class DiscoverViewModel: ObservableObject {
                 accepted ? .recommendationAccepted : .recommendationRejected,
                 parameters: [
                     "occasion": rec.occasion.rawValue,
-                    "confidence": String(format: "%.2f", rec.confidence)
+                    "confidence": String(format: "%.2f", rec.confidence),
+                    "is_dress_look": rec.slots.isDressLook ? "true" : "false"
                 ]
             )
         }
