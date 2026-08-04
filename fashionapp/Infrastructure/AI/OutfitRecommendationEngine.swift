@@ -72,10 +72,17 @@ final class RuleBasedOutfitRecommender: OutfitRecommending {
     }
 
     private func shouldPreferDress(context: RecommendationContext) -> Bool {
-        guard let weather = context.weather else { return false }
-        switch weather.temperatureBand {
-        case .hot, .warm: return true
-        default: return false
+        switch context.user.gender {
+        case .woman:
+            return true
+        case .man:
+            return false
+        case .preferNotToSay, .none:
+            guard let weather = context.weather else { return false }
+            switch weather.temperatureBand {
+            case .hot, .warm: return true
+            default: return false
+            }
         }
     }
 

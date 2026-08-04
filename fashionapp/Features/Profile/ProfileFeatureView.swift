@@ -16,6 +16,7 @@ final class ProfileViewModel: ObservableObject {
         averageFormality: 0
     )
     @Published var showNotifications = false
+    @Published var showGenderPicker = false
     @Published var showPrivacy = false
     @Published var showTerms = false
     @Published var showAbout = false
@@ -341,6 +342,13 @@ struct ProfileFeatureView: View {
                         }
                 }
             }
+            .sheet(isPresented: $viewModel.showGenderPicker) {
+                GenderPromptSheet { gender in
+                    viewModel.profile.gender = gender
+                    await viewModel.saveProfile()
+                    viewModel.showGenderPicker = false
+                }
+            }
             .sheet(isPresented: $viewModel.showPrivacy) {
                 infoSheet(
                     title: NSLocalizedString("Privacy Policy", comment: ""),
@@ -468,6 +476,22 @@ struct ProfileFeatureView: View {
             }
             .padding(.vertical, 4)
             .accessibilityElement(children: .combine)
+
+            Button {
+                viewModel.showGenderPicker = true
+            } label: {
+                HStack {
+                    Label(NSLocalizedString("Gender", comment: ""), systemImage: "person.2")
+                    Spacer()
+                    Text(viewModel.profile.gender?.displayName
+                         ?? NSLocalizedString("Select", comment: "Gender placeholder"))
+                        .foregroundStyle(.secondary)
+                    Image(systemName: "chevron.right")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .foregroundStyle(.primary)
 
             disclosureValueButton(
                 title: NSLocalizedString("Favorites", comment: ""),

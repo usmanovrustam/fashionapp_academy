@@ -400,3 +400,11 @@
 "Balanced for a weekday schedule." = "Equilibrato per la settimana.";
 "Uses one of your favorite items." = "Usa uno dei tuoi preferiti.";
 "Color story: %@." = "Storia colore: %@.";
+"Gender" = "Genere";
+"Woman" = "Donna";
+"Man" = "Uomo";
+"Prefer not to say" = "Preferisco non dirlo";
+"Please select your gender." = "Seleziona il tuo genere.";
+"What’s your gender?" = "Qual è il tuo genere?";
+"This helps Nook suggest full outfits — for example when a dress can replace a separate top and bottom." = "Aiuta Nook a suggerire outfit completi — ad esempio quando un vestito può sostituire top e bottom.";
+"Select" = "Seleziona";

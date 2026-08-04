@@ -31,6 +31,7 @@ final class AuthViewModel: ObservableObject {
     @Published var email = ""
     @Published var password = ""
     @Published var displayName = ""
+    @Published var selectedGender: UserGender?
     @Published var isLoading = false
     @Published var isPasswordVisible = false
     @Published var errorMessage: String?
@@ -41,16 +42,22 @@ final class AuthViewModel: ObservableObject {
 
     private let auth: AuthServicing
     private let analytics: AnalyticsTracking
+    private let profileRepository: UserProfileRepository
 
-    init(auth: AuthServicing, analytics: AnalyticsTracking) {
+    init(auth: AuthServicing, analytics: AnalyticsTracking, profileRepository: UserProfileRepository) {
         self.auth = auth
         self.analytics = analytics
+        self.profileRepository = profileRepository
     }
 
     var canSubmit: Bool {
-        !isLoading
+        let basics = !isLoading
             && !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !password.isEmpty
+        if mode == .signUp {
+            return basics && selectedGender != nil
+        }
+        return basics
     }
 
     func prepareAppleRequest(_ request: ASAuthorizationAppleIDRequest) {
@@ -123,17 +130,35 @@ final class AuthViewModel: ObservableObject {
                 analytics.setUserID(user.id)
                 analytics.track(.login, parameters: ["method": "password"])
             case .signUp:
+                guard let gender = selectedGender else {
+                    errorMessage = NSLocalizedString("Please select your gender.", comment: "")
+                    return
+                }
                 let user = try await auth.signUp(
                     email: email.trimmingCharacters(in: .whitespacesAndNewlines),
                     password: password,
                     displayName: displayName.trimmingCharacters(in: .whitespacesAndNewlines)
                 )
                 analytics.setUserID(user.id)
-                analytics.track(.signUp, parameters: ["method": "password"])
+                analytics.track(.signUp, parameters: [
+                    "method": "password",
+                    "gender": gender.rawValue
+                ])
+                try await persistGender(gender, displayName: displayName)
             }
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func persistGender(_ gender: UserGender, displayName: String) async throws {
+        var profile = try await profileRepository.load()
+        profile.gender = gender
+        let trimmed = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty {
+            profile.displayName = trimmed
+        }
+        try await profileRepository.save(profile)
     }
 
     func resetPassword() async {
@@ -171,8 +196,12 @@ struct AuthFeatureView: View {
         static let control: CGFloat = 28
     }
 
-    init(auth: AuthServicing, analytics: AnalyticsTracking) {
-        _viewModel = StateObject(wrappedValue: AuthViewModel(auth: auth, analytics: analytics))
+    init(auth: AuthServicing, analytics: AnalyticsTracking, profileRepository: UserProfileRepository) {
+        _viewModel = StateObject(wrappedValue: AuthViewModel(
+            auth: auth,
+            analytics: analytics,
+            profileRepository: profileRepository
+        ))
     }
 
     var body: some View {
@@ -287,6 +316,7 @@ struct AuthFeatureView: View {
                         viewModel.mode = .signUp
                         viewModel.errorMessage = nil
                         viewModel.infoMessage = nil
+                        viewModel.selectedGender = nil
                         focusedField = .name
                     }
                 }
@@ -336,6 +366,40 @@ struct AuthFeatureView: View {
                         .onSubmit { focusedField = .email }
 
                         clearButton(text: $viewModel.displayName)
+                    }
+                }
+                .transition(.opacity)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(NSLocalizedString("Gender", comment: ""))
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(AppColors.textSecondary)
+
+                    VStack(spacing: 8) {
+                        ForEach(UserGender.allCases) { gender in
+                            Button {
+                                viewModel.selectedGender = gender
+                            } label: {
+                                HStack {
+                                    Text(gender.displayName)
+                                        .foregroundStyle(AppColors.textPrimary)
+                                    Spacer()
+                                    if viewModel.selectedGender == gender {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(AppColors.olive)
+                                    } else {
+                                        Image(systemName: "circle")
+                                            .foregroundStyle(AppColors.placeholder)
+                                    }
+                                }
+                                .padding(.horizontal, 16)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .frame(height: FieldMetrics.height)
+                                .liquidGlass(cornerRadius: AppRadius.medium, interactive: true)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityAddTraits(viewModel.selectedGender == gender ? .isSelected : [])
+                        }
                     }
                 }
                 .transition(.opacity)

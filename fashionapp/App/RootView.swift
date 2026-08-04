@@ -21,7 +21,11 @@ struct RootView: View {
                         }
                     }
             } else if !container.isSignedIn {
-                AuthFeatureView(auth: container.authService, analytics: container.analytics)
+                AuthFeatureView(
+                    auth: container.authService,
+                    analytics: container.analytics,
+                    profileRepository: container.profileRepository
+                )
             } else {
                 MainTabView(didFinishOnboarding: $didFinishOnboarding)
             }

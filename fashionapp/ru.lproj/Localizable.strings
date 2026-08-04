@@ -400,3 +400,11 @@
 "Balanced for a weekday schedule." = "Сбалансировано для будней.";
 "Uses one of your favorite items." = "Использует одну из ваших любимых вещей.";
 "Color story: %@." = "Цветовая история: %@.";
+"Gender" = "Пол";
+"Woman" = "Женский";
+"Man" = "Мужской";
+"Prefer not to say" = "Предпочитаю не указывать";
+"Please select your gender." = "Пожалуйста, выберите пол.";
+"What’s your gender?" = "Укажите ваш пол";
+"This helps Nook suggest full outfits — for example when a dress can replace a separate top and bottom." = "Это помогает Nook предлагать полные образы — например, когда платье заменяет верх и низ.";
+"Select" = "Выбрать";
