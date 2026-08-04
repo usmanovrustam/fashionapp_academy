@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import UserNotifications
 
 /// Dedicated notifications preferences screen (daily outfit / laundry reminder).

@@ -519,12 +519,8 @@ struct ProfileFeatureView: View {
                 HStack {
                     Label(NSLocalizedString("Notifications", comment: ""), systemImage: "bell")
                     Spacer()
-                    Text(
-                        viewModel.dailyOutfitReminderEnabled
-                            ? NSLocalizedString("On", comment: "Notifications enabled")
-                            : NSLocalizedString("Off", comment: "Notifications disabled")
-                    )
-                    .foregroundStyle(.secondary)
+                    Text(notificationsStatusLabel)
+                        .foregroundStyle(.secondary)
                     Image(systemName: "chevron.right")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(.tertiary)
@@ -559,6 +555,17 @@ struct ProfileFeatureView: View {
         } header: {
             Text(NSLocalizedString("Preferences", comment: ""))
         }
+    }
+
+    private var notificationsStatusLabel: String {
+        guard viewModel.dailyOutfitReminderEnabled else {
+            return NSLocalizedString("Off", comment: "Notifications disabled")
+        }
+        let hour = viewModel.dailyOutfitReminderHour
+        let period = hour >= 12 ? "PM" : "AM"
+        let display = hour % 12 == 0 ? 12 : hour % 12
+        let on = NSLocalizedString("On", comment: "Notifications enabled")
+        return "\(on) · \(display):00 \(period)"
     }
 
     private var legalSection: some View {
