@@ -115,7 +115,7 @@ struct WardrobeOutfitCoverage: Equatable {
     var missingMessages: [String] {
         guard !canBuildFullOutfit else { return [] }
 
-        if availableIsEmpty {
+        if topCount + bottomCount + dressCount + shoesCount == 0 {
             return [NSLocalizedString(
                 "Your wardrobe is empty. Scan a few pieces to get daily outfit ideas.",
                 comment: "Discover gap empty wardrobe"
@@ -125,28 +125,21 @@ struct WardrobeOutfitCoverage: Equatable {
         var lines: [String] = []
 
         if !hasBodyCoverage {
-            if !hasDress && !(hasTop && hasBottom) {
-                if !hasTop && !hasBottom && !hasDress {
-                    lines.append(NSLocalizedString(
-                        "Add a top and bottom — or a dress — for a full look.",
-                        comment: "Discover gap body"
-                    ))
-                } else if hasTop && !hasBottom && !hasDress {
-                    lines.append(NSLocalizedString(
-                        "Add a bottom, or a dress, to complete the look.",
-                        comment: "Discover gap bottom or dress"
-                    ))
-                } else if hasBottom && !hasTop && !hasDress {
-                    lines.append(NSLocalizedString(
-                        "Add a top, or a dress, to complete the look.",
-                        comment: "Discover gap top or dress"
-                    ))
-                } else if hasDress == false {
-                    lines.append(NSLocalizedString(
-                        "Add a top and bottom — or a dress — for a full look.",
-                        comment: "Discover gap body"
-                    ))
-                }
+            if hasTop && !hasBottom && !hasDress {
+                lines.append(NSLocalizedString(
+                    "Add a bottom, or a dress, to complete the look.",
+                    comment: "Discover gap bottom or dress"
+                ))
+            } else if hasBottom && !hasTop && !hasDress {
+                lines.append(NSLocalizedString(
+                    "Add a top, or a dress, to complete the look.",
+                    comment: "Discover gap top or dress"
+                ))
+            } else {
+                lines.append(NSLocalizedString(
+                    "Add a top and bottom — or a dress — for a full look.",
+                    comment: "Discover gap body"
+                ))
             }
         }
 
@@ -165,10 +158,6 @@ struct WardrobeOutfitCoverage: Equatable {
         }
 
         return lines
-    }
-
-    private var availableIsEmpty: Bool {
-        topCount + bottomCount + dressCount + shoesCount == 0
     }
 }
 
