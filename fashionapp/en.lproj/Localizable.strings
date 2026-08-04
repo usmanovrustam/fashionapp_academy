@@ -88,6 +88,17 @@
 "Preferences" = "Preferences";
 "Use Celsius" = "Use Celsius";
 "Notifications" = "Notifications";
+"On" = "On";
+"Off" = "Off";
+"Reminders" = "Reminders";
+"What you’ll get" = "What you’ll get";
+"Outfit check-in" = "Outfit check-in";
+"A gentle nudge to plan what to wear." = "A gentle nudge to plan what to wear.";
+"Events & laundry" = "Events & laundry";
+"Same reminder covers calendar plans and pieces that need a wash." = "Same reminder covers calendar plans and pieces that need a wash.";
+"Nook can remind you once a day to check today’s outfit, events, or laundry. Nook never sends marketing messages." = "Nook can remind you once a day to check today’s outfit, events, or laundry. Nook never sends marketing messages.";
+"Open Settings" = "Open Settings";
+"Notifications are turned off for Nook in iOS Settings. Enable them to receive the daily reminder." = "Notifications are turned off for Nook in iOS Settings. Enable them to receive the daily reminder.";
 "Weather degree" = "Weather degree";
 "Theme" = "Theme";
 "System" = "System";

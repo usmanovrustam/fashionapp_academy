@@ -88,6 +88,17 @@
 "Preferences" = "Preferenze";
 "Use Celsius" = "Usa Celsius";
 "Notifications" = "Notifiche";
+"On" = "Attive";
+"Off" = "Spente";
+"Reminders" = "Promemoria";
+"What you’ll get" = "Cosa riceverai";
+"Outfit check-in" = "Controllo outfit";
+"A gentle nudge to plan what to wear." = "Un piccolo promemoria per pianificare cosa indossare.";
+"Events & laundry" = "Eventi e bucato";
+"Same reminder covers calendar plans and pieces that need a wash." = "Lo stesso promemoria vale per il calendario e i capi da lavare.";
+"Nook can remind you once a day to check today’s outfit, events, or laundry. Nook never sends marketing messages." = "Nook può ricordarti una volta al giorno di controllare outfit, eventi o bucato. Nook non invia messaggi di marketing.";
+"Open Settings" = "Apri Impostazioni";
+"Notifications are turned off for Nook in iOS Settings. Enable them to receive the daily reminder." = "Le notifiche di Nook sono disattivate in Impostazioni iOS. Attivale per ricevere il promemoria giornaliero.";
 "Weather degree" = "Gradi meteo";
 "Theme" = "Tema";
 "System" = "Sistema";

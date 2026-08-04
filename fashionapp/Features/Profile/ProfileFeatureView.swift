@@ -15,6 +15,7 @@ final class ProfileViewModel: ObservableObject {
         averageFormality: 0
     )
     @Published var showLanguage = false
+    @Published var showNotifications = false
     @Published var showPrivacy = false
     @Published var showTerms = false
     @Published var showAbout = false
@@ -335,6 +336,18 @@ struct ProfileFeatureView: View {
             .sheet(isPresented: $viewModel.showLanguage) {
                 languageSheet
             }
+            .sheet(isPresented: $viewModel.showNotifications) {
+                NavigationStack {
+                    NotificationsSettingsView(viewModel: viewModel)
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button(NSLocalizedString("Close", comment: "")) {
+                                    viewModel.showNotifications = false
+                                }
+                            }
+                        }
+                }
+            }
             .sheet(isPresented: $viewModel.showPrivacy) {
                 infoSheet(
                     title: NSLocalizedString("Privacy Policy", comment: ""),
@@ -500,28 +513,24 @@ struct ProfileFeatureView: View {
             }
             .foregroundStyle(.primary)
 
-            Toggle(isOn: Binding(
-                get: { viewModel.dailyOutfitReminderEnabled },
-                set: { viewModel.dailyOutfitReminderEnabled = $0 }
-            )) {
-                Label(NSLocalizedString("Notifications", comment: ""), systemImage: "bell")
-            }
-
-            if viewModel.dailyOutfitReminderEnabled {
-                Picker(
-                    NSLocalizedString("Reminder time", comment: ""),
-                    selection: Binding(
-                        get: { viewModel.dailyOutfitReminderHour },
-                        set: { viewModel.dailyOutfitReminderHour = $0 }
+            Button {
+                viewModel.showNotifications = true
+            } label: {
+                HStack {
+                    Label(NSLocalizedString("Notifications", comment: ""), systemImage: "bell")
+                    Spacer()
+                    Text(
+                        viewModel.dailyOutfitReminderEnabled
+                            ? NSLocalizedString("On", comment: "Notifications enabled")
+                            : NSLocalizedString("Off", comment: "Notifications disabled")
                     )
-                ) {
-                    ForEach([7, 8, 9, 10, 12, 18], id: \.self) { hour in
-                        let period = hour >= 12 ? "PM" : "AM"
-                        let display = hour % 12 == 0 ? 12 : hour % 12
-                        Text("\(display):00 \(period)").tag(hour)
-                    }
+                    .foregroundStyle(.secondary)
+                    Image(systemName: "chevron.right")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.tertiary)
                 }
             }
+            .foregroundStyle(.primary)
 
             Picker(
                 selection: Binding(
@@ -549,11 +558,6 @@ struct ProfileFeatureView: View {
             }
         } header: {
             Text(NSLocalizedString("Preferences", comment: ""))
-        } footer: {
-            Text(NSLocalizedString(
-                "Notifications nudge you to check today’s outfit, events, or laundry.",
-                comment: "Preferences footer"
-            ))
         }
     }
 
