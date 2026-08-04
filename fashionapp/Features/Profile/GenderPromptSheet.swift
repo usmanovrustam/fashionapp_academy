@@ -1,28 +1,17 @@
 import SwiftUI
 
-/// Full-screen or sheet UI to collect required Man / Woman gender.
+/// Required Man / Woman picker as a liquid-glass dialog (not a full screen).
 struct GenderPromptSheet: View {
-    var presentsAsSheet: Bool = true
     let onSelect: (UserGender) async throws -> Void
 
     @State private var isSaving = false
     @State private var errorMessage: String?
 
     var body: some View {
-        NavigationStack {
-            content
-                .nookScreenBackground()
-                .navigationBarTitleDisplayMode(.inline)
-                .interactiveDismissDisabled(true)
-        }
-        .modifier(GenderPresentationModifier(presentsAsSheet: presentsAsSheet))
-    }
-
-    private var content: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 20) {
             VStack(spacing: 8) {
                 Image(systemName: "person.crop.circle.badge.questionmark")
-                    .font(.system(size: 44))
+                    .font(.system(size: 36, weight: .semibold))
                     .foregroundStyle(AppColors.olive)
                     .accessibilityHidden(true)
 
@@ -38,9 +27,8 @@ struct GenderPromptSheet: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             }
-            .padding(.top, presentsAsSheet ? 12 : 40)
 
-            VStack(spacing: 12) {
+            VStack(spacing: 10) {
                 ForEach(UserGender.allCases) { gender in
                     Button {
                         Task { await select(gender) }
@@ -67,11 +55,12 @@ struct GenderPromptSheet: View {
                     .foregroundStyle(Color(.systemRed))
                     .multilineTextAlignment(.center)
             }
-
-            Spacer(minLength: 0)
         }
-        .padding(24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(22)
+        .frame(maxWidth: 360)
+        .liquidGlass(cornerRadius: AppRadius.xxLarge, interactive: false)
+        .padding(.horizontal, 28)
+        .accessibilityAddTraits(.isModal)
     }
 
     private func select(_ gender: UserGender) async {
@@ -86,17 +75,18 @@ struct GenderPromptSheet: View {
     }
 }
 
-private struct GenderPresentationModifier: ViewModifier {
-    var presentsAsSheet: Bool
+/// Dimmed backdrop + centered liquid-glass gender dialog.
+struct GenderRequiredDialogOverlay: View {
+    let onSelect: (UserGender) async throws -> Void
 
-    func body(content: Content) -> some View {
-        if presentsAsSheet {
-            content
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.hidden)
-                .presentationBackgroundInteraction(.disabled)
-        } else {
-            content
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.38)
+                .ignoresSafeArea()
+                .accessibilityHidden(true)
+
+            GenderPromptSheet(onSelect: onSelect)
         }
+        .transition(.opacity)
     }
 }

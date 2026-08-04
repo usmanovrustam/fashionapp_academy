@@ -5,7 +5,7 @@ struct RootView: View {
     @AppStorage("didFinishOnboarding") private var didFinishOnboarding = false
     @AppStorage("appearanceMode") private var appearanceModeRaw: String = AppAppearanceMode.light.rawValue
 
-    /// Gender is required before the main app — blocks tabs until set.
+    /// Gender is required — main app shows with a liquid-glass dialog until set.
     @State private var isCheckingGender = false
     @State private var hasRequiredGender = false
 
@@ -39,13 +39,20 @@ struct RootView: View {
                     .tint(AppColors.olive)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .nookScreenBackground()
-            } else if !hasRequiredGender {
-                GenderPromptSheet(presentsAsSheet: false) { gender in
-                    try await saveRequiredGender(gender)
-                    hasRequiredGender = true
-                }
             } else {
-                MainTabView(didFinishOnboarding: $didFinishOnboarding)
+                ZStack {
+                    MainTabView(didFinishOnboarding: $didFinishOnboarding)
+
+                    if !hasRequiredGender {
+                        GenderRequiredDialogOverlay { gender in
+                            try await saveRequiredGender(gender)
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                hasRequiredGender = true
+                            }
+                        }
+                        .zIndex(10)
+                    }
+                }
             }
         }
         .preferredColorScheme(preferredScheme)
@@ -71,7 +78,7 @@ struct RootView: View {
             let profile = try await container.profileRepository.load()
             hasRequiredGender = profile.hasGenderSet
         } catch {
-            // Fail closed — require gender before entering the app.
+            // Fail closed — require gender before using wardrobe features.
             hasRequiredGender = false
         }
     }
