@@ -69,19 +69,24 @@ final class AppContainer: ObservableObject {
         // Falls back to the heuristic detector + extractor when the compiled
         // model isn't bundled in the target yet.
         let fashionModel = CoreMLFashionModel()
-        let detector: ClothingDetector = fashionModel.map(CoreMLClothingDetector.init)
-            ?? HeuristicClothingDetector()
-        let metadataExtractor: ClothingMetadataExtractor = fashionModel.map(CoreMLClothingMetadataExtractor.init)
-            ?? ColorAwareMetadataExtractor()
+        let detector: ClothingDetector
+        let metadataExtractor: ClothingMetadataExtractor
+        let imageSearch: WardrobeImageSearching?
+        if let fashionModel {
+            detector = CoreMLClothingDetector(model: fashionModel)
+            metadataExtractor = CoreMLClothingMetadataExtractor(model: fashionModel)
+            imageSearch = CoreMLWardrobeImageSearch(model: fashionModel, imageStorage: imageStorage)
+        } else {
+            detector = HeuristicClothingDetector()
+            metadataExtractor = ColorAwareMetadataExtractor()
+            imageSearch = nil
+        }
         let pipeline = DefaultClothingScanPipeline(
             detector: detector,
             segmenter: U2NetClothingSegmenter(),
             backgroundRemover: MaskBackgroundRemover(),
             metadataExtractor: metadataExtractor
         )
-        let imageSearch: WardrobeImageSearching? = fashionModel.map {
-            CoreMLWardrobeImageSearch(model: $0, imageStorage: imageStorage)
-        }
 
         let recommender = RuleBasedOutfitRecommender()
         let assistant = LocalStylingAssistant(recommender: recommender)
