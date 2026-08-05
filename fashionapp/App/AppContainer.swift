@@ -22,6 +22,7 @@ final class AppContainer: ObservableObject {
     let locationProvider: LocationProviding
     let weatherProvider: WeatherProviding
     let scanPipeline: ClothingScanPipeline
+    let imageSearch: WardrobeImageSearching?
     let recommender: OutfitRecommending
     let stylingAssistant: StylingAssisting
 
@@ -64,12 +65,23 @@ final class AppContainer: ObservableObject {
             cache: weatherCacheRepository
         )
 
+        // On-device multi-task CoreML model (category / attributes / embedding).
+        // Falls back to the heuristic detector + extractor when the compiled
+        // model isn't bundled in the target yet.
+        let fashionModel = CoreMLFashionModel()
+        let detector: ClothingDetector = fashionModel.map(CoreMLClothingDetector.init)
+            ?? HeuristicClothingDetector()
+        let metadataExtractor: ClothingMetadataExtractor = fashionModel.map(CoreMLClothingMetadataExtractor.init)
+            ?? ColorAwareMetadataExtractor()
         let pipeline = DefaultClothingScanPipeline(
-            detector: HeuristicClothingDetector(),
+            detector: detector,
             segmenter: U2NetClothingSegmenter(),
             backgroundRemover: MaskBackgroundRemover(),
-            metadataExtractor: ColorAwareMetadataExtractor()
+            metadataExtractor: metadataExtractor
         )
+        let imageSearch: WardrobeImageSearching? = fashionModel.map {
+            CoreMLWardrobeImageSearch(model: $0, imageStorage: imageStorage)
+        }
 
         let recommender = RuleBasedOutfitRecommender()
         let assistant = LocalStylingAssistant(recommender: recommender)
@@ -88,6 +100,7 @@ final class AppContainer: ObservableObject {
         self.locationProvider = locationProvider
         self.weatherProvider = weatherProvider
         self.scanPipeline = pipeline
+        self.imageSearch = imageSearch
         self.recommender = recommender
         self.stylingAssistant = assistant
 
