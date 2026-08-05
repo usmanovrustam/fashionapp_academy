@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+# Regenerable feature caches and the duplicated CoreML bundle (the shipped copy
+# lives at fashionapp/FashionMultiTask.mlpackage).
+artifacts/feats_*.npz
+artifacts/FashionMultiTask.mlpackage
