@@ -1,17 +1,19 @@
 import Foundation
 import CoreML
-import Vision
 import UIKit
 
-/// U²-Net based segmenter / background remover.
+/// U²-Net (u2netp) based segmenter / background remover.
+/// Runs CoreML directly on a `CVPixelBuffer` — no Vision framework.
 /// Designed behind protocols so the CoreML model can be swapped later.
 final class U2NetClothingSegmenter: ClothingSegmenter {
-    private let model: VNCoreMLModel?
+    private let model: MLModel?
     private let inputSize = 320
 
     init() {
-        if let mlModel = try? u2net(configuration: MLModelConfiguration()).model {
-            self.model = try? VNCoreMLModel(for: mlModel)
+        if let url = Bundle.main.url(forResource: "u2net", withExtension: "mlmodelc") {
+            let config = MLModelConfiguration()
+            config.computeUnits = .all
+            self.model = try? MLModel(contentsOf: url, configuration: config)
         } else {
             self.model = nil
         }
@@ -24,34 +26,17 @@ final class U2NetClothingSegmenter: ClothingSegmenter {
         }
 
         let image = try ImageProcessing.uiImage(from: imageData)
-        let resized = ImageProcessing.resized(image, maxDimension: CGFloat(inputSize))
-        guard let cgImage = resized.cgImage else { throw ImageProcessingError.invalidImage }
+        let buffer = try ImageProcessing.pixelBuffer(from: image, width: inputSize, height: inputSize)
+        let provider = try MLDictionaryFeatureProvider(
+            dictionary: ["image": MLFeatureValue(pixelBuffer: buffer)]
+        )
+        let result = try model.prediction(from: provider)
 
-        let maskImage: UIImage = try await withCheckedThrowingContinuation { continuation in
-            let request = VNCoreMLRequest(model: model) { request, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                guard let results = request.results as? [VNCoreMLFeatureValueObservation],
-                      let multiArray = results.first?.featureValue.multiArrayValue,
-                      let mask = Self.maskImage(from: multiArray) else {
-                    continuation.resume(throwing: ImageProcessingError.maskFailed)
-                    return
-                }
-                continuation.resume(returning: mask)
-            }
-            request.imageCropAndScaleOption = .scaleFill
-
-            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-            do {
-                try handler.perform([request])
-            } catch {
-                continuation.resume(throwing: error)
-            }
+        guard let multiArray = result.featureValue(for: "mask")?.multiArrayValue,
+              let mask = Self.maskImage(from: multiArray) else {
+            throw ImageProcessingError.maskFailed
         }
-
-        return try ImageProcessing.pngData(from: maskImage)
+        return try ImageProcessing.pngData(from: mask)
     }
 
     private static func fullOpacityMaskPNG(from imageData: Data) async throws -> Data {

@@ -78,6 +78,24 @@ committed at `fashionapp/FashionMultiTask.mlpackage`. To ship it:
 Labels are embedded in the model metadata (`labels_json`) and also committed at
 `fashionapp/labels.json` as a fallback resource.
 
+## Background removal (U²-Net)
+
+The repo's original `u2net.mlpackage` shipped **without weights**, so the app's
+segmenter fell back to an all-white mask (no background removed). These scripts
+fix that by exporting real pretrained **u2netp** weights to CoreML:
+
+```bash
+python u2net_infer.py         # validate: saves artifacts/u2netp_cutouts.png
+python export_u2net_coreml.py # -> fashionapp/u2net.mlpackage (real weights, 2.5 MB)
+```
+
+- Weights: `netradrishti/u2net-saliency` (`models/u2netp.pth`), loaded via the
+  vendored `u2net_arch.py` (U²-Net, Apache-2.0).
+- The exported model takes an RGB image (320×320) and outputs a single `mask`
+  (0–1). `U2NetClothingSegmenter` runs it via CoreML directly (no Vision).
+- Validation showed real foreground coverage of 25–43% (vs 100% for the old
+  fallback) with tight cutouts — see `artifacts/u2netp_cutouts.png`.
+
 ## Notes / limits
 
 - Trained on CPU with a frozen backbone. For a stronger production model, run on

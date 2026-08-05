@@ -5,3 +5,5 @@ __pycache__/
 # lives at fashionapp/FashionMultiTask.mlpackage).
 artifacts/feats_*.npz
 artifacts/FashionMultiTask.mlpackage
+artifacts/u2netp.mlpackage
+artifacts/*.png
