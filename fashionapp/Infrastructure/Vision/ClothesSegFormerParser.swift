@@ -50,8 +50,13 @@ final class ClothesSegFormerParser: @unchecked Sendable {
         var confidence: Double
         /// Centered square crop (JPEG bytes) — primary asset for Storage.
         var squareCropJPEG: Data
-        /// Soft garment mask matching the square crop size (PNG grayscale).
+        /// Garment-only mask matching the square crop size (PNG grayscale).
         var squareMaskPNG: Data
+        /// Full-frame garment-only mask (PNG) aligned with the prepared scan image.
+        var fullGarmentMaskPNG: Data
+        /// True when Face/Hair/arms/legs are meaningfully present — worn on a person
+        /// rather than a flat-lay product shot.
+        var isWornOnPerson: Bool
     }
 
     func parse(imageData: Data) async throws -> ParseResult {
@@ -95,10 +100,14 @@ final class ClothesSegFormerParser: @unchecked Sendable {
             throw DomainError.scanFailed("Failed to build garment mask.")
         }
 
-        let square = try ImageProcessing.centeredSquareCrop(image: prepared, mask: maskFull, padding: 0.12)
-        let squareMask = try ImageProcessing.centeredSquareCrop(image: maskFull, mask: maskFull, padding: 0.12)
+        // Prefer the cleaned silhouette (drop tiny blobs) before crop/cutout.
+        let garmentMask = ImageProcessing.cleanedMask(maskFull, threshold: 128) ?? maskFull
+
+        let square = try ImageProcessing.centeredSquareCrop(image: prepared, mask: garmentMask, padding: 0.08)
+        let squareMask = try ImageProcessing.centeredSquareCrop(image: garmentMask, mask: garmentMask, padding: 0.08)
         let jpeg = try ImageProcessing.jpegData(from: square, quality: 0.92)
         let maskPNG = try ImageProcessing.pngData(from: squareMask)
+        let fullMaskPNG = try ImageProcessing.pngData(from: garmentMask)
 
         let mapping = Self.mapLabel(best.classID)
         return ParseResult(
@@ -107,8 +116,20 @@ final class ClothesSegFormerParser: @unchecked Sendable {
             labelName: Self.labels[best.classID],
             confidence: best.score,
             squareCropJPEG: jpeg,
-            squareMaskPNG: maskPNG
+            squareMaskPNG: maskPNG,
+            fullGarmentMaskPNG: fullMaskPNG,
+            isWornOnPerson: Self.detectWornOnPerson(classMap: classMap)
         )
+    }
+
+    /// Hair / Face / limbs above a small share → photo is a person wearing clothes.
+    private static func detectWornOnPerson(classMap: [UInt8]) -> Bool {
+        guard !classMap.isEmpty else { return false }
+        // 2 Hair, 11 Face, 12–15 limbs
+        let body: Set<UInt8> = [2, 11, 12, 13, 14, 15]
+        var bodyCount = 0
+        for c in classMap where body.contains(c) { bodyCount += 1 }
+        return Double(bodyCount) / Double(classMap.count) >= 0.015
     }
 
     // MARK: - Model load
@@ -296,13 +317,15 @@ final class ClothesSegFormerParser: @unchecked Sendable {
         return ImageProcessing.grayImage(from: gray, width: outW, height: outH)
     }
 
-    /// Related ATR classes to include so sleeves / torso are not Swiss-cheesed.
+    /// Garment-only ATR classes — never include Hair/Face/arms/legs so the cutout
+    /// is the clothing object, not the human wearing it. Hole-fill reconnects
+    /// sleeves/straps that the class map fragments.
     private static func maskClasses(for targetClass: Int) -> Set<UInt8> {
         switch targetClass {
-        case 4: return [4, 8, 14, 15, 17] // Upper-clothes + belt/arms/scarf
-        case 7: return [7, 14, 15]         // Dress + arms
-        case 5: return [5]                // Skirt
-        case 6: return [6, 12, 13]         // Pants + legs
+        case 4: return [4, 8, 17] // Upper-clothes + belt/scarf (no arms)
+        case 7: return [7]       // Dress only
+        case 5: return [5]       // Skirt
+        case 6: return [6]       // Pants (no legs)
         case 9, 10: return [9, 10]
         default: return [UInt8(targetClass)]
         }

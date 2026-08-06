@@ -117,6 +117,38 @@ enum ImageProcessing {
         return buffer
     }
 
+    /// Pixel-wise AND of two grayscale masks (resized to the first mask's size).
+    static func intersectMasks(_ a: UIImage, _ b: UIImage) -> UIImage? {
+        guard let cgA = cgImage(from: a) else { return nil }
+        let w = cgA.width
+        let h = cgA.height
+        guard w > 0, h > 0 else { return nil }
+        var pa = [UInt8](repeating: 0, count: w * h)
+        var pb = [UInt8](repeating: 0, count: w * h)
+        guard let ctxA = CGContext(
+            data: &pa, width: w, height: h,
+            bitsPerComponent: 8, bytesPerRow: w,
+            space: CGColorSpaceCreateDeviceGray(),
+            bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ),
+        let ctxB = CGContext(
+            data: &pb, width: w, height: h,
+            bitsPerComponent: 8, bytesPerRow: w,
+            space: CGColorSpaceCreateDeviceGray(),
+            bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ),
+        let cgB = cgImage(from: b) else { return nil }
+        ctxA.interpolationQuality = .none
+        ctxB.interpolationQuality = .none
+        ctxA.draw(cgA, in: CGRect(x: 0, y: 0, width: w, height: h))
+        ctxB.draw(cgB, in: CGRect(x: 0, y: 0, width: w, height: h))
+        var out = [UInt8](repeating: 0, count: w * h)
+        for i in 0..<(w * h) {
+            out[i] = (pa[i] >= 128 && pb[i] >= 128) ? 255 : 0
+        }
+        return grayImage(from: out, width: w, height: h)
+    }
+
     /// Applies a grayscale mask as alpha onto the source image (thread-safe CG path).
     static func applyMask(image: UIImage, mask: UIImage) throws -> UIImage {
         guard let source = cgImage(from: image),

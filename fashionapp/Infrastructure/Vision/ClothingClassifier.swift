@@ -320,44 +320,84 @@ final class DefaultClothingScanPipeline: ClothingScanPipeline {
             detail: parsed.subcategory.isEmpty ? parsed.category.displayName : parsed.subcategory
         ))
 
-        // SegFormer classifies the garment well, but its mask/crop are noisy on
-        // flat-lay photos (off-center square, background leaking into the cutout).
-        // Recompute a clean centered square crop + cutout from a u2netp saliency
-        // mask over the FULL image; fall back to SegFormer's crop if unavailable.
+        // Worn-on-person photos: SegFormer garment-only mask (excludes face/hair/
+        // limbs). Flat-lays: u2netp saliency is more stable than class masks.
         var squareData = parsed.squareCropJPEG
         var transparentData: Data?
         do {
             report(ScanPipelineProgress(stage: .segmentClothing, fraction: 0.30, previewImageData: imageData))
 
-            let full = ImageProcessing.resized(
-                ImageProcessing.orientedUp(try ImageProcessing.uiImage(from: imageData)),
-                maxDimension: 1600
-            )
-            let fullJPEG = try ImageProcessing.jpegData(from: full, quality: 0.9)
-            let maskData = try await segmenter.segment(imageData: fullJPEG)
-            let rawMask = try ImageProcessing.uiImage(from: maskData)
-            // Drop side bands / stray blobs + fill holes so the box centers on the garment.
-            let mask = ImageProcessing.cleanedMask(rawMask) ?? rawMask
-            let cleanMaskPNG = try ImageProcessing.pngData(from: mask)
-            report(ScanPipelineProgress(
-                stage: .segmentClothing,
-                fraction: 0.48,
-                previewImageData: cleanMaskPNG,
-                detail: NSLocalizedString("Clean object mask", comment: "ML scan detail")
-            ))
+            if parsed.isWornOnPerson {
+                // SegFormer = clothing classes only (no face/hair/limbs).
+                // Intersect with u2netp saliency so leftover walls/windows drop out.
+                let full = ImageProcessing.resized(
+                    ImageProcessing.orientedUp(try ImageProcessing.uiImage(from: imageData)),
+                    maxDimension: 1600
+                )
+                var garmentMask = try ImageProcessing.uiImage(from: parsed.fullGarmentMaskPNG)
+                if let saliencyData = try? await segmenter.segment(
+                    imageData: try ImageProcessing.jpegData(from: full, quality: 0.9)
+                ),
+                   let saliency = try? ImageProcessing.uiImage(from: saliencyData),
+                   let cleanedSaliency = ImageProcessing.cleanedMask(saliency),
+                   let intersected = ImageProcessing.intersectMasks(garmentMask, cleanedSaliency) {
+                    garmentMask = ImageProcessing.cleanedMask(intersected, threshold: 128) ?? intersected
+                }
 
-            report(ScanPipelineProgress(stage: .removeBackground, fraction: 0.55, previewImageData: cleanMaskPNG))
-            let square = try ImageProcessing.centeredSquareCrop(image: full, mask: mask, padding: 0.08)
-            let squareMask = try ImageProcessing.centeredSquareCrop(image: mask, mask: mask, padding: 0.08)
-            squareData = try ImageProcessing.jpegData(from: square, quality: 0.92)
-            let squareMaskPNG = try ImageProcessing.pngData(from: squareMask)
-            report(ScanPipelineProgress(stage: .removeBackground, fraction: 0.68, previewImageData: squareData))
+                let garmentMaskPNG = try ImageProcessing.pngData(from: garmentMask)
+                report(ScanPipelineProgress(
+                    stage: .segmentClothing,
+                    fraction: 0.48,
+                    previewImageData: garmentMaskPNG,
+                    detail: NSLocalizedString("Garment only (person removed)", comment: "ML scan detail")
+                ))
 
-            report(ScanPipelineProgress(stage: .generateTransparentPNG, fraction: 0.72, previewImageData: squareData))
-            transparentData = try await backgroundRemover.removeBackground(
-                imageData: squareData,
-                maskData: squareMaskPNG
-            )
+                report(ScanPipelineProgress(stage: .removeBackground, fraction: 0.55, previewImageData: garmentMaskPNG))
+                let square = try ImageProcessing.centeredSquareCrop(image: full, mask: garmentMask, padding: 0.08)
+                let squareMask = try ImageProcessing.centeredSquareCrop(
+                    image: garmentMask,
+                    mask: garmentMask,
+                    padding: 0.08
+                )
+                squareData = try ImageProcessing.jpegData(from: square, quality: 0.92)
+                let squareMaskPNG = try ImageProcessing.pngData(from: squareMask)
+                report(ScanPipelineProgress(stage: .removeBackground, fraction: 0.68, previewImageData: squareData))
+
+                report(ScanPipelineProgress(stage: .generateTransparentPNG, fraction: 0.72, previewImageData: squareData))
+                transparentData = try await backgroundRemover.removeBackground(
+                    imageData: squareData,
+                    maskData: squareMaskPNG
+                )
+            } else {
+                let full = ImageProcessing.resized(
+                    ImageProcessing.orientedUp(try ImageProcessing.uiImage(from: imageData)),
+                    maxDimension: 1600
+                )
+                let fullJPEG = try ImageProcessing.jpegData(from: full, quality: 0.9)
+                let maskData = try await segmenter.segment(imageData: fullJPEG)
+                let rawMask = try ImageProcessing.uiImage(from: maskData)
+                let mask = ImageProcessing.cleanedMask(rawMask) ?? rawMask
+                let cleanMaskPNG = try ImageProcessing.pngData(from: mask)
+                report(ScanPipelineProgress(
+                    stage: .segmentClothing,
+                    fraction: 0.48,
+                    previewImageData: cleanMaskPNG,
+                    detail: NSLocalizedString("Flat-lay object mask", comment: "ML scan detail")
+                ))
+
+                report(ScanPipelineProgress(stage: .removeBackground, fraction: 0.55, previewImageData: cleanMaskPNG))
+                let square = try ImageProcessing.centeredSquareCrop(image: full, mask: mask, padding: 0.08)
+                let squareMask = try ImageProcessing.centeredSquareCrop(image: mask, mask: mask, padding: 0.08)
+                squareData = try ImageProcessing.jpegData(from: square, quality: 0.92)
+                let squareMaskPNG = try ImageProcessing.pngData(from: squareMask)
+                report(ScanPipelineProgress(stage: .removeBackground, fraction: 0.68, previewImageData: squareData))
+
+                report(ScanPipelineProgress(stage: .generateTransparentPNG, fraction: 0.72, previewImageData: squareData))
+                transparentData = try await backgroundRemover.removeBackground(
+                    imageData: squareData,
+                    maskData: squareMaskPNG
+                )
+            }
             report(ScanPipelineProgress(
                 stage: .generateTransparentPNG,
                 fraction: 0.86,
