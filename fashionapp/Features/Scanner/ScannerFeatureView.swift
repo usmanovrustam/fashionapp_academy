@@ -354,6 +354,9 @@ struct ScanningShimmerOverlay: View {
             ZStack {
                 Color.black.opacity(0.38)
 
+                // Pixel-by-pixel "checking" grid sweeping over the image.
+                PixelCheckGrid(reduceMotion: reduceMotion)
+
                 // Flat sweep (no gradients).
                 Color.white.opacity(0.28)
                     .frame(width: geo.size.width * 0.28)
@@ -389,6 +392,60 @@ struct ScanningShimmerOverlay: View {
             withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
                 scanY = 0.92
             }
+        }
+    }
+}
+
+/// Pixel-by-pixel "checking" grid: a diagonal wave lights up cells as the model
+/// inspects the image, with already-checked cells left faintly filled.
+struct PixelCheckGrid: View {
+    let reduceMotion: Bool
+    private let cols = 14
+    private let rows = 16
+    private let period: TimeInterval = 2.0
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: reduceMotion)) { timeline in
+            Canvas { context, size in
+                let cellW = size.width / CGFloat(cols)
+                let cellH = size.height / CGFloat(rows)
+                let total = CGFloat(cols + rows - 2)
+
+                // Wave position 0…1 (static mid-sweep when reduce motion is on).
+                let phase: CGFloat
+                if reduceMotion {
+                    phase = 0.5
+                } else {
+                    let t = timeline.date.timeIntervalSinceReferenceDate
+                    phase = CGFloat(t.truncatingRemainder(dividingBy: period) / period)
+                }
+
+                for r in 0..<rows {
+                    for c in 0..<cols {
+                        let rect = CGRect(
+                            x: CGFloat(c) * cellW + 0.5,
+                            y: CGFloat(r) * cellH + 0.5,
+                            width: cellW - 1,
+                            height: cellH - 1
+                        )
+                        let cell = Path(roundedRect: rect, cornerRadius: 1.5)
+                        let diag = total > 0 ? CGFloat(c + r) / total : 0
+                        let delta = phase - diag
+
+                        if delta >= 0, delta < 0.06 {
+                            // Leading edge — the pixel currently being checked.
+                            context.fill(cell, with: .color(AppColors.accent.opacity(0.85)))
+                        } else if delta >= 0.06 {
+                            // Already checked — faint confirmation fill.
+                            context.fill(cell, with: .color(.white.opacity(0.07)))
+                        } else {
+                            // Not yet reached — faint grid cell.
+                            context.stroke(cell, with: .color(.white.opacity(0.08)), lineWidth: 0.5)
+                        }
+                    }
+                }
+            }
+            .allowsHitTesting(false)
         }
     }
 }
