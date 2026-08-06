@@ -8,15 +8,15 @@ Produces, in out_dir (default: alongside the input):
   <name>_square.jpg   centered square crop (what Storage would keep)
   <name>_cutout.png   transparent cutout (what the app shows)
 
-Use this to see exactly what the model does with a given photo (e.g. to tell a
-petticoat apart from background).
+Deps: torch, numpy, pillow, huggingface_hub (no scipy / torchvision / coremltools).
 """
 import os
 import sys
+from collections import deque
+
 import numpy as np
 import torch
 from PIL import Image
-from scipy import ndimage
 
 from u2net_common import SIZE, load_u2netp, SegExport
 
@@ -32,15 +32,54 @@ def saliency_mask(export, img):
     return (m * 255).astype(np.uint8)
 
 
-def cleaned(mask_u8):
+def clean_mask(mask_u8):
+    """Binarize -> keep largest 4-connected component -> fill holes. Pure numpy."""
     binary = mask_u8 >= THRESH
-    labels, n = ndimage.label(binary)
-    if n == 0:
+    h, w = binary.shape
+    label = np.zeros((h, w), np.int32)
+    cur = best_label = best_size = 0
+    for sy in range(h):
+        for sx in range(w):
+            if binary[sy, sx] and label[sy, sx] == 0:
+                cur += 1
+                size = 0
+                dq = deque([(sy, sx)])
+                label[sy, sx] = cur
+                while dq:
+                    y, x = dq.popleft()
+                    size += 1
+                    if y > 0 and binary[y - 1, x] and label[y - 1, x] == 0:
+                        label[y - 1, x] = cur; dq.append((y - 1, x))
+                    if y + 1 < h and binary[y + 1, x] and label[y + 1, x] == 0:
+                        label[y + 1, x] = cur; dq.append((y + 1, x))
+                    if x > 0 and binary[y, x - 1] and label[y, x - 1] == 0:
+                        label[y, x - 1] = cur; dq.append((y, x - 1))
+                    if x + 1 < w and binary[y, x + 1] and label[y, x + 1] == 0:
+                        label[y, x + 1] = cur; dq.append((y, x + 1))
+                if size > best_size:
+                    best_size = size; best_label = cur
+    if best_size == 0:
         return np.zeros_like(mask_u8)
-    sizes = ndimage.sum(binary, labels, range(1, n + 1))
-    comp = labels == (int(np.argmax(sizes)) + 1)
-    comp = ndimage.binary_fill_holes(comp)
-    return (comp * 255).astype(np.uint8)
+    comp = label == best_label
+
+    # Flood background from the border; enclosed zeros -> foreground.
+    exterior = np.zeros((h, w), bool)
+    dq = deque()
+    for x in range(w):
+        for y in (0, h - 1):
+            if not comp[y, x] and not exterior[y, x]:
+                exterior[y, x] = True; dq.append((y, x))
+    for y in range(h):
+        for x in (0, w - 1):
+            if not comp[y, x] and not exterior[y, x]:
+                exterior[y, x] = True; dq.append((y, x))
+    while dq:
+        y, x = dq.popleft()
+        for ny, nx in ((y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1)):
+            if 0 <= ny < h and 0 <= nx < w and not comp[ny, nx] and not exterior[ny, nx]:
+                exterior[ny, nx] = True; dq.append((ny, nx))
+    filled = comp | (~exterior & ~comp)
+    return (filled * 255).astype(np.uint8)
 
 
 def centered_square(W, H, arr):
@@ -48,7 +87,8 @@ def centered_square(W, H, arr):
     if len(xs) == 0:
         side = min(W, H)
         return (W - side) // 2, (H - side) // 2, side
-    minX, minY, w, h = xs.min(), ys.min(), xs.max() - xs.min() + 1, ys.max() - ys.min() + 1
+    minX, minY = xs.min(), ys.min()
+    w, h = xs.max() - minX + 1, ys.max() - minY + 1
     x = max(0, minX - w * PAD); y = max(0, minY - h * PAD)
     w2 = min(w + 2 * w * PAD, W - x); h2 = min(h + 2 * h * PAD, H - y)
     midX, midY = x + w2 / 2, y + h2 / 2
@@ -62,21 +102,26 @@ def main():
     if len(sys.argv) < 2:
         print(__doc__)
         sys.exit(1)
-    path = sys.argv[1]
-    out_dir = sys.argv[2] if len(sys.argv) > 2 else os.path.dirname(os.path.abspath(path))
+    path = os.path.expanduser(sys.argv[1])
+    if not os.path.isfile(path):
+        print(f"File not found: {path}\nPass a real photo path (tip: drag the file into Terminal).")
+        sys.exit(1)
+    out_dir = os.path.expanduser(sys.argv[2]) if len(sys.argv) > 2 else os.path.dirname(os.path.abspath(path))
     os.makedirs(out_dir, exist_ok=True)
     name = os.path.splitext(os.path.basename(path))[0]
 
+    print("Loading model (first run downloads ~4.7MB weights)...")
     export = SegExport(load_u2netp()).eval()
     img = Image.open(path).convert("RGB")
-    # Match the app: work at up to 1600px.
     scale = 1600 / max(img.size)
     if scale < 1:
         img = img.resize((int(img.width * scale), int(img.height * scale)))
     W, H = img.size
 
-    raw = Image.fromarray(saliency_mask(export, img), "L").resize((W, H))
-    clean = Image.fromarray(cleaned(np.asarray(raw)), "L")
+    small = saliency_mask(export, img)
+    clean_small = clean_mask(small)
+    raw = Image.fromarray(small, "L").resize((W, H))
+    clean = Image.fromarray(clean_small, "L").resize((W, H))
     clean_arr = np.asarray(clean)
     ox, oy, side = centered_square(W, H, clean_arr)
 

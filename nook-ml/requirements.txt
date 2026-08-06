@@ -3,6 +3,5 @@
 #   pip install -r requirements.txt
 torch
 numpy
-scipy
 pillow
 huggingface_hub
