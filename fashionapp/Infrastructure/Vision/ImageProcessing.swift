@@ -117,8 +117,47 @@ enum ImageProcessing {
         return buffer
     }
 
+    enum MaskCleanMode {
+        /// Open + edge-strip trim + erode — for soft saliency (u2net).
+        case saliency
+        /// LCC + hole fill only — for class masks (don't eat thin straps).
+        case semantic
+    }
+
+    /// Foreground coverage 0…1 for a grayscale mask.
+    static func maskCoverage(_ mask: UIImage, threshold: UInt8 = 128) -> Double {
+        guard let cg = cgImage(from: mask) else { return 0 }
+        let w = cg.width, h = cg.height
+        guard w > 0, h > 0 else { return 0 }
+        var px = [UInt8](repeating: 0, count: w * h)
+        guard let ctx = CGContext(
+            data: &px, width: w, height: h,
+            bitsPerComponent: 8, bytesPerRow: w,
+            space: CGColorSpaceCreateDeviceGray(),
+            bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ) else { return 0 }
+        ctx.interpolationQuality = .none
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+        var n = 0
+        for v in px where v >= threshold { n += 1 }
+        return Double(n) / Double(w * h)
+    }
+
     /// Pixel-wise AND of two grayscale masks (resized to the first mask's size).
     static func intersectMasks(_ a: UIImage, _ b: UIImage) -> UIImage? {
+        combineMasks(a, b) { $0 >= 128 && $1 >= 128 }
+    }
+
+    /// Pixel-wise `a AND NOT b` (remove human / body from a silhouette).
+    static func subtractMasks(_ a: UIImage, subtracting b: UIImage) -> UIImage? {
+        combineMasks(a, b) { $0 >= 128 && $1 < 128 }
+    }
+
+    private static func combineMasks(
+        _ a: UIImage,
+        _ b: UIImage,
+        _ keep: (UInt8, UInt8) -> Bool
+    ) -> UIImage? {
         guard let cgA = cgImage(from: a) else { return nil }
         let w = cgA.width
         let h = cgA.height
@@ -144,7 +183,39 @@ enum ImageProcessing {
         ctxB.draw(cgB, in: CGRect(x: 0, y: 0, width: w, height: h))
         var out = [UInt8](repeating: 0, count: w * h)
         for i in 0..<(w * h) {
-            out[i] = (pa[i] >= 128 && pb[i] >= 128) ? 255 : 0
+            out[i] = keep(pa[i], pb[i]) ? 255 : 0
+        }
+        return grayImage(from: out, width: w, height: h)
+    }
+
+    /// Dilate a binary grayscale mask by `radius` pixels (max-filter).
+    static func dilateMask(_ mask: UIImage, radius: Int) -> UIImage? {
+        guard radius > 0, let cg = cgImage(from: mask) else { return mask }
+        let w = cg.width, h = cg.height
+        var src = [UInt8](repeating: 0, count: w * h)
+        guard let ctx = CGContext(
+            data: &src, width: w, height: h,
+            bitsPerComponent: 8, bytesPerRow: w,
+            space: CGColorSpaceCreateDeviceGray(),
+            bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ) else { return mask }
+        ctx.interpolationQuality = .none
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+        var out = src
+        for y in 0..<h {
+            for x in 0..<w {
+                if src[y * w + x] >= 128 { continue }
+                let y0 = max(0, y - radius), y1 = min(h - 1, y + radius)
+                let x0 = max(0, x - radius), x1 = min(w - 1, x + radius)
+                var hit = false
+                outer: for yy in y0...y1 {
+                    for xx in x0...x1 where src[yy * w + xx] >= 128 {
+                        hit = true
+                        break outer
+                    }
+                }
+                if hit { out[y * w + x] = 255 }
+            }
         }
         return grayImage(from: out, width: w, height: h)
     }
@@ -503,11 +574,14 @@ enum ImageProcessing {
         return bytes
     }
 
-    /// Cleans a soft segmentation mask into a hard object silhouette:
-    /// stricter binarize → morphological open (detach side strips) → largest
-    /// component → fill holes → trim sparse edge columns/rows → light erode
-    /// (kill fringe halos). Bounding box then locks onto the garment only.
-    static func cleanedMask(_ mask: UIImage, threshold: UInt8 = 140) -> UIImage? {
+    /// Cleans a soft segmentation mask into a hard object silhouette.
+    /// - `.saliency`: open + edge-strip trim + erode (u2net side bands).
+    /// - `.semantic`: LCC + hole fill only (class masks; keeps thin straps).
+    static func cleanedMask(
+        _ mask: UIImage,
+        threshold: UInt8 = 140,
+        mode: MaskCleanMode = .saliency
+    ) -> UIImage? {
         guard let cg = cgImage(from: mask) else { return nil }
         let w = cg.width
         let h = cg.height
@@ -531,11 +605,11 @@ enum ImageProcessing {
         var fg = [Bool](repeating: false, count: count)
         for i in 0..<count { fg[i] = px[i] >= threshold }
 
-        // Morphological open (erode then dilate) detaches thin side curtains
-        // that touch the garment so LCC can drop them. Cap radius for speed
-        // on full-resolution masks (u2netp is upscaled from 320).
-        let openRadius = min(2, max(1, min(w, h) / 400))
-        fg = morphOpen(fg, width: w, height: h, radius: openRadius)
+        if mode == .saliency {
+            // Morphological open detaches thin side curtains before LCC.
+            let openRadius = min(2, max(1, min(w, h) / 400))
+            fg = morphOpen(fg, width: w, height: h, radius: openRadius)
+        }
 
         // Largest connected component (4-connectivity, BFS).
         var label = [Int32](repeating: 0, count: count)
@@ -587,14 +661,16 @@ enum ImageProcessing {
         }
         for i in 0..<count where out[i] == 0 && !exterior[i] { out[i] = 255 }
 
-        // Drop sparse left/right (and top/bottom) edge strips that survived LCC.
-        trimSparseEdgeStrips(&out, width: w, height: h)
+        if mode == .saliency {
+            // Drop sparse left/right (and top/bottom) edge strips that survived LCC.
+            trimSparseEdgeStrips(&out, width: w, height: h)
 
-        // Light erode removes one-pixel fringe halos without eating the garment.
-        var hard = [Bool](repeating: false, count: count)
-        for i in 0..<count { hard[i] = out[i] == 255 }
-        hard = morphErode(hard, width: w, height: h, radius: 1)
-        for i in 0..<count { out[i] = hard[i] ? 255 : 0 }
+            // Light erode removes one-pixel fringe halos without eating the garment.
+            var hard = [Bool](repeating: false, count: count)
+            for i in 0..<count { hard[i] = out[i] == 255 }
+            hard = morphErode(hard, width: w, height: h, radius: 1)
+            for i in 0..<count { out[i] = hard[i] ? 255 : 0 }
+        }
 
         return grayImage(from: out, width: w, height: h)
     }

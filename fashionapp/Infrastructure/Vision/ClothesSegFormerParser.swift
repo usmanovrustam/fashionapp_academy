@@ -29,6 +29,8 @@ final class ClothesSegFormerParser: @unchecked Sendable {
 
     /// Class indices that count as wearable / outfit items (not body / hair / bg).
     private static let garmentClassIDs: Set<Int> = [1, 3, 4, 5, 6, 7, 8, 9, 10, 16, 17]
+    /// Hair / Face / limbs — always subtracted from cutouts.
+    private static let bodyClassIDs: Set<UInt8> = [2, 11, 12, 13, 14, 15]
 
     var isAvailable: Bool { model != nil }
 
@@ -54,6 +56,8 @@ final class ClothesSegFormerParser: @unchecked Sendable {
         var squareMaskPNG: Data
         /// Full-frame garment-only mask (PNG) aligned with the prepared scan image.
         var fullGarmentMaskPNG: Data
+        /// Full-frame body mask (Hair/Face/limbs), dilated — subtract from saliency.
+        var fullBodyMaskPNG: Data
         /// True when Face/Hair/arms/legs are meaningfully present — worn on a person
         /// rather than a flat-lay product shot.
         var isWornOnPerson: Bool
@@ -90,24 +94,40 @@ final class ClothesSegFormerParser: @unchecked Sendable {
         guard let preparedCG = ImageProcessing.cgImage(from: prepared) else {
             throw DomainError.invalidImage
         }
+        let targetSize = CGSize(width: preparedCG.width, height: preparedCG.height)
         guard let maskFull = maskImage(
             classMap: classMap,
             width: width,
             height: height,
-            targetClass: best.classID,
-            targetSize: CGSize(width: preparedCG.width, height: preparedCG.height)
+            keep: Self.maskClasses(for: best.classID),
+            subtract: Self.bodyClassIDs,
+            dilateRadius: 1,
+            fillHoles: true,
+            targetSize: targetSize
         ) else {
             throw DomainError.scanFailed("Failed to build garment mask.")
         }
+        // Body mask is dilated more so face/hair/limb edges are firmly removed.
+        let bodyFull = maskImage(
+            classMap: classMap,
+            width: width,
+            height: height,
+            keep: Self.bodyClassIDs,
+            subtract: [],
+            dilateRadius: 4,
+            fillHoles: false,
+            targetSize: targetSize
+        ) ?? UIImage()
 
         // Prefer the cleaned silhouette (drop tiny blobs) before crop/cutout.
-        let garmentMask = ImageProcessing.cleanedMask(maskFull, threshold: 128) ?? maskFull
+        let garmentMask = ImageProcessing.cleanedMask(maskFull, threshold: 128, mode: .semantic) ?? maskFull
 
         let square = try ImageProcessing.centeredSquareCrop(image: prepared, mask: garmentMask, padding: 0.08)
         let squareMask = try ImageProcessing.centeredSquareCrop(image: garmentMask, mask: garmentMask, padding: 0.08)
         let jpeg = try ImageProcessing.jpegData(from: square, quality: 0.92)
         let maskPNG = try ImageProcessing.pngData(from: squareMask)
         let fullMaskPNG = try ImageProcessing.pngData(from: garmentMask)
+        let bodyPNG = (try? ImageProcessing.pngData(from: bodyFull)) ?? Data()
 
         let mapping = Self.mapLabel(best.classID)
         return ParseResult(
@@ -118,6 +138,7 @@ final class ClothesSegFormerParser: @unchecked Sendable {
             squareCropJPEG: jpeg,
             squareMaskPNG: maskPNG,
             fullGarmentMaskPNG: fullMaskPNG,
+            fullBodyMaskPNG: bodyPNG,
             isWornOnPerson: Self.detectWornOnPerson(classMap: classMap)
         )
     }
@@ -125,11 +146,9 @@ final class ClothesSegFormerParser: @unchecked Sendable {
     /// Hair / Face / limbs above a small share → photo is a person wearing clothes.
     private static func detectWornOnPerson(classMap: [UInt8]) -> Bool {
         guard !classMap.isEmpty else { return false }
-        // 2 Hair, 11 Face, 12–15 limbs
-        let body: Set<UInt8> = [2, 11, 12, 13, 14, 15]
         var bodyCount = 0
-        for c in classMap where body.contains(c) { bodyCount += 1 }
-        return Double(bodyCount) / Double(classMap.count) >= 0.015
+        for c in classMap where bodyClassIDs.contains(c) { bodyCount += 1 }
+        return Double(bodyCount) / Double(classMap.count) >= 0.008
     }
 
     // MARK: - Model load
@@ -279,16 +298,29 @@ final class ClothesSegFormerParser: @unchecked Sendable {
         classMap: [UInt8],
         width: Int,
         height: Int,
-        targetClass: Int,
+        keep: Set<UInt8>,
+        subtract: Set<UInt8>,
+        dilateRadius: Int,
+        fillHoles: Bool,
         targetSize: CGSize
     ) -> UIImage? {
         var pixels = [UInt8](repeating: 0, count: width * height)
-        let keep = Self.maskClasses(for: targetClass)
-        for i in 0..<classMap.count where keep.contains(classMap[i]) {
-            pixels[i] = 255
+        for i in 0..<classMap.count {
+            let c = classMap[i]
+            if keep.contains(c), !subtract.contains(c) {
+                pixels[i] = 255
+            }
         }
-        fillMaskHoles(&pixels, width: width, height: height)
-        dilateMask(&pixels, width: width, height: height, radius: 1)
+        // Force-clear any body label that leaked into keep (belt & suspenders).
+        if !subtract.isEmpty {
+            for i in 0..<classMap.count where subtract.contains(classMap[i]) {
+                pixels[i] = 0
+            }
+        }
+        if fillHoles {
+            fillMaskHoles(&pixels, width: width, height: height)
+        }
+        dilateMask(&pixels, width: width, height: height, radius: dilateRadius)
 
         guard let small = ImageProcessing.grayImage(from: pixels, width: width, height: height),
               let smallCG = small.cgImage else { return nil }
@@ -313,7 +345,9 @@ final class ClothesSegFormerParser: @unchecked Sendable {
         for i in 0..<gray.count {
             gray[i] = gray[i] >= 96 ? 255 : 0
         }
-        fillMaskHoles(&gray, width: outW, height: outH)
+        if fillHoles {
+            fillMaskHoles(&gray, width: outW, height: outH)
+        }
         return ImageProcessing.grayImage(from: gray, width: outW, height: outH)
     }
 
