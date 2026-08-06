@@ -1,12 +1,8 @@
-# Install CPU PyTorch first, then the rest:
-#   pip install --index-url https://download.pytorch.org/whl/cpu torch==2.5.1 torchvision==0.20.1
+# Runtime deps for run_cutout.py (works on any recent Python, incl. 3.13).
+# On macOS just use plain PyPI (no --index-url needed):
 #   pip install -r requirements.txt
-torch==2.5.1
-torchvision==0.20.1
-coremltools==8.3.0
-datasets>=3.0
-scipy
-scikit-learn
+torch
 numpy
+scipy
 pillow
-tqdm
+huggingface_hub

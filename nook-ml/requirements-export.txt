@@ -1,0 +1,13 @@
+# Pinned toolchain ONLY for regenerating the Core ML models (export_coreml.py /
+# training). coremltools needs Python <= 3.12; if you're on 3.13+, create a 3.12
+# venv for exporting. Not needed just to run run_cutout.py (the models are
+# already provided).
+#   pip install --index-url https://download.pytorch.org/whl/cpu torch==2.5.1 torchvision==0.20.1
+#   pip install -r requirements-export.txt
+coremltools==8.3.0
+datasets>=3.0
+scikit-learn
+numpy
+pillow
+tqdm
+scipy

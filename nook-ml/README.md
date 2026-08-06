@@ -8,12 +8,26 @@ cp -r nook-ml ~/Desktop/nook-ml
 cd ~/Desktop/nook-ml
 ```
 
-## Setup (once)
+## Setup (once) — to run the cutout tester
+
+Works on any recent Python (incl. 3.13). On macOS use plain PyPI:
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
-pip install --index-url https://download.pytorch.org/whl/cpu torch==2.5.1 torchvision==0.20.1
 pip install -r requirements.txt
+```
+
+`run_cutout.py` needs only `torch`, `numpy`, `scipy`, `pillow`,
+`huggingface_hub` — no coremltools/torchvision.
+
+## Setup — to regenerate the Core ML models (optional)
+
+`coremltools` requires **Python ≤ 3.12**. If you're on 3.13+, make a 3.12 venv:
+
+```bash
+python3.12 -m venv .venv-export && source .venv-export/bin/activate
+pip install --index-url https://download.pytorch.org/whl/cpu torch==2.5.1 torchvision==0.20.1
+pip install -r requirements-export.txt
 ```
 
 ## Contents
