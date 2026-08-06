@@ -151,10 +151,17 @@ struct ScannerFeatureView: View {
                         }
                         .overlay {
                             if viewModel.isProcessing {
-                                ScanningShimmerOverlay(image: image, reduceMotion: reduceMotion)
-                                    .clipShape(RoundedRectangle(cornerRadius: AppRadius.photo, style: .continuous))
-                                    .accessibilityElement(children: .combine)
-                                    .accessibilityLabel(NSLocalizedString("Analyzing outfit", comment: ""))
+                                MLProcessOverlay(
+                                    stage: viewModel.pipelineStage,
+                                    fraction: viewModel.pipelineFraction,
+                                    detail: viewModel.pipelineDetail,
+                                    stagePreview: viewModel.stagePreview,
+                                    reduceMotion: reduceMotion
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: AppRadius.photo, style: .continuous))
+                                .accessibilityElement(children: .combine)
+                                .accessibilityLabel(viewModel.pipelineStage?.displayName
+                                    ?? NSLocalizedString("Analyzing outfit", comment: ""))
                             }
                         }
                 } else {
@@ -343,136 +350,81 @@ struct ScannerFeatureView: View {
     }
 }
 
-/// CNN-style analyzing overlay: a convolution kernel raster-scans the image,
-/// revealing it as colored pixel blocks with an accent activation trail — like
-/// a network reading the image pixel by pixel.
-struct ScanningShimmerOverlay: View {
-    let image: UIImage?
+/// Live ML process overlay — driven by real `ScanPipelineStage` updates from
+/// the on-device pipeline (detect → segment → isolate → cutout → metadata),
+/// showing intermediate previews as each Core ML / CV step finishes.
+struct MLProcessOverlay: View {
+    let stage: ScanPipelineStage?
+    let fraction: Double
+    let detail: String?
+    let stagePreview: UIImage?
     let reduceMotion: Bool
+
+    private var stages: [ScanPipelineStage] { ScanPipelineStage.scanUIStages }
 
     var body: some View {
         ZStack {
-            CNNPixelScan(image: image, reduceMotion: reduceMotion)
+            Color.black.opacity(0.42)
 
-            VStack(spacing: 10) {
-                Image(systemName: "brain.head.profile")
-                    .font(.title2.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .symbolEffect(.pulse, isActive: !reduceMotion)
-                Text(NSLocalizedString("Analyzing outfit…", comment: ""))
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
+            if let stagePreview {
+                Image(uiImage: stagePreview)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .padding(18)
+                    .opacity(stage == .segmentClothing ? 0.92 : 1)
+                    .colorMultiply(stage == .segmentClothing ? Color(red: 1, green: 0.45, blue: 0.55) : .white)
+                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: stage)
             }
-            .padding(20)
-            .liquidGlass(cornerRadius: AppRadius.medium)
-        }
-    }
-}
 
-/// Convolution-style pixel scan. Samples the image into a grid of colored
-/// blocks and reveals them in raster order behind a sliding 3×3 kernel window,
-/// with a fading accent "activation" trail just behind the kernel.
-struct CNNPixelScan: View {
-    let image: UIImage?
-    let reduceMotion: Bool
-    private let cols = 18
-    private let rows = 20
-    private let period: TimeInterval = 2.6
+            VStack(spacing: 0) {
+                Spacer(minLength: 8)
 
-    @State private var colors: [Color] = []
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(stages, id: \.self) { item in
+                        stageRow(item)
+                    }
 
-    var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: reduceMotion)) { timeline in
-            Canvas { context, size in
-                let cellW = size.width / CGFloat(cols)
-                let cellH = size.height / CGFloat(rows)
-                let cells = cols * rows
+                    ProgressView(value: min(1, max(0, fraction)))
+                        .tint(AppColors.accent)
+                        .padding(.top, 4)
 
-                let progress: Double
-                if reduceMotion {
-                    progress = 0.66
-                } else {
-                    let t = timeline.date.timeIntervalSinceReferenceDate
-                    progress = t.truncatingRemainder(dividingBy: period) / period
-                }
-                let scanIndex = progress * Double(cells)
+                    Text(stage?.displayName
+                         ?? NSLocalizedString("Starting on-device ML…", comment: "ML scan stage"))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
-                for r in 0..<rows {
-                    for c in 0..<cols {
-                        let idx = r * cols + c
-                        let rect = CGRect(
-                            x: CGFloat(c) * cellW,
-                            y: CGFloat(r) * cellH,
-                            width: cellW,
-                            height: cellH
-                        ).insetBy(dx: 0.5, dy: 0.5)
-                        let cell = Path(rect)
-
-                        if Double(idx) <= scanIndex {
-                            // Revealed pixel block.
-                            let color = colors.indices.contains(idx) ? colors[idx] : Color.gray
-                            context.fill(cell, with: .color(color))
-                            // Fading activation glow just behind the kernel.
-                            let behind = scanIndex - Double(idx)
-                            if behind < Double(cols) {
-                                let g = 1 - behind / Double(cols)
-                                context.fill(cell, with: .color(AppColors.accent.opacity(0.55 * g)))
-                            }
-                        } else {
-                            // Not yet scanned — dark with faint grid.
-                            context.fill(cell, with: .color(.black.opacity(0.5)))
-                            context.stroke(cell, with: .color(.white.opacity(0.06)), lineWidth: 0.5)
-                        }
+                    if let detail, !detail.isEmpty {
+                        Text(detail)
+                            .font(.caption2)
+                            .foregroundStyle(.white.opacity(0.8))
+                            .lineLimit(1)
                     }
                 }
-
-                // Sliding 3×3 convolution kernel window.
-                let ki = min(cells - 1, max(0, Int(scanIndex)))
-                let kc = ki % cols
-                let kr = ki / cols
-                let krect = CGRect(
-                    x: CGFloat(kc - 1) * cellW,
-                    y: CGFloat(kr - 1) * cellH,
-                    width: cellW * 3,
-                    height: cellH * 3
-                )
-                context.stroke(
-                    Path(roundedRect: krect, cornerRadius: 2),
-                    with: .color(.white.opacity(0.95)),
-                    lineWidth: 2
-                )
+                .padding(14)
+                .liquidGlass(cornerRadius: AppRadius.medium)
+                .padding(12)
             }
-            .allowsHitTesting(false)
         }
-        .onAppear { colors = Self.colorGrid(from: image, cols: cols, rows: rows) }
     }
 
-    /// Downsamples the image to a cols×rows grid of average colors.
-    static func colorGrid(from image: UIImage?, cols: Int, rows: Int) -> [Color] {
-        let fallback = Array(repeating: Color.gray.opacity(0.6), count: cols * rows)
-        guard let image, let cg = ImageProcessing.cgImage(from: image) else { return fallback }
-        var bytes = [UInt8](repeating: 0, count: cols * rows * 4)
-        guard let ctx = CGContext(
-            data: &bytes,
-            width: cols,
-            height: rows,
-            bitsPerComponent: 8,
-            bytesPerRow: cols * 4,
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else { return fallback }
-        ctx.interpolationQuality = .medium
-        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: cols, height: rows))
-        var out: [Color] = []
-        out.reserveCapacity(cols * rows)
-        for i in 0..<(cols * rows) {
-            let o = i * 4
-            out.append(Color(
-                red: Double(bytes[o]) / 255,
-                green: Double(bytes[o + 1]) / 255,
-                blue: Double(bytes[o + 2]) / 255
-            ))
+    @ViewBuilder
+    private func stageRow(_ item: ScanPipelineStage) -> some View {
+        let current = stage ?? .detectClothing
+        let currentIdx = stages.firstIndex(of: current) ?? 0
+        let itemIdx = stages.firstIndex(of: item) ?? 0
+        let done = itemIdx < currentIdx || (itemIdx == currentIdx && fraction >= 0.99)
+        let active = itemIdx == currentIdx
+
+        HStack(spacing: 8) {
+            Image(systemName: done ? "checkmark.circle.fill" : (active ? "circle.inset.filled" : "circle"))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(done || active ? AppColors.accent : .white.opacity(0.35))
+                .symbolEffect(.pulse, isActive: active && !reduceMotion)
+            Text(item.displayName)
+                .font(.caption2.weight(active ? .semibold : .regular))
+                .foregroundStyle(active || done ? .white : .white.opacity(0.45))
+            Spacer(minLength: 0)
         }
-        return out
     }
 }

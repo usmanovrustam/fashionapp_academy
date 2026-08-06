@@ -20,8 +20,8 @@ from PIL import Image
 
 from u2net_common import SIZE, load_u2netp, SegExport
 
-PAD = 0.12
-THRESH = 128
+PAD = 0.08
+THRESH = 140
 
 
 def saliency_mask(export, img):
@@ -32,9 +32,71 @@ def saliency_mask(export, img):
     return (m * 255).astype(np.uint8)
 
 
+def _erode(binary, radius=1):
+    if radius <= 0:
+        return binary
+    out = binary.copy()
+    h, w = binary.shape
+    for r in range(radius):
+        padded = np.pad(out, 1, constant_values=False)
+        out = (
+            padded[1:-1, 1:-1]
+            & padded[:-2, 1:-1] & padded[2:, 1:-1]
+            & padded[1:-1, :-2] & padded[1:-1, 2:]
+        )
+    return out
+
+
+def _dilate(binary, radius=1):
+    if radius <= 0:
+        return binary
+    out = binary.copy()
+    for _ in range(radius):
+        padded = np.pad(out, 1, constant_values=False)
+        out = (
+            padded[1:-1, 1:-1]
+            | padded[:-2, 1:-1] | padded[2:, 1:-1]
+            | padded[1:-1, :-2] | padded[1:-1, 2:]
+        )
+    return out
+
+
+def _trim_sparse_edges(filled):
+    """Drop thin side/top/bottom strips that survived LCC (mirrors ImageProcessing)."""
+    h, w = filled.shape
+    if w < 9 or h < 9:
+        return filled
+    col = filled.sum(axis=0)
+    row = filled.sum(axis=1)
+    max_c, max_r = int(col.max()), int(row.max())
+    if max_c == 0 or max_r == 0:
+        return filled
+    col_floor = max(2, int(max_c * 0.12))
+    row_floor = max(2, int(max_r * 0.12))
+    left = 0
+    while left < w // 3 and col[left] < col_floor:
+        left += 1
+    right = w - 1
+    while right > (2 * w) // 3 and col[right] < col_floor:
+        right -= 1
+    top = 0
+    while top < h // 3 and row[top] < row_floor:
+        top += 1
+    bottom = h - 1
+    while bottom > (2 * h) // 3 and row[bottom] < row_floor:
+        bottom -= 1
+    if left > right or top > bottom:
+        return filled
+    out = np.zeros_like(filled)
+    out[top : bottom + 1, left : right + 1] = filled[top : bottom + 1, left : right + 1]
+    return out
+
+
 def clean_mask(mask_u8):
-    """Binarize -> keep largest 4-connected component -> fill holes. Pure numpy."""
+    """Binarize -> open -> LCC -> fill holes -> trim edge strips -> light erode."""
     binary = mask_u8 >= THRESH
+    # Morphological open detaches thin side curtains before LCC.
+    binary = _dilate(_erode(binary, 1), 1)
     h, w = binary.shape
     label = np.zeros((h, w), np.int32)
     cur = best_label = best_size = 0
@@ -79,6 +141,8 @@ def clean_mask(mask_u8):
             if 0 <= ny < h and 0 <= nx < w and not comp[ny, nx] and not exterior[ny, nx]:
                 exterior[ny, nx] = True; dq.append((ny, nx))
     filled = comp | (~exterior & ~comp)
+    filled = _trim_sparse_edges(filled)
+    filled = _erode(filled, 1)
     return (filled * 255).astype(np.uint8)
 
 
@@ -120,14 +184,17 @@ def main():
 
     small = saliency_mask(export, img)
     clean_small = clean_mask(small)
-    raw = Image.fromarray(small, "L").resize((W, H))
-    clean = Image.fromarray(clean_small, "L").resize((W, H))
+    # Nearest-neighbor upscale keeps a hard silhouette (no soft side halos).
+    raw = Image.fromarray(small, "L").resize((W, H), Image.NEAREST)
+    clean = Image.fromarray(clean_small, "L").resize((W, H), Image.NEAREST)
     clean_arr = np.asarray(clean)
     ox, oy, side = centered_square(W, H, clean_arr)
 
     crop = img.crop((ox, oy, ox + side, oy + side))
     cmask = clean.crop((ox, oy, ox + side, oy + side))
-    cut = crop.convert("RGBA"); cut.putalpha(cmask)
+    alpha = (np.asarray(cmask) >= 128).astype(np.uint8) * 255
+    cut = crop.convert("RGBA")
+    cut.putalpha(Image.fromarray(alpha, "L"))
 
     raw.save(os.path.join(out_dir, f"{name}_mask.png"))
     clean.save(os.path.join(out_dir, f"{name}_clean.png"))

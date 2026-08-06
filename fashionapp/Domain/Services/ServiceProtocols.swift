@@ -49,7 +49,18 @@ struct ClothingMetadata: Equatable {
 }
 
 protocol ClothingScanPipeline: AnyObject {
-    func scan(imageData: Data) async throws -> ClothingScanResult
+    /// Runs the on-device scan. `onProgress` is invoked from a background isolation
+    /// with real pipeline stages and optional intermediate image previews.
+    func scan(
+        imageData: Data,
+        onProgress: (@Sendable (ScanPipelineProgress) -> Void)?
+    ) async throws -> ClothingScanResult
+}
+
+extension ClothingScanPipeline {
+    func scan(imageData: Data) async throws -> ClothingScanResult {
+        try await scan(imageData: imageData, onProgress: nil)
+    }
 }
 
 // MARK: - Recommendations & Assistant

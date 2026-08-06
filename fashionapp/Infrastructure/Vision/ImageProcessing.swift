@@ -156,16 +156,22 @@ enum ImageProcessing {
         ) else {
             throw ImageProcessingError.maskFailed
         }
-        maskCtx.interpolationQuality = .high
+        // Nearest-neighbor keeps a hard binary mask from growing soft side halos.
+        maskCtx.interpolationQuality = .none
         maskCtx.draw(maskCG, in: CGRect(x: 0, y: 0, width: width, height: height))
 
         for i in 0..<(width * height) {
-            let alpha = maskPixels[i]
+            // Hard alpha — anything below mid-gray is fully transparent.
+            let alpha: UInt8 = maskPixels[i] >= 128 ? 255 : 0
             let o = i * 4
-            pixels[o + 0] = UInt8((Int(pixels[o + 0]) * Int(alpha)) / 255)
-            pixels[o + 1] = UInt8((Int(pixels[o + 1]) * Int(alpha)) / 255)
-            pixels[o + 2] = UInt8((Int(pixels[o + 2]) * Int(alpha)) / 255)
-            pixels[o + 3] = alpha
+            if alpha == 0 {
+                pixels[o + 0] = 0
+                pixels[o + 1] = 0
+                pixels[o + 2] = 0
+                pixels[o + 3] = 0
+            } else {
+                pixels[o + 3] = 255
+            }
         }
 
         guard let out = ctx.makeImage() else { throw ImageProcessingError.maskFailed }
@@ -224,14 +230,14 @@ enum ImageProcessing {
             space: CGColorSpaceCreateDeviceGray(),
             bitmapInfo: CGImageAlphaInfo.none.rawValue
         ) else { return nil }
-        ctx.interpolationQuality = .high
+        ctx.interpolationQuality = .none
         ctx.draw(maskCG, in: CGRect(x: 0, y: 0, width: width, height: height))
 
         var minX = width, minY = height, maxX = 0, maxY = 0
         var found = false
         for y in 0..<height {
             let row = y * width
-            for x in 0..<width where pixels[row + x] > 24 {
+            for x in 0..<width where pixels[row + x] > 128 {
                 found = true
                 if x < minX { minX = x }
                 if y < minY { minY = y }
@@ -465,10 +471,11 @@ enum ImageProcessing {
         return bytes
     }
 
-    /// Cleans a soft segmentation mask: binarize, keep the largest connected
-    /// component, and fill interior holes. Removes stray background blobs so the
-    /// cutout is crisp and the centered-square bounding box locks onto the garment.
-    static func cleanedMask(_ mask: UIImage, threshold: UInt8 = 128) -> UIImage? {
+    /// Cleans a soft segmentation mask into a hard object silhouette:
+    /// stricter binarize → morphological open (detach side strips) → largest
+    /// component → fill holes → trim sparse edge columns/rows → light erode
+    /// (kill fringe halos). Bounding box then locks onto the garment only.
+    static func cleanedMask(_ mask: UIImage, threshold: UInt8 = 140) -> UIImage? {
         guard let cg = cgImage(from: mask) else { return nil }
         let w = cg.width
         let h = cg.height
@@ -485,11 +492,18 @@ enum ImageProcessing {
             space: CGColorSpaceCreateDeviceGray(),
             bitmapInfo: CGImageAlphaInfo.none.rawValue
         ) else { return nil }
-        ctx.interpolationQuality = .high
+        // Nearest-neighbor when the source is already a small model output upscaled.
+        ctx.interpolationQuality = .none
         ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
 
         var fg = [Bool](repeating: false, count: count)
         for i in 0..<count { fg[i] = px[i] >= threshold }
+
+        // Morphological open (erode then dilate) detaches thin side curtains
+        // that touch the garment so LCC can drop them. Cap radius for speed
+        // on full-resolution masks (u2netp is upscaled from 320).
+        let openRadius = min(2, max(1, min(w, h) / 400))
+        fg = morphOpen(fg, width: w, height: h, radius: openRadius)
 
         // Largest connected component (4-connectivity, BFS).
         var label = [Int32](repeating: 0, count: count)
@@ -541,7 +555,97 @@ enum ImageProcessing {
         }
         for i in 0..<count where out[i] == 0 && !exterior[i] { out[i] = 255 }
 
+        // Drop sparse left/right (and top/bottom) edge strips that survived LCC.
+        trimSparseEdgeStrips(&out, width: w, height: h)
+
+        // Light erode removes one-pixel fringe halos without eating the garment.
+        var hard = [Bool](repeating: false, count: count)
+        for i in 0..<count { hard[i] = out[i] == 255 }
+        hard = morphErode(hard, width: w, height: h, radius: 1)
+        for i in 0..<count { out[i] = hard[i] ? 255 : 0 }
+
         return grayImage(from: out, width: w, height: h)
+    }
+
+    /// Zeroes outer columns/rows whose foreground coverage is thin vs the garment core.
+    private static func trimSparseEdgeStrips(_ pixels: inout [UInt8], width w: Int, height h: Int) {
+        guard w > 8, h > 8 else { return }
+        var colCounts = [Int](repeating: 0, count: w)
+        var rowCounts = [Int](repeating: 0, count: h)
+        for y in 0..<h {
+            let row = y * w
+            for x in 0..<w where pixels[row + x] > 0 {
+                colCounts[x] += 1
+                rowCounts[y] += 1
+            }
+        }
+        let maxCol = colCounts.max() ?? 0
+        let maxRow = rowCounts.max() ?? 0
+        guard maxCol > 0, maxRow > 0 else { return }
+
+        let colFloor = max(2, Int(Double(maxCol) * 0.12))
+        let rowFloor = max(2, Int(Double(maxRow) * 0.12))
+
+        // Walk inward from each side until coverage looks like the solid object.
+        var left = 0
+        while left < w / 3, colCounts[left] < colFloor { left += 1 }
+        var right = w - 1
+        while right > (2 * w) / 3, colCounts[right] < colFloor { right -= 1 }
+        var top = 0
+        while top < h / 3, rowCounts[top] < rowFloor { top += 1 }
+        var bottom = h - 1
+        while bottom > (2 * h) / 3, rowCounts[bottom] < rowFloor { bottom -= 1 }
+
+        guard left <= right, top <= bottom else { return }
+        for y in 0..<h {
+            let row = y * w
+            for x in 0..<w {
+                if y < top || y > bottom || x < left || x > right {
+                    pixels[row + x] = 0
+                }
+            }
+        }
+    }
+
+    private static func morphOpen(_ src: [Bool], width: Int, height: Int, radius: Int) -> [Bool] {
+        morphDilate(morphErode(src, width: width, height: height, radius: radius), width: width, height: height, radius: radius)
+    }
+
+    private static func morphErode(_ src: [Bool], width w: Int, height h: Int, radius: Int) -> [Bool] {
+        guard radius > 0 else { return src }
+        var out = [Bool](repeating: false, count: w * h)
+        for y in 0..<h {
+            for x in 0..<w {
+                var keep = true
+                let y0 = max(0, y - radius), y1 = min(h - 1, y + radius)
+                let x0 = max(0, x - radius), x1 = min(w - 1, x + radius)
+                outer: for yy in y0...y1 {
+                    let row = yy * w
+                    for xx in x0...x1 where !src[row + xx] {
+                        keep = false
+                        break outer
+                    }
+                }
+                out[y * w + x] = keep
+            }
+        }
+        return out
+    }
+
+    private static func morphDilate(_ src: [Bool], width w: Int, height h: Int, radius: Int) -> [Bool] {
+        guard radius > 0 else { return src }
+        var out = [Bool](repeating: false, count: w * h)
+        for y in 0..<h {
+            for x in 0..<w where src[y * w + x] {
+                let y0 = max(0, y - radius), y1 = min(h - 1, y + radius)
+                let x0 = max(0, x - radius), x1 = min(w - 1, x + radius)
+                for yy in y0...y1 {
+                    let row = yy * w
+                    for xx in x0...x1 { out[row + xx] = true }
+                }
+            }
+        }
+        return out
     }
 
     static func grayImage(from pixels: [UInt8], width: Int, height: Int) -> UIImage? {

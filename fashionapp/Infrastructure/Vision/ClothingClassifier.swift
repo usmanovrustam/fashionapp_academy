@@ -287,22 +287,38 @@ final class DefaultClothingScanPipeline: ClothingScanPipeline {
         self.clothesParserProvider = clothesParserProvider
     }
 
-    func scan(imageData: Data) async throws -> ClothingScanResult {
+    func scan(
+        imageData: Data,
+        onProgress: (@Sendable (ScanPipelineProgress) -> Void)?
+    ) async throws -> ClothingScanResult {
         guard !imageData.isEmpty else { throw DomainError.invalidImage }
+
+        let report: @Sendable (ScanPipelineProgress) -> Void = { progress in
+            onProgress?(progress)
+        }
 
         let clothesParser = clothesParserProvider()
         if clothesParser.isAvailable {
-            return try await scanWithSegFormer(parser: clothesParser, imageData: imageData)
+            return try await scanWithSegFormer(parser: clothesParser, imageData: imageData, report: report)
         }
-        return try await scanWithFallback(imageData: imageData)
+        return try await scanWithFallback(imageData: imageData, report: report)
     }
 
     /// SegFormer path: classify garment → square-center crop → cutout → metadata.
     private func scanWithSegFormer(
         parser: ClothesSegFormerParser,
-        imageData: Data
+        imageData: Data,
+        report: @Sendable (ScanPipelineProgress) -> Void
     ) async throws -> ClothingScanResult {
+        report(ScanPipelineProgress(stage: .detectClothing, fraction: 0.08, previewImageData: imageData))
+
         let parsed = try await parser.parse(imageData: imageData)
+        report(ScanPipelineProgress(
+            stage: .detectClothing,
+            fraction: 0.22,
+            previewImageData: parsed.squareCropJPEG,
+            detail: parsed.subcategory.isEmpty ? parsed.category.displayName : parsed.subcategory
+        ))
 
         // SegFormer classifies the garment well, but its mask/crop are noisy on
         // flat-lay photos (off-center square, background leaking into the cutout).
@@ -311,6 +327,8 @@ final class DefaultClothingScanPipeline: ClothingScanPipeline {
         var squareData = parsed.squareCropJPEG
         var transparentData: Data?
         do {
+            report(ScanPipelineProgress(stage: .segmentClothing, fraction: 0.30, previewImageData: imageData))
+
             let full = ImageProcessing.resized(
                 ImageProcessing.orientedUp(try ImageProcessing.uiImage(from: imageData)),
                 maxDimension: 1600
@@ -318,24 +336,51 @@ final class DefaultClothingScanPipeline: ClothingScanPipeline {
             let fullJPEG = try ImageProcessing.jpegData(from: full, quality: 0.9)
             let maskData = try await segmenter.segment(imageData: fullJPEG)
             let rawMask = try ImageProcessing.uiImage(from: maskData)
-            // Drop stray background blobs + fill holes so the box centers on the garment.
+            // Drop side bands / stray blobs + fill holes so the box centers on the garment.
             let mask = ImageProcessing.cleanedMask(rawMask) ?? rawMask
-            let square = try ImageProcessing.centeredSquareCrop(image: full, mask: mask, padding: 0.12)
-            let squareMask = try ImageProcessing.centeredSquareCrop(image: mask, mask: mask, padding: 0.12)
+            let cleanMaskPNG = try ImageProcessing.pngData(from: mask)
+            report(ScanPipelineProgress(
+                stage: .segmentClothing,
+                fraction: 0.48,
+                previewImageData: cleanMaskPNG,
+                detail: NSLocalizedString("Clean object mask", comment: "ML scan detail")
+            ))
+
+            report(ScanPipelineProgress(stage: .removeBackground, fraction: 0.55, previewImageData: cleanMaskPNG))
+            let square = try ImageProcessing.centeredSquareCrop(image: full, mask: mask, padding: 0.08)
+            let squareMask = try ImageProcessing.centeredSquareCrop(image: mask, mask: mask, padding: 0.08)
             squareData = try ImageProcessing.jpegData(from: square, quality: 0.92)
             let squareMaskPNG = try ImageProcessing.pngData(from: squareMask)
+            report(ScanPipelineProgress(stage: .removeBackground, fraction: 0.68, previewImageData: squareData))
+
+            report(ScanPipelineProgress(stage: .generateTransparentPNG, fraction: 0.72, previewImageData: squareData))
             transparentData = try await backgroundRemover.removeBackground(
                 imageData: squareData,
                 maskData: squareMaskPNG
             )
+            report(ScanPipelineProgress(
+                stage: .generateTransparentPNG,
+                fraction: 0.86,
+                previewImageData: transparentData ?? squareData
+            ))
         } catch {
             squareData = parsed.squareCropJPEG
             transparentData = try? await backgroundRemover.removeBackground(
                 imageData: parsed.squareCropJPEG,
                 maskData: parsed.squareMaskPNG
             )
+            report(ScanPipelineProgress(
+                stage: .generateTransparentPNG,
+                fraction: 0.86,
+                previewImageData: transparentData ?? squareData
+            ))
         }
 
+        report(ScanPipelineProgress(
+            stage: .extractMetadata,
+            fraction: 0.90,
+            previewImageData: transparentData ?? squareData
+        ))
         let metadataSource = transparentData ?? squareData
         var metadata = try await metadataExtractor.extract(
             from: metadataSource,
@@ -349,6 +394,13 @@ final class DefaultClothingScanPipeline: ClothingScanPipeline {
         }
 
         let confidence = min(1, (parsed.confidence + metadata.confidence) / 2)
+        report(ScanPipelineProgress(
+            stage: .extractMetadata,
+            fraction: 1.0,
+            previewImageData: transparentData ?? squareData,
+            detail: metadata.suggestedName
+        ))
+
         return ClothingScanResult(
             detectedCategory: parsed.category,
             subcategory: parsed.subcategory,
@@ -370,32 +422,71 @@ final class DefaultClothingScanPipeline: ClothingScanPipeline {
         )
     }
 
-    /// Legacy Vision + U²-Net path with square crop from the soft mask.
-    private func scanWithFallback(imageData: Data) async throws -> ClothingScanResult {
+    /// Legacy Vision + U²-Net path with square crop from the cleaned mask.
+    private func scanWithFallback(
+        imageData: Data,
+        report: @Sendable (ScanPipelineProgress) -> Void
+    ) async throws -> ClothingScanResult {
+        report(ScanPipelineProgress(stage: .detectClothing, fraction: 0.08, previewImageData: imageData))
         let (category, detectionConfidence) = try await detector.detectCategory(in: imageData)
+        report(ScanPipelineProgress(
+            stage: .detectClothing,
+            fraction: 0.22,
+            previewImageData: imageData,
+            detail: category.displayName
+        ))
 
         var squareJPEG = imageData
         var transparentData: Data?
         do {
+            report(ScanPipelineProgress(stage: .segmentClothing, fraction: 0.30, previewImageData: imageData))
             let maskData = try await segmenter.segment(imageData: imageData)
             let image = try ImageProcessing.uiImage(from: imageData)
             let rawMask = try ImageProcessing.uiImage(from: maskData)
             let mask = ImageProcessing.cleanedMask(rawMask) ?? rawMask
-            let square = try ImageProcessing.centeredSquareCrop(image: image, mask: mask, padding: 0.12)
-            let squareMask = try ImageProcessing.centeredSquareCrop(image: mask, mask: mask, padding: 0.12)
+            let cleanMaskPNG = try ImageProcessing.pngData(from: mask)
+            report(ScanPipelineProgress(
+                stage: .segmentClothing,
+                fraction: 0.48,
+                previewImageData: cleanMaskPNG,
+                detail: NSLocalizedString("Clean object mask", comment: "ML scan detail")
+            ))
+
+            report(ScanPipelineProgress(stage: .removeBackground, fraction: 0.55, previewImageData: cleanMaskPNG))
+            let square = try ImageProcessing.centeredSquareCrop(image: image, mask: mask, padding: 0.08)
+            let squareMask = try ImageProcessing.centeredSquareCrop(image: mask, mask: mask, padding: 0.08)
             squareJPEG = try ImageProcessing.jpegData(from: square, quality: 0.92)
             let squareMaskPNG = try ImageProcessing.pngData(from: squareMask)
+            report(ScanPipelineProgress(stage: .removeBackground, fraction: 0.68, previewImageData: squareJPEG))
+
+            report(ScanPipelineProgress(stage: .generateTransparentPNG, fraction: 0.72, previewImageData: squareJPEG))
             transparentData = try await backgroundRemover.removeBackground(
                 imageData: squareJPEG,
                 maskData: squareMaskPNG
             )
+            report(ScanPipelineProgress(
+                stage: .generateTransparentPNG,
+                fraction: 0.86,
+                previewImageData: transparentData ?? squareJPEG
+            ))
         } catch {
             transparentData = nil
         }
 
+        report(ScanPipelineProgress(
+            stage: .extractMetadata,
+            fraction: 0.90,
+            previewImageData: transparentData ?? squareJPEG
+        ))
         let metadataSource = transparentData ?? squareJPEG
         let metadata = try await metadataExtractor.extract(from: metadataSource, category: category)
         let confidence = min(1, (detectionConfidence + metadata.confidence) / 2)
+        report(ScanPipelineProgress(
+            stage: .extractMetadata,
+            fraction: 1.0,
+            previewImageData: transparentData ?? squareJPEG,
+            detail: metadata.suggestedName
+        ))
 
         return ClothingScanResult(
             detectedCategory: category,

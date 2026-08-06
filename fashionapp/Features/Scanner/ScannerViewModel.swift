@@ -16,6 +16,12 @@ final class ScannerViewModel: ObservableObject {
     @Published var didSave = false
     @Published var savedItem: WardrobeItem?
 
+    /// Live ML stage while `isProcessing` — driven by the real pipeline, not a timer.
+    @Published var pipelineStage: ScanPipelineStage?
+    @Published var pipelineFraction: Double = 0
+    @Published var pipelineDetail: String?
+    @Published var stagePreview: UIImage?
+
     // Reviewed draft — prefilled from scan; user must confirm before save.
     @Published var draftName = ""
     @Published var draftCategory: ClothingCategory = .top
@@ -73,13 +79,14 @@ final class ScannerViewModel: ObservableObject {
         previewImage = image
         scanResult = nil
         clearDraft()
+        resetPipelineUI()
         isProcessing = true
         errorMessage = nil
         showNoOutfitAlert = false
         analytics.track(.scanStarted, parameters: ["source": "image"])
 
         do {
-            // Normalize on a cooperative yield so shimmer can paint first.
+            // Normalize on a cooperative yield so the stage UI can paint first.
             await Task.yield()
             let upright = ImageProcessing.orientedUp(image)
             let prepared = ImageProcessing.resized(upright, maxDimension: 1600)
@@ -87,18 +94,30 @@ final class ScannerViewModel: ObservableObject {
                 throw DomainError.invalidImage
             }
 
-            // Heavy Core ML + CG work runs off the main actor (thread-safe image path).
-            let result = try await BackgroundScanJob(pipeline: pipeline, imageData: data).runDetached()
+            pipelineStage = .detectClothing
+            pipelineFraction = 0.05
+            stagePreview = prepared
+
+            // Heavy Core ML + CG work runs off the main actor; progress hops back.
+            let result = try await BackgroundScanJob(pipeline: pipeline, imageData: data).runDetached {
+                [weak self] progress in
+                Task { @MainActor in
+                    self?.applyPipelineProgress(progress)
+                }
+            }
             scanResult = result
             applyDraft(from: result)
             if let transparent = result.transparentImageData,
                let cutout = UIImage(data: transparent) {
                 previewImage = cutout
                 selectedImage = cutout
+                stagePreview = cutout
             } else if let square = UIImage(data: result.originalImageData) {
                 previewImage = square
                 selectedImage = square
+                stagePreview = square
             }
+            pipelineFraction = 1
             analytics.track(.scanCompleted, parameters: [
                 "category": result.detectedCategory.rawValue,
                 "confidence": String(format: "%.2f", result.confidence)
@@ -113,6 +132,9 @@ final class ScannerViewModel: ObservableObject {
         }
 
         isProcessing = false
+        // Keep last stage preview briefly; clear stage chrome after completion.
+        pipelineStage = nil
+        pipelineDetail = nil
     }
 
     func save() async {
@@ -157,6 +179,7 @@ final class ScannerViewModel: ObservableObject {
         previewImage = nil
         scanResult = nil
         clearDraft()
+        resetPipelineUI()
         showNoOutfitAlert = false
     }
 
@@ -165,7 +188,31 @@ final class ScannerViewModel: ObservableObject {
         previewImage = nil
         scanResult = nil
         clearDraft()
+        resetPipelineUI()
         showNoOutfitAlert = false
+    }
+
+    private func applyPipelineProgress(_ progress: ScanPipelineProgress) {
+        pipelineStage = progress.stage
+        pipelineFraction = max(pipelineFraction, min(1, progress.fraction))
+        pipelineDetail = progress.detail
+        if let data = progress.previewImageData, let image = UIImage(data: data) {
+            stagePreview = image
+            // Live-swap the main preview once we have a real cutout / square crop.
+            switch progress.stage {
+            case .removeBackground, .generateTransparentPNG, .extractMetadata:
+                previewImage = image
+            default:
+                break
+            }
+        }
+    }
+
+    private func resetPipelineUI() {
+        pipelineStage = nil
+        pipelineFraction = 0
+        pipelineDetail = nil
+        stagePreview = nil
     }
 
     private func applyDraft(from result: ClothingScanResult) {
@@ -206,9 +253,11 @@ private final class BackgroundScanJob: @unchecked Sendable {
         self.imageData = imageData
     }
 
-    func runDetached() async throws -> ClothingScanResult {
+    func runDetached(
+        onProgress: @escaping @Sendable (ScanPipelineProgress) -> Void
+    ) async throws -> ClothingScanResult {
         try await Task.detached(priority: .userInitiated) { [pipeline, imageData] in
-            try await pipeline.scan(imageData: imageData)
+            try await pipeline.scan(imageData: imageData, onProgress: onProgress)
         }.value
     }
 }
