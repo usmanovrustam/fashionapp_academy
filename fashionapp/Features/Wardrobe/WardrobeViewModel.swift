@@ -15,6 +15,7 @@ final class WardrobeViewModel: ObservableObject {
     private let wardrobeRepository: WardrobeRepository
     private let profileRepository: UserProfileRepository
     private let imageStorage: ImageStorage
+    private let imageSearch: WardrobeImageSearching?
     private let analytics: AnalyticsTracking
     let statisticsUseCase: ComputeWardrobeStatisticsUseCase
 
@@ -26,8 +27,25 @@ final class WardrobeViewModel: ObservableObject {
         self.wardrobeRepository = container.wardrobeRepository
         self.profileRepository = container.profileRepository
         self.imageStorage = container.imageStorage
+        self.imageSearch = container.imageSearch
         self.analytics = container.analytics
         self.statisticsUseCase = container.statisticsUseCase
+    }
+
+    /// Whether the on-device embedding model is available for visual search.
+    var canFindSimilar: Bool { imageSearch != nil }
+
+    /// Finds wardrobe pieces visually similar to `item` using the CoreML
+    /// embedding model, ordered most-similar first (excludes the query item).
+    func findSimilar(to item: WardrobeItem, limit: Int = 12) async -> [WardrobeItem] {
+        guard let imageSearch else { return [] }
+        let path = item.transparentImagePath ?? item.originalImagePath
+        guard !path.isEmpty,
+              let data = try? await imageStorage.loadImageData(at: path) else { return [] }
+        let candidates = items.filter { $0.id != item.id }
+        guard let ids = try? await imageSearch.search(similarTo: data, in: candidates) else { return [] }
+        let byID = Dictionary(items.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return Array(ids.compactMap { byID[$0] }.prefix(limit))
     }
 
     var laundryCount: Int {

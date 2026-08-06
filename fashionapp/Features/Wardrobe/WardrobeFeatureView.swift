@@ -234,6 +234,16 @@ struct WardrobeItemDetailView: View {
 
                 metadataGrid
 
+                if viewModel.canFindSimilar {
+                    NavigationLink {
+                        SimilarItemsView(item: liveItem, viewModel: viewModel)
+                    } label: {
+                        Label(NSLocalizedString("Find similar", comment: ""), systemImage: "square.grid.2x2")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .nookGlassProminent()
+                }
+
                 if liveItem.isInLaundry {
                     Button {
                         Task { await viewModel.markWashed(liveItem) }
