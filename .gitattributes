@@ -1,6 +1,0 @@
-# Core ML model assets are large binaries — store them via Git LFS.
-# Applies to newly committed matching files. To move existing history into LFS,
-# run scripts/git-lfs/migrate-to-lfs.sh (coordinated, one-time, rewrites history).
-weight.bin filter=lfs diff=lfs merge=lfs -text
-*.mlmodel filter=lfs diff=lfs merge=lfs -text
-*.mlmodelc filter=lfs diff=lfs merge=lfs -text
