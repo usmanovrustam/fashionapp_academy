@@ -99,9 +99,10 @@ final class ScannerViewModel: ObservableObject {
             stagePreview = prepared
 
             // Heavy Core ML + CG work runs off the main actor; progress hops back.
-            let result = try await BackgroundScanJob(pipeline: pipeline, imageData: data).runDetached {
-                [weak self] progress in
-                Task { @MainActor in
+            // Capture [weak self] on the MainActor Task (not the Sendable progress
+            // closure) to satisfy Swift 6 concurrency rules.
+            let result = try await BackgroundScanJob(pipeline: pipeline, imageData: data).runDetached { progress in
+                Task { @MainActor [weak self] in
                     self?.applyPipelineProgress(progress)
                 }
             }

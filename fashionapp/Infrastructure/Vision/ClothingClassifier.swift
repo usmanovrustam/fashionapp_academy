@@ -336,10 +336,8 @@ final class DefaultClothingScanPipeline: ClothingScanPipeline {
             )
             let fullJPEG = try ImageProcessing.jpegData(from: full, quality: 0.9)
             let saliencyRaw = try await segmenter.segment(imageData: fullJPEG)
-            let saliency = ImageProcessing.cleanedMask(
-                try ImageProcessing.uiImage(from: saliencyRaw),
-                mode: .saliency
-            ) ?? try ImageProcessing.uiImage(from: saliencyRaw)
+            let saliencyImage = try ImageProcessing.uiImage(from: saliencyRaw)
+            let saliency = ImageProcessing.cleanedMask(saliencyImage, mode: .saliency) ?? saliencyImage
 
             let garment = try ImageProcessing.uiImage(from: parsed.fullGarmentMaskPNG)
             let body: UIImage? = parsed.fullBodyMaskPNG.isEmpty
