@@ -1,0 +1,29 @@
+{
+  "val_best_category_acc": 0.9595,
+  "test": {
+    "category": {
+      "accuracy": 0.9576,
+      "n": 4177
+    },
+    "gender": {
+      "accuracy": 0.9095,
+      "n": 4177
+    },
+    "season": {
+      "accuracy": 0.7134,
+      "n": 4177
+    },
+    "usage": {
+      "accuracy": 0.9053,
+      "n": 4171
+    },
+    "color": {
+      "accuracy": 0.6636,
+      "n": 4040
+    }
+  },
+  "train_size": 33417,
+  "test_size": 4177,
+  "epochs": 60,
+  "similarity_precision_at_5": 0.9262
+}

@@ -23,6 +23,7 @@ final class AppContainer: ObservableObject {
     let weatherProvider: WeatherProviding
     let notificationScheduler: NotificationScheduling
     let scanPipeline: ClothingScanPipeline
+    let imageSearch: WardrobeImageSearching?
     let recommender: OutfitRecommending
     let stylingAssistant: StylingAssisting
 
@@ -73,12 +74,28 @@ final class AppContainer: ObservableObject {
         )
         let notificationScheduler: NotificationScheduling = LocalNotificationService()
 
+        // On-device multi-task CoreML model for category + attributes + embedding.
+        // Falls back to heuristics when the compiled model isn't bundled.
+        // Segmentation/background removal is left unchanged.
         // Do not touch ClothesSegFormerParser.shared here — default provider is lazy on first scan.
+        let fashionModel = CoreMLFashionModel()
+        let detector: ClothingDetector
+        let metadataExtractor: ClothingMetadataExtractor
+        let imageSearch: WardrobeImageSearching?
+        if let fashionModel {
+            detector = CoreMLClothingDetector(model: fashionModel)
+            metadataExtractor = CoreMLClothingMetadataExtractor(model: fashionModel)
+            imageSearch = CoreMLWardrobeImageSearch(model: fashionModel, imageStorage: imageStorage)
+        } else {
+            detector = HeuristicClothingDetector()
+            metadataExtractor = ColorAwareMetadataExtractor()
+            imageSearch = nil
+        }
         let pipeline = DefaultClothingScanPipeline(
-            detector: HeuristicClothingDetector(),
+            detector: detector,
             segmenter: U2NetClothingSegmenter(),
             backgroundRemover: MaskBackgroundRemover(),
-            metadataExtractor: ColorAwareMetadataExtractor()
+            metadataExtractor: metadataExtractor
         )
 
         let recommender = RuleBasedOutfitRecommender()
@@ -99,6 +116,7 @@ final class AppContainer: ObservableObject {
         self.weatherProvider = weatherProvider
         self.notificationScheduler = notificationScheduler
         self.scanPipeline = pipeline
+        self.imageSearch = imageSearch
         self.recommender = recommender
         self.stylingAssistant = assistant
 
