@@ -1,0 +1,61 @@
+{
+  "category": [
+    "accessories",
+    "bag",
+    "belt",
+    "bottom",
+    "dress",
+    "hat",
+    "jacket",
+    "jewelry",
+    "scarf",
+    "shoes",
+    "sleepwear",
+    "top",
+    "watch"
+  ],
+  "gender": [
+    "Kids",
+    "Men",
+    "Unisex",
+    "Women"
+  ],
+  "season": [
+    "spring",
+    "summer",
+    "autumn",
+    "winter"
+  ],
+  "usage": [
+    "Casual",
+    "Ethnic",
+    "Formal",
+    "Smart Casual",
+    "Sports"
+  ],
+  "color": [
+    "Beige",
+    "Black",
+    "Blue",
+    "Brown",
+    "Charcoal",
+    "Cream",
+    "Gold",
+    "Green",
+    "Grey",
+    "Maroon",
+    "Multi",
+    "Navy Blue",
+    "Off White",
+    "Olive",
+    "Orange",
+    "Peach",
+    "Pink",
+    "Purple",
+    "Red",
+    "Silver",
+    "Steel",
+    "White",
+    "Yellow"
+  ]
+}
