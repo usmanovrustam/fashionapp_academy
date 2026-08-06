@@ -304,24 +304,37 @@ final class DefaultClothingScanPipeline: ClothingScanPipeline {
     ) async throws -> ClothingScanResult {
         let parsed = try await parser.parse(imageData: imageData)
 
-        // SegFormer (human-parsing) masks are noisy on flat-lay garments over busy
-        // backgrounds. Prefer a u2netp saliency mask on the square crop for a clean
-        // cutout; fall back to SegFormer's own mask if saliency is unavailable.
+        // SegFormer classifies the garment well, but its mask/crop are noisy on
+        // flat-lay photos (off-center square, background leaking into the cutout).
+        // Recompute a clean centered square crop + cutout from a u2netp saliency
+        // mask over the FULL image; fall back to SegFormer's crop if unavailable.
+        var squareData = parsed.squareCropJPEG
         var transparentData: Data?
         do {
-            let saliencyMask = try await segmenter.segment(imageData: parsed.squareCropJPEG)
+            let full = ImageProcessing.resized(
+                ImageProcessing.orientedUp(try ImageProcessing.uiImage(from: imageData)),
+                maxDimension: 1600
+            )
+            let fullJPEG = try ImageProcessing.jpegData(from: full, quality: 0.9)
+            let maskData = try await segmenter.segment(imageData: fullJPEG)
+            let mask = try ImageProcessing.uiImage(from: maskData)
+            let square = try ImageProcessing.centeredSquareCrop(image: full, mask: mask, padding: 0.12)
+            let squareMask = try ImageProcessing.centeredSquareCrop(image: mask, mask: mask, padding: 0.12)
+            squareData = try ImageProcessing.jpegData(from: square, quality: 0.92)
+            let squareMaskPNG = try ImageProcessing.pngData(from: squareMask)
             transparentData = try await backgroundRemover.removeBackground(
-                imageData: parsed.squareCropJPEG,
-                maskData: saliencyMask
+                imageData: squareData,
+                maskData: squareMaskPNG
             )
         } catch {
+            squareData = parsed.squareCropJPEG
             transparentData = try? await backgroundRemover.removeBackground(
                 imageData: parsed.squareCropJPEG,
                 maskData: parsed.squareMaskPNG
             )
         }
 
-        let metadataSource = transparentData ?? parsed.squareCropJPEG
+        let metadataSource = transparentData ?? squareData
         var metadata = try await metadataExtractor.extract(
             from: metadataSource,
             category: parsed.category
@@ -349,7 +362,7 @@ final class DefaultClothingScanPipeline: ClothingScanPipeline {
             suggestedName: metadata.suggestedName,
             confidence: confidence,
             // Square crop is what we store to Firebase Storage as the wardrobe photo.
-            originalImageData: parsed.squareCropJPEG,
+            originalImageData: squareData,
             transparentImageData: transparentData,
             processedAt: Date()
         )
