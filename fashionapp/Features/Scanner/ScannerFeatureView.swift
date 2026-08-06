@@ -151,7 +151,7 @@ struct ScannerFeatureView: View {
                         }
                         .overlay {
                             if viewModel.isProcessing {
-                                ScanningShimmerOverlay(reduceMotion: reduceMotion)
+                                ScanningShimmerOverlay(image: image, reduceMotion: reduceMotion)
                                     .clipShape(RoundedRectangle(cornerRadius: AppRadius.photo, style: .continuous))
                                     .accessibilityElement(children: .combine)
                                     .accessibilityLabel(NSLocalizedString("Analyzing outfit", comment: ""))
@@ -343,109 +343,136 @@ struct ScannerFeatureView: View {
     }
 }
 
-/// AI scanning shimmer — sweep + scan line while the outfit is analyzed.
+/// CNN-style analyzing overlay: a convolution kernel raster-scans the image,
+/// revealing it as colored pixel blocks with an accent activation trail — like
+/// a network reading the image pixel by pixel.
 struct ScanningShimmerOverlay: View {
+    let image: UIImage?
     let reduceMotion: Bool
-    @State private var sweep: CGFloat = -0.4
-    @State private var scanY: CGFloat = 0.08
 
     var body: some View {
-        GeometryReader { geo in
-            ZStack {
-                Color.black.opacity(0.38)
+        ZStack {
+            CNNPixelScan(image: image, reduceMotion: reduceMotion)
 
-                // Pixel-by-pixel "checking" grid sweeping over the image.
-                PixelCheckGrid(reduceMotion: reduceMotion)
-
-                // Flat sweep (no gradients).
-                Color.white.opacity(0.28)
-                    .frame(width: geo.size.width * 0.28)
-                    .offset(x: sweep * geo.size.width)
-
-                Rectangle()
-                    .fill(AppColors.accent)
-                    .frame(height: 2)
-                    .offset(y: (scanY - 0.5) * geo.size.height)
-
-                VStack(spacing: 10) {
-                    Image(systemName: "sparkles")
-                        .font(.title2.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .symbolEffect(.pulse, isActive: !reduceMotion)
-                    Text(NSLocalizedString("Analyzing outfit…", comment: ""))
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
-                }
-                .padding(20)
-                .liquidGlass(cornerRadius: AppRadius.medium)
+            VStack(spacing: 10) {
+                Image(systemName: "brain.head.profile")
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .symbolEffect(.pulse, isActive: !reduceMotion)
+                Text(NSLocalizedString("Analyzing outfit…", comment: ""))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
             }
-        }
-        .onAppear {
-            guard !reduceMotion else {
-                sweep = 0.15
-                scanY = 0.5
-                return
-            }
-            withAnimation(.linear(duration: 1.35).repeatForever(autoreverses: false)) {
-                sweep = 1.2
-            }
-            withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
-                scanY = 0.92
-            }
+            .padding(20)
+            .liquidGlass(cornerRadius: AppRadius.medium)
         }
     }
 }
 
-/// Pixel-by-pixel "checking" grid: a diagonal wave lights up cells as the model
-/// inspects the image, with already-checked cells left faintly filled.
-struct PixelCheckGrid: View {
+/// Convolution-style pixel scan. Samples the image into a grid of colored
+/// blocks and reveals them in raster order behind a sliding 3×3 kernel window,
+/// with a fading accent "activation" trail just behind the kernel.
+struct CNNPixelScan: View {
+    let image: UIImage?
     let reduceMotion: Bool
-    private let cols = 14
-    private let rows = 16
-    private let period: TimeInterval = 2.0
+    private let cols = 18
+    private let rows = 20
+    private let period: TimeInterval = 2.6
+
+    @State private var colors: [Color] = []
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: reduceMotion)) { timeline in
             Canvas { context, size in
                 let cellW = size.width / CGFloat(cols)
                 let cellH = size.height / CGFloat(rows)
-                let total = CGFloat(cols + rows - 2)
+                let cells = cols * rows
 
-                // Wave position 0…1 (static mid-sweep when reduce motion is on).
-                let phase: CGFloat
+                let progress: Double
                 if reduceMotion {
-                    phase = 0.5
+                    progress = 0.66
                 } else {
                     let t = timeline.date.timeIntervalSinceReferenceDate
-                    phase = CGFloat(t.truncatingRemainder(dividingBy: period) / period)
+                    progress = t.truncatingRemainder(dividingBy: period) / period
                 }
+                let scanIndex = progress * Double(cells)
 
                 for r in 0..<rows {
                     for c in 0..<cols {
+                        let idx = r * cols + c
                         let rect = CGRect(
-                            x: CGFloat(c) * cellW + 0.5,
-                            y: CGFloat(r) * cellH + 0.5,
-                            width: cellW - 1,
-                            height: cellH - 1
-                        )
-                        let cell = Path(roundedRect: rect, cornerRadius: 1.5)
-                        let diag = total > 0 ? CGFloat(c + r) / total : 0
-                        let delta = phase - diag
+                            x: CGFloat(c) * cellW,
+                            y: CGFloat(r) * cellH,
+                            width: cellW,
+                            height: cellH
+                        ).insetBy(dx: 0.5, dy: 0.5)
+                        let cell = Path(rect)
 
-                        if delta >= 0, delta < 0.06 {
-                            // Leading edge — the pixel currently being checked.
-                            context.fill(cell, with: .color(AppColors.accent.opacity(0.85)))
-                        } else if delta >= 0.06 {
-                            // Already checked — faint confirmation fill.
-                            context.fill(cell, with: .color(.white.opacity(0.07)))
+                        if Double(idx) <= scanIndex {
+                            // Revealed pixel block.
+                            let color = colors.indices.contains(idx) ? colors[idx] : Color.gray
+                            context.fill(cell, with: .color(color))
+                            // Fading activation glow just behind the kernel.
+                            let behind = scanIndex - Double(idx)
+                            if behind < Double(cols) {
+                                let g = 1 - behind / Double(cols)
+                                context.fill(cell, with: .color(AppColors.accent.opacity(0.55 * g)))
+                            }
                         } else {
-                            // Not yet reached — faint grid cell.
-                            context.stroke(cell, with: .color(.white.opacity(0.08)), lineWidth: 0.5)
+                            // Not yet scanned — dark with faint grid.
+                            context.fill(cell, with: .color(.black.opacity(0.5)))
+                            context.stroke(cell, with: .color(.white.opacity(0.06)), lineWidth: 0.5)
                         }
                     }
                 }
+
+                // Sliding 3×3 convolution kernel window.
+                let ki = min(cells - 1, max(0, Int(scanIndex)))
+                let kc = ki % cols
+                let kr = ki / cols
+                let krect = CGRect(
+                    x: CGFloat(kc - 1) * cellW,
+                    y: CGFloat(kr - 1) * cellH,
+                    width: cellW * 3,
+                    height: cellH * 3
+                )
+                context.stroke(
+                    Path(roundedRect: krect, cornerRadius: 2),
+                    with: .color(.white.opacity(0.95)),
+                    lineWidth: 2
+                )
             }
             .allowsHitTesting(false)
         }
+        .onAppear { colors = Self.colorGrid(from: image, cols: cols, rows: rows) }
+    }
+
+    /// Downsamples the image to a cols×rows grid of average colors.
+    static func colorGrid(from image: UIImage?, cols: Int, rows: Int) -> [Color] {
+        let fallback = Array(repeating: Color.gray.opacity(0.6), count: cols * rows)
+        guard let image, let cg = ImageProcessing.cgImage(from: image) else { return fallback }
+        var bytes = [UInt8](repeating: 0, count: cols * rows * 4)
+        guard let ctx = CGContext(
+            data: &bytes,
+            width: cols,
+            height: rows,
+            bitsPerComponent: 8,
+            bytesPerRow: cols * 4,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return fallback }
+        ctx.interpolationQuality = .medium
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: cols, height: rows))
+        var out: [Color] = []
+        out.reserveCapacity(cols * rows)
+        for i in 0..<(cols * rows) {
+            let o = i * 4
+            out.append(Color(
+                red: Double(bytes[o]) / 255,
+                green: Double(bytes[o + 1]) / 255,
+                blue: Double(bytes[o + 2]) / 255
+            ))
+        }
+        return out
     }
 }
