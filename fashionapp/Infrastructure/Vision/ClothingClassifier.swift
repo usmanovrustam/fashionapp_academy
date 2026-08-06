@@ -304,15 +304,21 @@ final class DefaultClothingScanPipeline: ClothingScanPipeline {
     ) async throws -> ClothingScanResult {
         let parsed = try await parser.parse(imageData: imageData)
 
+        // SegFormer (human-parsing) masks are noisy on flat-lay garments over busy
+        // backgrounds. Prefer a u2netp saliency mask on the square crop for a clean
+        // cutout; fall back to SegFormer's own mask if saliency is unavailable.
         var transparentData: Data?
         do {
+            let saliencyMask = try await segmenter.segment(imageData: parsed.squareCropJPEG)
             transparentData = try await backgroundRemover.removeBackground(
+                imageData: parsed.squareCropJPEG,
+                maskData: saliencyMask
+            )
+        } catch {
+            transparentData = try? await backgroundRemover.removeBackground(
                 imageData: parsed.squareCropJPEG,
                 maskData: parsed.squareMaskPNG
             )
-        } catch {
-            // Soft-fail cutout — still keep the square crop for Storage.
-            transparentData = nil
         }
 
         let metadataSource = transparentData ?? parsed.squareCropJPEG

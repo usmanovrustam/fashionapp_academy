@@ -1,22 +1,31 @@
 import Foundation
 import CoreML
-import Vision
 import UIKit
 
-/// U²-Net based segmenter / background remover.
-/// Designed behind protocols so the CoreML model can be swapped later.
+/// u2netp saliency segmenter / background remover, run through Core ML directly
+/// (no Vision framework). Takes an RGB image and returns a soft foreground mask;
+/// robust on flat-lay garments over busy backgrounds where semantic parsers fail.
 final class U2NetClothingSegmenter: ClothingSegmenter {
     /// Loaded on first scan — not during `AppContainer` init / app launch.
-    private lazy var model: VNCoreMLModel? = Self.loadModel()
+    private lazy var model: MLModel? = Self.loadModel()
     private let inputSize = 320
 
     init() {}
 
-    private static func loadModel() -> VNCoreMLModel? {
-        guard let mlModel = try? u2net(configuration: MLModelConfiguration()).model else {
-            return nil
+    private static func loadModel() -> MLModel? {
+        let config = MLModelConfiguration()
+        // Prefer CPU+GPU; `.all` (ANE) has crashed some devices while compiling at first load.
+        config.computeUnits = .cpuAndGPU
+        let candidates: [URL?] = [
+            Bundle.main.url(forResource: "u2net", withExtension: "mlmodelc"),
+            Bundle.main.url(forResource: "u2net", withExtension: "mlpackage")
+        ]
+        for url in candidates.compactMap({ $0 }) {
+            if let model = try? MLModel(contentsOf: url, configuration: config) {
+                return model
+            }
         }
-        return try? VNCoreMLModel(for: mlModel)
+        return nil
     }
 
     func segment(imageData: Data) async throws -> Data {
@@ -26,21 +35,14 @@ final class U2NetClothingSegmenter: ClothingSegmenter {
         }
 
         let image = try ImageProcessing.uiImage(from: imageData)
-        let resized = ImageProcessing.resized(image, maxDimension: CGFloat(inputSize))
-        guard let cgImage = resized.cgImage else { throw ImageProcessingError.invalidImage }
+        let buffer = try ImageProcessing.pixelBuffer(from: image, width: inputSize, height: inputSize)
+        let provider = try MLDictionaryFeatureProvider(
+            dictionary: ["image": MLFeatureValue(pixelBuffer: buffer)]
+        )
+        let output = try await model.prediction(from: provider)
 
-        // Synchronous Vision perform — never wrap in a checked continuation (double-resume crash).
-        let request = VNCoreMLRequest(model: model)
-        request.imageCropAndScaleOption = .scaleFill
-        let handler = VNImageRequestHandler(cgImage: cgImage, orientation: .up, options: [:])
-        do {
-            try handler.perform([request])
-        } catch {
-            throw ImageProcessingError.maskFailed
-        }
-
-        guard let results = request.results as? [VNCoreMLFeatureValueObservation],
-              let multiArray = Self.preferredMaskArray(from: results),
+        guard let multiArray = output.featureValue(for: "mask")?.multiArrayValue
+                ?? Self.firstMultiArray(in: output),
               let maskImage = Self.maskImage(from: multiArray) else {
             throw ImageProcessingError.maskFailed
         }
@@ -48,15 +50,13 @@ final class U2NetClothingSegmenter: ClothingSegmenter {
         return try ImageProcessing.pngData(from: maskImage)
     }
 
-    /// Prefer the primary U²-Net saliency output when multiple tensors are present.
-    private static func preferredMaskArray(from results: [VNCoreMLFeatureValueObservation]) -> MLMultiArray? {
-        if let named = results.first(where: {
-            let name = $0.featureName.lowercased()
-            return name == "output_0" || name.contains("output_0") || name.contains("saliency") || name.hasSuffix("mask")
-        })?.featureValue.multiArrayValue {
-            return named
+    private static func firstMultiArray(in provider: MLFeatureProvider) -> MLMultiArray? {
+        for name in provider.featureNames {
+            if let array = provider.featureValue(for: name)?.multiArrayValue {
+                return array
+            }
         }
-        return results.last?.featureValue.multiArrayValue ?? results.first?.featureValue.multiArrayValue
+        return nil
     }
 
     private static func fullOpacityMaskPNG(from imageData: Data) async throws -> Data {
