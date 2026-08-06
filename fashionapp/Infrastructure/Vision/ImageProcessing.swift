@@ -465,6 +465,85 @@ enum ImageProcessing {
         return bytes
     }
 
+    /// Cleans a soft segmentation mask: binarize, keep the largest connected
+    /// component, and fill interior holes. Removes stray background blobs so the
+    /// cutout is crisp and the centered-square bounding box locks onto the garment.
+    static func cleanedMask(_ mask: UIImage, threshold: UInt8 = 128) -> UIImage? {
+        guard let cg = cgImage(from: mask) else { return nil }
+        let w = cg.width
+        let h = cg.height
+        guard w > 0, h > 0 else { return nil }
+        let count = w * h
+
+        var px = [UInt8](repeating: 0, count: count)
+        guard let ctx = CGContext(
+            data: &px,
+            width: w,
+            height: h,
+            bitsPerComponent: 8,
+            bytesPerRow: w,
+            space: CGColorSpaceCreateDeviceGray(),
+            bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ) else { return nil }
+        ctx.interpolationQuality = .high
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+
+        var fg = [Bool](repeating: false, count: count)
+        for i in 0..<count { fg[i] = px[i] >= threshold }
+
+        // Largest connected component (4-connectivity, BFS).
+        var label = [Int32](repeating: 0, count: count)
+        var queue = [Int]()
+        queue.reserveCapacity(count)
+        var current: Int32 = 0
+        var bestLabel: Int32 = 0
+        var bestSize = 0
+        for start in 0..<count where fg[start] && label[start] == 0 {
+            current += 1
+            label[start] = current
+            queue.removeAll(keepingCapacity: true)
+            queue.append(start)
+            var head = 0
+            var size = 0
+            while head < queue.count {
+                let i = queue[head]; head += 1; size += 1
+                let x = i % w, y = i / w
+                if x > 0 { let n = i - 1; if fg[n] && label[n] == 0 { label[n] = current; queue.append(n) } }
+                if x + 1 < w { let n = i + 1; if fg[n] && label[n] == 0 { label[n] = current; queue.append(n) } }
+                if y > 0 { let n = i - w; if fg[n] && label[n] == 0 { label[n] = current; queue.append(n) } }
+                if y + 1 < h { let n = i + w; if fg[n] && label[n] == 0 { label[n] = current; queue.append(n) } }
+            }
+            if size > bestSize { bestSize = size; bestLabel = current }
+        }
+        guard bestSize > 0 else { return nil }
+
+        var out = [UInt8](repeating: 0, count: count)
+        for i in 0..<count where label[i] == bestLabel { out[i] = 255 }
+
+        // Fill interior holes: flood background from the border; enclosed zeros -> foreground.
+        var exterior = [Bool](repeating: false, count: count)
+        queue.removeAll(keepingCapacity: true)
+        func enqueueBackground(_ idx: Int) {
+            guard idx >= 0, idx < count, !exterior[idx], out[idx] == 0 else { return }
+            exterior[idx] = true
+            queue.append(idx)
+        }
+        for x in 0..<w { enqueueBackground(x); enqueueBackground((h - 1) * w + x) }
+        for y in 0..<h { enqueueBackground(y * w); enqueueBackground(y * w + (w - 1)) }
+        var head = 0
+        while head < queue.count {
+            let i = queue[head]; head += 1
+            let x = i % w, y = i / w
+            if x > 0 { enqueueBackground(i - 1) }
+            if x + 1 < w { enqueueBackground(i + 1) }
+            if y > 0 { enqueueBackground(i - w) }
+            if y + 1 < h { enqueueBackground(i + w) }
+        }
+        for i in 0..<count where out[i] == 0 && !exterior[i] { out[i] = 255 }
+
+        return grayImage(from: out, width: w, height: h)
+    }
+
     static func grayImage(from pixels: [UInt8], width: Int, height: Int) -> UIImage? {
         guard pixels.count >= width * height else { return nil }
         let data = Data(pixels)

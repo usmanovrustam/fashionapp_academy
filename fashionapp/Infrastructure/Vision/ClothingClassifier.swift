@@ -317,7 +317,9 @@ final class DefaultClothingScanPipeline: ClothingScanPipeline {
             )
             let fullJPEG = try ImageProcessing.jpegData(from: full, quality: 0.9)
             let maskData = try await segmenter.segment(imageData: fullJPEG)
-            let mask = try ImageProcessing.uiImage(from: maskData)
+            let rawMask = try ImageProcessing.uiImage(from: maskData)
+            // Drop stray background blobs + fill holes so the box centers on the garment.
+            let mask = ImageProcessing.cleanedMask(rawMask) ?? rawMask
             let square = try ImageProcessing.centeredSquareCrop(image: full, mask: mask, padding: 0.12)
             let squareMask = try ImageProcessing.centeredSquareCrop(image: mask, mask: mask, padding: 0.12)
             squareData = try ImageProcessing.jpegData(from: square, quality: 0.92)
@@ -377,7 +379,8 @@ final class DefaultClothingScanPipeline: ClothingScanPipeline {
         do {
             let maskData = try await segmenter.segment(imageData: imageData)
             let image = try ImageProcessing.uiImage(from: imageData)
-            let mask = try ImageProcessing.uiImage(from: maskData)
+            let rawMask = try ImageProcessing.uiImage(from: maskData)
+            let mask = ImageProcessing.cleanedMask(rawMask) ?? rawMask
             let square = try ImageProcessing.centeredSquareCrop(image: image, mask: mask, padding: 0.12)
             let squareMask = try ImageProcessing.centeredSquareCrop(image: mask, mask: mask, padding: 0.12)
             squareJPEG = try ImageProcessing.jpegData(from: square, quality: 0.92)
