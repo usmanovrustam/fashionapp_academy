@@ -1,0 +1,10 @@
+# Core ML clothes-parser build (run on Mac preferred; Linux OK for PyTorch steps).
+torch>=2.2,<2.8
+transformers>=4.40
+huggingface_hub>=0.23
+coremltools>=7.2
+numpy>=1.24
+Pillow>=10.0
+tqdm>=4.66
+datasets>=2.19
+safetensors>=0.4

@@ -2,8 +2,9 @@ import Foundation
 import UIKit
 import CoreML
 
-/// On-device clothes parser powered by Hugging Face `mattmdjaga/segformer_b2_clothes`
-/// exported as `ClothesSegFormer.mlpackage`.
+/// On-device clothes parser powered by `ClothesSegFormer.mlpackage`
+/// (ATR 18-class SegFormer; built via `scripts/build_strong_clothes_coreml.py`
+/// from multiple Hugging Face teachers — see `ClothesSegFormerLabels.json`).
 ///
 /// Detects garment classes (hat, shoes, pants, dress, bag, …), builds a mask,
 /// and returns a centered square crop ready for Firebase Storage.

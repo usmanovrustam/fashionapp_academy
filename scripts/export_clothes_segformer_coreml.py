@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Export mattmdjaga/segformer_b2_clothes to Core ML for Nook on-device scanning."""
+"""Export mattmdjaga/segformer_b2_clothes to Core ML for Nook on-device scanning.
+
+Prefer `scripts/build_strong_clothes_coreml.py` to collect multiple HF teachers
+and produce one stronger Core ML package (distill or best-atr).
+"""
 
 from __future__ import annotations
 
