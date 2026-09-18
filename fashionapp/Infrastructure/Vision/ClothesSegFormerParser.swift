@@ -143,6 +143,77 @@ final class ClothesSegFormerParser: @unchecked Sendable {
         )
     }
 
+    struct GarmentMaskItem: Sendable {
+        var classID: Int
+        var labelName: String
+        var score: Double
+        var mask: UIImage
+    }
+
+    /// One SegFormer forward pass → a mask for every garment class above threshold.
+    /// Used by `OutfitDecomposer` to split a full-outfit photo into separate items.
+    func extractAllGarments(imageData: Data) async throws -> (prepared: UIImage, items: [GarmentMaskItem]) {
+        guard let model else {
+            throw DomainError.scanFailed("ClothesSegFormer model is not bundled.")
+        }
+        let image = try ImageProcessing.uiImage(from: imageData)
+        let upright = ImageProcessing.orientedUp(image)
+        let prepared = ImageProcessing.resized(upright, maxDimension: 1600)
+        guard let preparedCG = ImageProcessing.cgImage(from: prepared) else {
+            throw DomainError.invalidImage
+        }
+
+        let pixelValues = try makePixelValues(from: prepared)
+        let input = try MLDictionaryFeatureProvider(dictionary: [
+            "pixel_values": MLFeatureValue(multiArray: pixelValues)
+        ])
+        let output = try await model.prediction(from: input)
+        let logits = output.featureValue(for: "logits")?.multiArrayValue
+            ?? output.featureValue(for: "var_1196")?.multiArrayValue
+        guard let logits else {
+            throw DomainError.scanFailed("ClothesSegFormer produced no logits.")
+        }
+
+        let (classMap, width, height, scores) = try argmaxMap(from: logits)
+        let targetSize = CGSize(width: preparedCG.width, height: preparedCG.height)
+        var items: [GarmentMaskItem] = []
+
+        // Merge left/right shoe into one pass.
+        var seen = Set<Int>()
+        for id in Self.garmentClassIDs.sorted() {
+            let labelID = (id == 9 || id == 10) ? 9 : id
+            if seen.contains(labelID) { continue }
+            seen.insert(labelID)
+
+            var score = (labelID < scores.count) ? scores[labelID] : 0
+            if labelID == 9, scores.count > 10 { score += scores[10] }
+            guard score >= 0.012 else { continue }
+
+            guard let mask = maskImage(
+                classMap: classMap,
+                width: width,
+                height: height,
+                keep: Self.maskClasses(for: labelID),
+                subtract: Self.bodyClassIDs,
+                dilateRadius: 1,
+                fillHoles: true,
+                targetSize: targetSize
+            ) else { continue }
+
+            let conf = Double(min(0.98, max(0.35, score * 5)))
+            items.append(GarmentMaskItem(
+                classID: labelID,
+                labelName: Self.labels[labelID],
+                score: conf,
+                mask: mask
+            ))
+        }
+
+        items.sort { $0.score > $1.score }
+        guard !items.isEmpty else { throw DomainError.noClothingDetected }
+        return (prepared, items)
+    }
+
     /// Hair / Face / limbs above a small share → photo is a person wearing clothes.
     private static func detectWornOnPerson(classMap: [UInt8]) -> Bool {
         guard !classMap.isEmpty else { return false }

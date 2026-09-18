@@ -40,6 +40,7 @@ final class ScannerViewModel: ObservableObject {
 
     private let scanAndSave: ScanAndSaveClothingUseCase
     private let pipeline: ClothingScanPipeline
+    private let outfitDecomposer: OutfitDecomposer
     private let profileRepository: UserProfileRepository
     private let imageStorage: ImageStorage
     private let fashionShotService: FashionShotServing
@@ -61,6 +62,7 @@ final class ScannerViewModel: ObservableObject {
     init(container: AppContainer, plannedDate: Date? = nil) {
         self.scanAndSave = container.scanAndSaveUseCase
         self.pipeline = container.scanPipeline
+        self.outfitDecomposer = OutfitDecomposer()
         self.profileRepository = container.profileRepository
         self.imageStorage = container.imageStorage
         self.fashionShotService = container.fashionShotService
@@ -112,12 +114,16 @@ final class ScannerViewModel: ObservableObject {
             pipelineFraction = 0.05
             stagePreview = prepared
 
-            // Heavy Core ML + CG work runs off the main actor; progress hops back.
-            // Capture [weak self] on the MainActor Task (not the Sendable progress
-            // closure) to satisfy Swift 6 concurrency rules.
-            let result = try await BackgroundScanJob(pipeline: pipeline, imageData: data).runDetached { progress in
-                Task { @MainActor [weak self] in
-                    self?.applyPipelineProgress(progress)
+            // Prefer multi-garment SegFormer decompose (safe applyMask). Fall back to
+            // the classic single-item pipeline if SegFormer is missing.
+            let result: ClothingScanResult
+            if ClothesSegFormerParser.shared.isAvailable {
+                result = try await decomposeImage(imageData: data)
+            } else {
+                result = try await BackgroundScanJob(pipeline: pipeline, imageData: data).runDetached { progress in
+                    Task { @MainActor [weak self] in
+                        self?.applyPipelineProgress(progress)
+                    }
                 }
             }
             scanResult = result
@@ -148,9 +154,56 @@ final class ScannerViewModel: ObservableObject {
         }
 
         isProcessing = false
-        // Keep last stage preview briefly; clear stage chrome after completion.
         pipelineStage = nil
         pipelineDetail = nil
+    }
+
+    /// SegFormer multi-class decompose → best garment as `ClothingScanResult`.
+    func decomposeImage(imageData: Data) async throws -> ClothingScanResult {
+        pipelineStage = .segmentClothing
+        pipelineFraction = 0.35
+        pipelineDetail = NSLocalizedString("Splitting outfit into garments", comment: "ML scan detail")
+
+        let draft = try await Task.detached(priority: .userInitiated) { [outfitDecomposer] in
+            try await outfitDecomposer.decomposeBest(imageData: imageData)
+        }.value
+
+        pipelineStage = .generateTransparentPNG
+        pipelineFraction = 0.85
+        if let png = draft.transparentPNG, let preview = UIImage(data: png) {
+            stagePreview = preview
+        }
+
+        pipelineStage = .extractMetadata
+        pipelineFraction = 0.95
+
+        return ClothingScanResult(
+            detectedCategory: draft.category,
+            subcategory: draft.subcategory,
+            colorPalette: draft.colorPalette,
+            dominantColor: draft.dominantColor,
+            material: draft.material,
+            seasons: draft.seasons,
+            temperatureBands: draft.seasons.flatMap { season -> [TemperatureBand] in
+                switch season {
+                case .winter: return [.freezing, .cold]
+                case .autumn: return [.cold, .cool]
+                case .spring: return [.cool, .mild]
+                case .summer: return [.mild, .warm, .hot]
+                case .allSeason: return TemperatureBand.allCases
+                }
+            },
+            formalityScore: draft.formalityScore,
+            styleTags: [.casual],
+            occasions: [.everyday],
+            genderNeutral: false,
+            suggestedName: draft.suggestedName,
+            confidence: draft.confidence,
+            originalImageData: draft.squareCropJPEG,
+            transparentImageData: draft.transparentPNG,
+            fashionShotImageData: nil,
+            processedAt: Date()
+        )
     }
 
     func save() async {
