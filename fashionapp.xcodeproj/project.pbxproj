@@ -13,7 +13,6 @@
 		A10000012E3A000000000004 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = A20000012E3A000000000004 /* FirebaseStorage */; };
 		A10000012E3A000000000005 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = A20000012E3A000000000005 /* FirebaseAnalytics */; };
 		A10000012E3A000000000006 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = A20000012E3A000000000006 /* FirebaseCrashlytics */; };
-		A10000012E3A000000000007 /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = A20000012E3A000000000007 /* FirebaseFunctions */; };
 		4355D68147DB4B32B8CC3C38 /* NookWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1BC920C6668041EF96C1148A /* NookWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -94,7 +93,6 @@
 				A10000012E3A000000000004 /* FirebaseStorage in Frameworks */,
 				A10000012E3A000000000005 /* FirebaseAnalytics in Frameworks */,
 				A10000012E3A000000000006 /* FirebaseCrashlytics in Frameworks */,
-				A10000012E3A000000000007 /* FirebaseFunctions in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -155,7 +153,6 @@
 				A20000012E3A000000000004 /* FirebaseStorage */,
 				A20000012E3A000000000005 /* FirebaseAnalytics */,
 				A20000012E3A000000000006 /* FirebaseCrashlytics */,
-				A20000012E3A000000000007 /* FirebaseFunctions */,
 			);
 			productName = fashionapp;
 			productReference = B1F22C342DDF4B7600B1186F /* fashionapp.app */;
@@ -636,11 +633,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A30000012E3A000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseCrashlytics;
-		};
-		A20000012E3A000000000007 /* FirebaseFunctions */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = A30000012E3A000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseFunctions;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
