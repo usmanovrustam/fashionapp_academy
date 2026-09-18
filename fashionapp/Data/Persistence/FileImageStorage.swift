@@ -38,4 +38,8 @@ actor FileImageStorage: ImageStorage {
             try fileManager.removeItem(at: url)
         }
     }
+
+    func downloadURL(for path: String) async throws -> URL {
+        throw DomainError.storageFailed("Local file storage has no remote download URL.")
+    }
 }

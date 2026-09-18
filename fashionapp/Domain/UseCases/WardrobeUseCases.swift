@@ -54,6 +54,14 @@ struct ScanAndSaveClothingUseCase {
             )
         }
 
+        var fashionShotPath: String?
+        if let shot = scan.fashionShotImageData {
+            fashionShotPath = try? await imageStorage.saveImageData(
+                shot,
+                preferredName: "\(itemID.uuidString)-fashion.jpg"
+            )
+        }
+
         let trimmedName = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedType = draft.subcategory.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedColor = draft.dominantColor.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -66,6 +74,7 @@ struct ScanAndSaveClothingUseCase {
             name: trimmedName.isEmpty ? scan.suggestedName : trimmedName,
             originalImagePath: originalPath,
             transparentImagePath: transparentPath,
+            fashionShotImagePath: fashionShotPath,
             category: draft.category,
             subcategory: trimmedType.isEmpty ? nil : trimmedType,
             colorPalette: scan.colorPalette,
@@ -169,6 +178,7 @@ enum DomainError: LocalizedError {
     case scanFailed(String)
     case storageFailed(String)
     case weatherUnavailable(String)
+    case fashionShotFailed(String)
 
     var errorDescription: String? {
         switch self {
@@ -182,6 +192,7 @@ enum DomainError: LocalizedError {
         case .scanFailed(let message): return "Clothing scan failed: \(message)"
         case .storageFailed(let message): return "Storage error: \(message)"
         case .weatherUnavailable(let message): return "Weather unavailable: \(message)"
+        case .fashionShotFailed(let message): return message
         }
     }
 }

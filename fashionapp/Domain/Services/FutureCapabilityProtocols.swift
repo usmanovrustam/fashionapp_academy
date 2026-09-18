@@ -3,6 +3,23 @@ import Foundation
 // MARK: - Future AI capabilities
 // These protocols reserve extension points without shipping unfinished UI.
 
+/// Virtual try-on / professional fashion shot (IDM-VTON via Replicate).
+protocol FashionShotServing: AnyObject {
+    /// Uploads garment + human images, runs IDM-VTON, stores result in Storage.
+    func generateFashionShot(
+        garmentImageData: Data,
+        humanImageData: Data,
+        category: ClothingCategory,
+        garmentDescription: String
+    ) async throws -> FashionShotResult
+}
+
+struct FashionShotResult: Equatable, Sendable {
+    var storagePath: String
+    var imageData: Data
+    var replicateId: String?
+}
+
 /// Virtual try-on against a user body avatar.
 protocol VirtualTryOnServing: AnyObject {
     func renderTryOn(itemID: UUID, avatarImageData: Data) async throws -> Data

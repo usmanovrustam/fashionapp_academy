@@ -18,6 +18,7 @@ struct ScannerFeatureView: View {
                     header
                     photoSection
                     if viewModel.scanResult != nil {
+                        fashionShotSection
                         reviewSection
                     }
                     saveButton
@@ -61,6 +62,17 @@ struct ScannerFeatureView: View {
                     Task {
                         if case .success(let image) = result {
                             await viewModel.handlePickedImage(image)
+                        }
+                    }
+                }
+                .ignoresSafeArea()
+            }
+            .sheet(isPresented: $viewModel.showHumanPicker) {
+                SystemImagePicker(source: .photoLibrary) { result in
+                    viewModel.showHumanPicker = false
+                    Task {
+                        if case .success(let image) = result {
+                            await viewModel.handleHumanModelPicked(image)
                         }
                     }
                 }
@@ -203,7 +215,7 @@ struct ScannerFeatureView: View {
                             .frame(maxWidth: .infinity)
                     }
                     .nookGlassProminent()
-                    .disabled(viewModel.isProcessing)
+                    .disabled(viewModel.isProcessing || viewModel.isGeneratingFashionShot)
 
                     Button {
                         viewModel.showLibrary = true
@@ -212,9 +224,71 @@ struct ScannerFeatureView: View {
                             .frame(maxWidth: .infinity)
                     }
                     .nookGlass()
-                    .disabled(viewModel.isProcessing)
+                    .disabled(viewModel.isProcessing || viewModel.isGeneratingFashionShot)
                 }
             }
+        }
+    }
+
+    private var fashionShotSection: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.md) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(NSLocalizedString("Professional fashion shot", comment: ""))
+                    .font(AppTypography.headline)
+                    .foregroundStyle(AppColors.textPrimary)
+                Text(NSLocalizedString(
+                    "Puts your garment on a model photo with IDM-VTON (Replicate), then stores the result in Firebase.",
+                    comment: "Fashion shot section subtitle"
+                ))
+                .font(AppTypography.caption)
+                .foregroundStyle(AppColors.textSecondary)
+            }
+
+            if let shot = viewModel.fashionShotImage {
+                Image(uiImage: shot)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxWidth: .infinity)
+                    .clipShape(RoundedRectangle(cornerRadius: AppRadius.photo, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: AppRadius.photo, style: .continuous)
+                            .stroke(AppColors.primaryGradient, lineWidth: 1.5)
+                    )
+                    .accessibilityLabel(NSLocalizedString("Fashion shot preview", comment: ""))
+            }
+
+            Button {
+                viewModel.requestFashionShot()
+            } label: {
+                HStack {
+                    if viewModel.isGeneratingFashionShot {
+                        ProgressView()
+                            .tint(.white)
+                    } else {
+                        Image(systemName: "sparkles")
+                    }
+                    Text(
+                        viewModel.fashionShotImage == nil
+                            ? NSLocalizedString("Create fashion shot", comment: "")
+                            : NSLocalizedString("Regenerate fashion shot", comment: "")
+                    )
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .nookGlassProminent(disabled: !viewModel.canGenerateFashionShot)
+            .disabled(!viewModel.canGenerateFashionShot)
+
+            Button {
+                viewModel.showHumanPicker = true
+            } label: {
+                Label(
+                    NSLocalizedString("Choose model photo", comment: ""),
+                    systemImage: "person.crop.rectangle"
+                )
+                .frame(maxWidth: .infinity)
+            }
+            .nookGlass()
+            .disabled(viewModel.isGeneratingFashionShot || viewModel.isProcessing)
         }
     }
 

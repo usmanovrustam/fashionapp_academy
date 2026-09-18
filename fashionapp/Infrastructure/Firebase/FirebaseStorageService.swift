@@ -75,4 +75,15 @@ actor FirebaseImageStorage: ImageStorage {
         let localName = path.split(separator: "/").last.map(String.init) ?? path
         try? await localFallback.deleteImage(at: localName)
     }
+
+    func downloadURL(for path: String) async throws -> URL {
+        guard Auth.auth().currentUser != nil else {
+            throw AuthError.notSignedIn
+        }
+        do {
+            return try await storage.reference(withPath: path).downloadURL()
+        } catch {
+            throw DomainError.storageFailed(error.localizedDescription)
+        }
+    }
 }

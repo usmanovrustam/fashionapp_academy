@@ -6,6 +6,8 @@ struct WardrobeItem: Identifiable, Codable, Equatable, Hashable {
     var name: String
     var originalImagePath: String
     var transparentImagePath: String?
+    /// Professional IDM-VTON fashion shot (optional).
+    var fashionShotImagePath: String?
     var category: ClothingCategory
     var subcategory: String?
     var colorPalette: [String]
@@ -41,6 +43,7 @@ struct WardrobeItem: Identifiable, Codable, Equatable, Hashable {
         name: String,
         originalImagePath: String,
         transparentImagePath: String? = nil,
+        fashionShotImagePath: String? = nil,
         category: ClothingCategory,
         subcategory: String? = nil,
         colorPalette: [String] = [],
@@ -69,6 +72,7 @@ struct WardrobeItem: Identifiable, Codable, Equatable, Hashable {
         self.name = name
         self.originalImagePath = originalImagePath
         self.transparentImagePath = transparentImagePath
+        self.fashionShotImagePath = fashionShotImagePath
         self.category = category
         self.subcategory = subcategory
         self.colorPalette = colorPalette
@@ -100,6 +104,7 @@ struct WardrobeItem: Identifiable, Codable, Equatable, Hashable {
         name = try container.decode(String.self, forKey: .name)
         originalImagePath = try container.decode(String.self, forKey: .originalImagePath)
         transparentImagePath = try container.decodeIfPresent(String.self, forKey: .transparentImagePath)
+        fashionShotImagePath = try container.decodeIfPresent(String.self, forKey: .fashionShotImagePath)
         category = try container.decode(ClothingCategory.self, forKey: .category)
         subcategory = try container.decodeIfPresent(String.self, forKey: .subcategory)
         colorPalette = try container.decodeIfPresent([String].self, forKey: .colorPalette) ?? []

@@ -17,6 +17,8 @@ struct ClothingScanResult: Equatable, Hashable {
     var confidence: Double
     var originalImageData: Data
     var transparentImageData: Data?
+    /// Optional IDM-VTON professional fashion shot (JPEG/PNG bytes).
+    var fashionShotImageData: Data? = nil
     var processedAt: Date
 }
 

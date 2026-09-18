@@ -25,6 +25,7 @@ final class AppContainer: ObservableObject {
     let scanPipeline: ClothingScanPipeline
     let recommender: OutfitRecommending
     let stylingAssistant: StylingAssisting
+    let fashionShotService: FashionShotServing
 
     let scanAndSaveUseCase: ScanAndSaveClothingUseCase
     let dailyRecommendationsUseCase: GenerateDailyRecommendationsUseCase
@@ -101,6 +102,7 @@ final class AppContainer: ObservableObject {
         self.scanPipeline = pipeline
         self.recommender = recommender
         self.stylingAssistant = assistant
+        self.fashionShotService = FirebaseFashionShotService(imageStorage: imageStorage)
 
         self.scanAndSaveUseCase = ScanAndSaveClothingUseCase(
             pipeline: pipeline,

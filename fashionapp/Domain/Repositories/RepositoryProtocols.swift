@@ -48,4 +48,6 @@ protocol ImageStorage: AnyObject {
     func saveImageData(_ data: Data, preferredName: String) async throws -> String
     func loadImageData(at path: String) async throws -> Data
     func deleteImage(at path: String) async throws
+    /// Firebase download URL (tokenized) — used so Replicate can fetch private objects.
+    func downloadURL(for path: String) async throws -> URL
 }

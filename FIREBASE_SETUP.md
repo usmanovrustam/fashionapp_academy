@@ -62,6 +62,10 @@ firebase deploy --only firestore:rules,firestore:indexes,storage
 
 **Storage note:** read rules must not use `request.resource` (write-only). If Discover / wardrobe photos spin then show a placeholder, redeploy `storage.rules` so authenticated users can download their own `users/{uid}/...` images.
 
+## 6. Professional fashion shots (optional)
+
+See **[FASHION_SHOT_SETUP.md](FASHION_SHOT_SETUP.md)** — deploy `functions/` with secret `REPLICATE_API_TOKEN`, then use **Create fashion shot** in the scanner after a successful cutout.
+
 ## 5. BigQuery analytics
 
 ### A. Firebase Analytics → BigQuery (required)

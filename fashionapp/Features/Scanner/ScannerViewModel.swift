@@ -16,6 +16,12 @@ final class ScannerViewModel: ObservableObject {
     @Published var didSave = false
     @Published var savedItem: WardrobeItem?
 
+    /// IDM-VTON professional fashion shot (Replicate → Firebase Storage).
+    @Published var isGeneratingFashionShot = false
+    @Published var fashionShotImage: UIImage?
+    @Published var showHumanPicker = false
+    @Published var humanModelImage: UIImage?
+
     /// Live ML stage while `isProcessing` — driven by the real pipeline, not a timer.
     @Published var pipelineStage: ScanPipelineStage?
     @Published var pipelineFraction: Double = 0
@@ -35,6 +41,8 @@ final class ScannerViewModel: ObservableObject {
     private let scanAndSave: ScanAndSaveClothingUseCase
     private let pipeline: ClothingScanPipeline
     private let profileRepository: UserProfileRepository
+    private let imageStorage: ImageStorage
+    private let fashionShotService: FashionShotServing
     private let analytics: AnalyticsTracking
     let plannedDate: Date?
 
@@ -43,13 +51,19 @@ final class ScannerViewModel: ObservableObject {
     }
 
     var canSave: Bool {
-        selectedImage != nil && scanResult != nil && !isProcessing && !isSaving
+        selectedImage != nil && scanResult != nil && !isProcessing && !isSaving && !isGeneratingFashionShot
+    }
+
+    var canGenerateFashionShot: Bool {
+        scanResult != nil && !isProcessing && !isSaving && !isGeneratingFashionShot
     }
 
     init(container: AppContainer, plannedDate: Date? = nil) {
         self.scanAndSave = container.scanAndSaveUseCase
         self.pipeline = container.scanPipeline
         self.profileRepository = container.profileRepository
+        self.imageStorage = container.imageStorage
+        self.fashionShotService = container.fashionShotService
         self.analytics = container.analytics
         self.plannedDate = plannedDate
     }
@@ -108,6 +122,7 @@ final class ScannerViewModel: ObservableObject {
             }
             scanResult = result
             applyDraft(from: result)
+            fashionShotImage = nil
             if let transparent = result.transparentImageData,
                let cutout = UIImage(data: transparent) {
                 previewImage = cutout
@@ -175,10 +190,86 @@ final class ScannerViewModel: ObservableObject {
         isSaving = false
     }
 
+    /// Starts fashion-shot flow: needs a human/model photo for IDM-VTON.
+    func requestFashionShot() {
+        guard canGenerateFashionShot else { return }
+        if humanModelImage == nil {
+            // Prefer profile avatar when available.
+            Task { await loadAvatarAsHumanModel() }
+            return
+        }
+        Task { await generateFashionShot() }
+    }
+
+    func handleHumanModelPicked(_ image: UIImage) async {
+        showHumanPicker = false
+        let upright = ImageProcessing.orientedUp(image)
+        humanModelImage = ImageProcessing.resized(upright, maxDimension: 1280)
+        await generateFashionShot()
+    }
+
+    private func loadAvatarAsHumanModel() async {
+        if let profile = try? await profileRepository.load(),
+           let path = profile.avatarImagePath, !path.isEmpty,
+           let data = try? await imageStorage.loadImageData(at: path),
+           let image = UIImage(data: data) {
+            humanModelImage = ImageProcessing.resized(ImageProcessing.orientedUp(image), maxDimension: 1280)
+            await generateFashionShot()
+            return
+        }
+        showHumanPicker = true
+    }
+
+    func generateFashionShot() async {
+        guard var scan = scanResult else { return }
+        guard let human = humanModelImage,
+              let humanJPEG = try? ImageProcessing.jpegData(from: human, quality: 0.9) else {
+            showHumanPicker = true
+            return
+        }
+
+        let garmentData = scan.transparentImageData ?? scan.originalImageData
+        isGeneratingFashionShot = true
+        errorMessage = nil
+        analytics.track(.scanStarted, parameters: ["source": "fashion_shot"])
+
+        do {
+            let colorPart = draftColor.isEmpty ? (scan.dominantColor ?? "") : draftColor
+            let typePart = draftType.isEmpty ? (scan.subcategory ?? "") : draftType
+            let description = [colorPart, typePart, draftCategory.displayName]
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+                .joined(separator: " ")
+
+            let result = try await fashionShotService.generateFashionShot(
+                garmentImageData: garmentData,
+                humanImageData: humanJPEG,
+                category: draftCategory,
+                garmentDescription: description.isEmpty ? draftCategory.displayName : description
+            )
+            scan.fashionShotImageData = result.imageData
+            scanResult = scan
+            if let shot = UIImage(data: result.imageData) {
+                fashionShotImage = shot
+                previewImage = shot
+            }
+            analytics.track(.scanCompleted, parameters: [
+                "outcome": "fashion_shot",
+                "storage_path": result.storagePath
+            ])
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+
+        isGeneratingFashionShot = false
+    }
+
     func clearFailedScan() {
         selectedImage = nil
         previewImage = nil
         scanResult = nil
+        fashionShotImage = nil
+        humanModelImage = nil
         clearDraft()
         resetPipelineUI()
         showNoOutfitAlert = false
@@ -188,6 +279,8 @@ final class ScannerViewModel: ObservableObject {
         selectedImage = nil
         previewImage = nil
         scanResult = nil
+        fashionShotImage = nil
+        humanModelImage = nil
         clearDraft()
         resetPipelineUI()
         showNoOutfitAlert = false
