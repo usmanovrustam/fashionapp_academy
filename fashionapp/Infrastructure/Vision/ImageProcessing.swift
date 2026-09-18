@@ -259,23 +259,16 @@ enum ImageProcessing {
         ) else {
             throw ImageProcessingError.maskFailed
         }
-        // Nearest-neighbor keeps a hard binary mask from growing soft side halos.
-        maskCtx.interpolationQuality = .none
+        // High-quality mask draw keeps antialiased edges smooth.
+        maskCtx.interpolationQuality = .high
         maskCtx.draw(maskCG, in: CGRect(x: 0, y: 0, width: width, height: height))
 
         for i in 0..<(width * height) {
             let m = Int(maskPixels[i])
-            // Soft edges near the silhouette; fully drop weak background.
-            let alphaInt: Int
-            if m < 24 {
-                alphaInt = 0
-            } else if m > 220 {
-                alphaInt = 255
-            } else {
-                alphaInt = m
-            }
             let o = i * 4
-            if alphaInt == 0 {
+
+            // Fully transparent outside the garment.
+            if m < 30 {
                 pixels[o + 0] = 0
                 pixels[o + 1] = 0
                 pixels[o + 2] = 0
@@ -283,14 +276,23 @@ enum ImageProcessing {
                 continue
             }
 
-            // Mild gamma lift so studio-lit garments don't look muddy on white.
-            // ALL arithmetic stays in Int — never multiply UInt8×UInt8 (overflow crash).
-            let r = Double(pixels[o + 0])
-            let g = Double(pixels[o + 1])
-            let b = Double(pixels[o + 2])
-            let enhancedR = min(255, max(0, Int((pow(r / 255.0, 0.92) * 255.0).rounded())))
-            let enhancedG = min(255, max(0, Int((pow(g / 255.0, 0.92) * 255.0).rounded())))
-            let enhancedB = min(255, max(0, Int((pow(b / 255.0, 0.92) * 255.0).rounded())))
+            // Smooth antialiased edge ramp between 30 and 200.
+            // CRITICAL: alpha + RGB stay Int — UInt8×UInt8 overflows (e.g. 240*255).
+            let alphaInt: Int
+            if m >= 200 {
+                alphaInt = 255
+            } else {
+                alphaInt = min(255, max(0, Int((Float(m - 30) / 170.0) * 255.0)))
+            }
+
+            // Studio contrast / white-point lift (also Int, never UInt8).
+            let r = Float(pixels[o + 0])
+            let g = Float(pixels[o + 1])
+            let b = Float(pixels[o + 2])
+            let enhancedR = min(255, max(0, Int(pow(Double(r / 255.0), 0.92) * 255.0)))
+            let enhancedG = min(255, max(0, Int(pow(Double(g / 255.0), 0.92) * 255.0)))
+            let enhancedB = min(255, max(0, Int(pow(Double(b / 255.0), 0.92) * 255.0)))
+
             if alphaInt >= 255 {
                 pixels[o + 0] = UInt8(enhancedR)
                 pixels[o + 1] = UInt8(enhancedG)
