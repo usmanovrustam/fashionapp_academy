@@ -264,17 +264,39 @@ enum ImageProcessing {
         maskCtx.draw(maskCG, in: CGRect(x: 0, y: 0, width: width, height: height))
 
         for i in 0..<(width * height) {
-            // Hard alpha — anything below mid-gray is fully transparent.
-            let alpha: UInt8 = maskPixels[i] >= 128 ? 255 : 0
+            let m = maskPixels[i]
+            // Soft edges near the silhouette; fully drop weak background.
+            let alpha: UInt8
+            if m < 24 {
+                alpha = 0
+            } else if m > 220 {
+                alpha = 255
+            } else {
+                alpha = m
+            }
             let o = i * 4
             if alpha == 0 {
                 pixels[o + 0] = 0
                 pixels[o + 1] = 0
                 pixels[o + 2] = 0
                 pixels[o + 3] = 0
-            } else {
-                pixels[o + 3] = 255
+                continue
             }
+
+            // Mild gamma lift so studio-lit garments don't look muddy on white.
+            // Promote to Int before multiply — UInt8(enhanced) * UInt8(alpha) overflows
+            // (e.g. 240 * 255 = 61200) and crashes under Swift overflow checking.
+            let r = Double(pixels[o + 0])
+            let g = Double(pixels[o + 1])
+            let b = Double(pixels[o + 2])
+            let enhancedR = min(255, max(0, Int((pow(r / 255.0, 0.92) * 255.0).rounded())))
+            let enhancedG = min(255, max(0, Int((pow(g / 255.0, 0.92) * 255.0).rounded())))
+            let enhancedB = min(255, max(0, Int((pow(b / 255.0, 0.92) * 255.0).rounded())))
+            let a = Int(alpha)
+            pixels[o + 0] = UInt8((enhancedR * a) / 255)
+            pixels[o + 1] = UInt8((enhancedG * a) / 255)
+            pixels[o + 2] = UInt8((enhancedB * a) / 255)
+            pixels[o + 3] = alpha
         }
 
         guard let out = ctx.makeImage() else { throw ImageProcessingError.maskFailed }
