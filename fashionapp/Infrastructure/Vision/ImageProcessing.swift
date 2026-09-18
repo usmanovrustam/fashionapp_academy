@@ -603,6 +603,85 @@ enum ImageProcessing {
         return bytes
     }
 
+    /// Splits a soft/binary foreground mask into separate connected-component
+    /// instance masks (same canvas size), largest first. Used by multi-item
+    /// scan / OutfitDecomposer-style pipelines on the Mac.
+    static func generateForegroundInstanceMasks(
+        from mask: UIImage,
+        threshold: UInt8 = 128,
+        minPixelCount: Int = 64
+    ) -> [UIImage] {
+        generateForegroundInstanceMasks(mask, threshold: threshold, minPixelCount: minPixelCount)
+    }
+
+    static func generateForegroundInstanceMasks(
+        _ mask: UIImage,
+        threshold: UInt8 = 128,
+        minPixelCount: Int = 64
+    ) -> [UIImage] {
+        guard let cg = cgImage(from: mask) else { return [] }
+        let w = cg.width
+        let h = cg.height
+        guard w > 0, h > 0 else { return [] }
+        let count = w * h
+
+        var px = [UInt8](repeating: 0, count: count)
+        guard let ctx = CGContext(
+            data: &px,
+            width: w,
+            height: h,
+            bitsPerComponent: 8,
+            bytesPerRow: w,
+            space: CGColorSpaceCreateDeviceGray(),
+            bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ) else { return [] }
+        ctx.interpolationQuality = .none
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+
+        var fg = [Bool](repeating: false, count: count)
+        for i in 0..<count { fg[i] = px[i] >= threshold }
+
+        var label = [Int32](repeating: 0, count: count)
+        var queue = [Int]()
+        queue.reserveCapacity(count / 4)
+        var current: Int32 = 0
+        var sizes: [Int32: Int] = [:]
+
+        for start in 0..<count where fg[start] && label[start] == 0 {
+            current += 1
+            label[start] = current
+            queue.removeAll(keepingCapacity: true)
+            queue.append(start)
+            var head = 0
+            var size = 0
+            while head < queue.count {
+                let i = queue[head]; head += 1; size += 1
+                let x = i % w, y = i / w
+                if x > 0 { let n = i - 1; if fg[n] && label[n] == 0 { label[n] = current; queue.append(n) } }
+                if x + 1 < w { let n = i + 1; if fg[n] && label[n] == 0 { label[n] = current; queue.append(n) } }
+                if y > 0 { let n = i - w; if fg[n] && label[n] == 0 { label[n] = current; queue.append(n) } }
+                if y + 1 < h { let n = i + w; if fg[n] && label[n] == 0 { label[n] = current; queue.append(n) } }
+            }
+            sizes[current] = size
+        }
+
+        let ordered = sizes
+            .filter { $0.value >= minPixelCount }
+            .sorted { $0.value > $1.value }
+            .map(\.key)
+
+        var out: [UIImage] = []
+        out.reserveCapacity(ordered.count)
+        for lab in ordered {
+            var plane = [UInt8](repeating: 0, count: count)
+            for i in 0..<count where label[i] == lab { plane[i] = 255 }
+            if let img = grayImage(from: plane, width: w, height: h) {
+                out.append(img)
+            }
+        }
+        return out
+    }
+
     /// Cleans a soft segmentation mask into a hard object silhouette.
     /// - `.saliency`: open + edge-strip trim + erode (u2net side bands).
     /// - `.semantic`: LCC + hole fill only (class masks; keeps thin straps).
