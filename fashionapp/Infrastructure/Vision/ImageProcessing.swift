@@ -603,6 +603,66 @@ enum ImageProcessing {
         return bytes
     }
 
+    /// Paints a circular brush onto a grayscale mask (add = paint white / erase = paint black).
+    /// Coordinates are in image-pixel space (origin top-left of the mask bitmap).
+    @discardableResult
+    static func applyBrushStroke(
+        to mask: UIImage,
+        at point: CGPoint,
+        radius: CGFloat,
+        add: Bool
+    ) -> UIImage {
+        applyBrushStroke(mask, center: point, radius: radius, value: add ? 255 : 0)
+    }
+
+    @discardableResult
+    static func applyBrushStroke(
+        _ mask: UIImage,
+        center: CGPoint,
+        radius: CGFloat,
+        value: UInt8
+    ) -> UIImage {
+        guard let cg = cgImage(from: mask) else { return mask }
+        let w = cg.width
+        let h = cg.height
+        guard w > 0, h > 0, radius > 0 else { return mask }
+
+        var px = [UInt8](repeating: 0, count: w * h)
+        guard let ctx = CGContext(
+            data: &px,
+            width: w,
+            height: h,
+            bitsPerComponent: 8,
+            bytesPerRow: w,
+            space: CGColorSpaceCreateDeviceGray(),
+            bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ) else { return mask }
+        ctx.interpolationQuality = .none
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+
+        // UIKit points are top-left origin; CGImage buffer is top-left for our gray draws.
+        let cx = center.x
+        let cy = center.y
+        let r = max(1, radius)
+        let r2 = r * r
+        let minX = max(0, Int(floor(cx - r)))
+        let maxX = min(w - 1, Int(ceil(cx + r)))
+        let minY = max(0, Int(floor(cy - r)))
+        let maxY = min(h - 1, Int(ceil(cy + r)))
+
+        for y in minY...maxY {
+            let dy = CGFloat(y) + 0.5 - cy
+            for x in minX...maxX {
+                let dx = CGFloat(x) + 0.5 - cx
+                if dx * dx + dy * dy <= r2 {
+                    px[y * w + x] = value
+                }
+            }
+        }
+
+        return grayImage(from: px, width: w, height: h) ?? mask
+    }
+
     /// Splits a soft/binary foreground mask into separate connected-component
     /// instance masks (same canvas size), largest first. Used by multi-item
     /// scan / OutfitDecomposer-style pipelines on the Mac.
